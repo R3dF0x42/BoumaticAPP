@@ -5,8 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import pool from "./db.js";
 
-// ------------------------- EXPRESS INIT -------------------------
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -16,7 +14,7 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// ------------------------- UPLOADS -------------------------
+/* ------------------------- UPLOADS ------------------------- */
 
 const uploadsDir = path.join(__dirname, "uploads");
 const storage = multer.diskStorage({
@@ -27,10 +25,9 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage });
-
 app.use("/uploads", express.static(uploadsDir));
 
-// ------------------------- CLIENTS -------------------------
+/* ------------------------- CLIENTS ------------------------- */
 
 app.get("/api/clients", async (req, res) => {
   try {
@@ -43,7 +40,6 @@ app.get("/api/clients", async (req, res) => {
 
 app.post("/api/clients", async (req, res) => {
   const { name, address, gps_lat, gps_lng, phone, robot_model } = req.body;
-
   try {
     const result = await pool.query(
       `INSERT INTO clients (name, address, gps_lat, gps_lng, phone, robot_model)
@@ -56,7 +52,7 @@ app.post("/api/clients", async (req, res) => {
   }
 });
 
-// ------------------------- TECHNICIANS -------------------------
+/* ------------------------- TECHNICIANS ------------------------- */
 
 app.get("/api/technicians", async (req, res) => {
   try {
@@ -69,7 +65,6 @@ app.get("/api/technicians", async (req, res) => {
 
 app.post("/api/technicians", async (req, res) => {
   const { name, phone, email } = req.body;
-
   try {
     const result = await pool.query(
       `INSERT INTO technicians (name, phone, email)
@@ -82,108 +77,60 @@ app.post("/api/technicians", async (req, res) => {
   }
 });
 
-// ------------------------- INTERVENTIONS -------------------------
+/* ------------------------- INTERVENTIONS ------------------------- */
 
 app.get("/api/interventions", async (req, res) => {
-  const { date } = req.query;
-
-  // Si aucune date → renvoyer tout
-  if (!date) {
-    const all = await pool.query(`
-      SELECT i.*, c.name AS client_name, t.name AS technician_name
+  try {
+    const result = await pool.query(`
+      SELECT i.*,
+             c.name AS client_name,
+             t.name AS technician_name
       FROM interventions i
       LEFT JOIN clients c ON i.client_id = c.id
       LEFT JOIN technicians t ON i.technician_id = t.id
       ORDER BY i.scheduled_at
     `);
-    return res.json(all.rows);
-  }
-
-  // Trouver lundi de la semaine
-  const d = new Date(date);
-  const jsDay = d.getDay();
-  const diff = jsDay === 0 ? -6 : 1 - jsDay;
-
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diff);
-
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  const mondayStr = monday.toISOString().slice(0, 10);
-  const sundayStr = sunday.toISOString().slice(0, 10);
-
-  try {
-    const result = await pool.query(
-      `
-        SELECT i.*, 
-               c.name AS client_name,
-               t.name AS technician_name
-        FROM interventions i
-        LEFT JOIN clients c ON i.client_id = c.id
-        LEFT JOIN technicians t ON i.technician_id = t.id
-        WHERE i.scheduled_at::date BETWEEN $1 AND $2
-        ORDER BY i.scheduled_at
-      `,
-      [mondayStr, sundayStr]
-    );
 
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-
-app.post("/api/interventions", async (req, res) => {
-  const { client_id, technician_id, scheduled_at, status, priority, description } = req.body;
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO interventions (client_id, technician_id, scheduled_at, status, priority, description)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-      [client_id, technician_id, scheduled_at, status, priority, description]
-    );
-    res.status(201).json({ id: result.rows[0].id });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ------------------------- NOTES -------------------------
-
-app.post("/api/interventions/:id/notes", async (req, res) => {
-  const intervention_id = req.params.id;
-  const { author, content } = req.body;
+app.get("/api/interventions/:id", async (req, res) => {
+  const id = req.params.id;
 
   try {
-    const result = await pool.query(
-      `INSERT INTO notes (intervention_id, author, content)
-       VALUES ($1,$2,$3) RETURNING id`,
-      [intervention_id, author, content]
-    );
-    res.status(201).json({ id: result.rows[0].id });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ------------------------- PHOTOS -------------------------
-
-app.post("/api/interventions/:id/photos", upload.single("photo"), async (req, res) => {
-  const intervention_id = req.params.id;
-  const filename = req.file.filename;
-
-  try {
-    const result = await pool.query(
-      "INSERT INTO photos (intervention_id, filename) VALUES ($1,$2) RETURNING id",
-      [intervention_id, filename]
+    const inter = await pool.query(
+      `
+      SELECT i.*, 
+             c.name AS client_name,
+             c.address, c.gps_lat, c.gps_lng, c.robot_model,
+             t.name AS technician_name
+      FROM interventions i
+      LEFT JOIN clients c ON i.client_id = c.id
+      LEFT JOIN technicians t ON i.technician_id = t.id
+      WHERE i.id = $1
+    `,
+      [id]
     );
 
-    res.status(201).json({
-      id: result.rows[0].id,
-      url: `/uploads/${filename}`
+    if (!inter.rows.length) return res.status(404).json({ error: "Not found" });
+
+    const notes = await pool.query(
+      "SELECT * FROM notes WHERE intervention_id = $1 ORDER BY created_at DESC",
+      [id]
+    );
+
+    const photos = await pool.query(
+      "SELECT * FROM photos WHERE intervention_id = $1 ORDER BY created_at DESC",
+      [id]
+    );
+
+    res.json({
+      intervention: inter.rows[0],
+      notes: notes.rows,
+      photos: photos.rows
     });
 
   } catch (err) {
@@ -191,13 +138,52 @@ app.post("/api/interventions/:id/photos", upload.single("photo"), async (req, re
   }
 });
 
-// ------------------------- ROOT -------------------------
+app.post("/api/interventions", async (req, res) => {
+  const { client_id, technician_id, scheduled_at, status, priority, description } = req.body;
 
-app.get("/", (req, res) => {
-  res.send("Maintenance Planner API - PostgreSQL OK");
+  console.log("📩 New Intervention received:", req.body);
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO interventions
+       (client_id, technician_id, scheduled_at, status, priority, description)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id`,
+      [client_id, technician_id, scheduled_at, status, priority, description]
+    );
+
+    res.status(201).json({ id: result.rows[0].id });
+  } catch (err) {
+    console.error("❌ ERROR during insert:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// ------------------------- START -------------------------
+app.put("/api/interventions/:id", async (req, res) => {
+  const id = req.params.id;
+  const { status, priority, description, scheduled_at } = req.body;
+
+  try {
+    await pool.query(
+      `UPDATE interventions
+       SET status=$1, priority=$2, description=$3, scheduled_at=$4
+       WHERE id=$5`,
+      [status, priority, description, scheduled_at, id]
+    );
+
+    res.json({ updated: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ------------------------- ROOT ------------------------- */
+
+app.get("/", (_, res) => {
+  res.send("Maintenance Planner API - PostgreSQL Ready 🚀");
+});
+
+/* ------------------------- START SERVER ------------------------- */
 
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);

@@ -1,12 +1,10 @@
 import React from "react";
 
-// Retourne les 7 jours de la semaine du lundi au dimanche
 function getWeekDays(dateStr) {
   const base = new Date(dateStr);
-  const jsDay = base.getDay(); // 0 = dimanche... 1 = lundi...
-
+  const jsDay = base.getDay();
   const monday = new Date(base);
-  const diff = jsDay === 0 ? -6 : 1 - jsDay; // dimanche -> -6, mardi -> -1, etc.
+  const diff = jsDay === 0 ? -6 : 1 - jsDay;
   monday.setDate(base.getDate() + diff);
 
   const days = [];
@@ -19,8 +17,6 @@ function getWeekDays(dateStr) {
   return days;
 }
 
-const formatDayKey = (d) => new Date(d).toLocaleDateString("en-CA");
-
 export default function CalendarWeek({
   date,
   interventions,
@@ -30,13 +26,14 @@ export default function CalendarWeek({
   getTechColor
 }) {
   const days = getWeekDays(date);
-
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
 
   const slots = {};
+
   interventions.forEach((inter) => {
-    const dayStr = formatDayKey(inter.scheduled_at);
-    const hourStr = new Date(inter.scheduled_at).getHours().toString().padStart(2, "0");
+    const d = new Date(inter.scheduled_at.replace(" ", "T"));
+    const dayStr = d.toISOString().split("T")[0];
+    const hourStr = d.getHours().toString().padStart(2, "0");
 
     if (!slots[dayStr]) slots[dayStr] = {};
     if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
@@ -46,23 +43,20 @@ export default function CalendarWeek({
   const handleDrop = (e, dayStr, hour) => {
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain");
-
-    if (!id) return;
-
     const newDateTime = `${dayStr}T${hour}:00`;
-
     onMove(id, newDateTime);
   };
 
   return (
     <div className="week-container">
+
       <div className="week-header">
         <div className="week-header-time">Heure</div>
         {days.map((d, i) => (
           <div key={i} className="week-header-day">
             {d.toLocaleDateString("fr-FR", {
               weekday: "short",
-              day: "2-digit"
+              day: "2-digit",
             })}
           </div>
         ))}
@@ -79,7 +73,7 @@ export default function CalendarWeek({
 
         <div className="week-days">
           {days.map((d, i) => {
-            const dayStr = formatDayKey(d);
+            const dayStr = d.toISOString().split("T")[0];
 
             return (
               <div key={i} className="week-day-col">
@@ -90,6 +84,7 @@ export default function CalendarWeek({
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(e, dayStr, h)}
                   >
+
                     {slots[dayStr]?.[h]?.map((inter) => (
                       <div
                         key={inter.id}
@@ -99,23 +94,23 @@ export default function CalendarWeek({
                         }
                         onClick={() => onSelect(inter.id)}
                         className={
-                          "week-event " +
-                          (inter.priority && inter.priority.toLowerCase().startsWith("urgent")
-                            ? "week-event-urgent"
-                            : "week-event-normal") +
+                          "week-event" +
                           (inter.id === selectedId ? " week-event-active" : "")
                         }
                         style={{ background: getTechColor(inter.technician_id) }}
                       >
                         <strong>{inter.client_name}</strong>
 
-                        <div className="week-small">{inter.description}</div>
+                        <div className="week-small">
+                          {inter.description}
+                        </div>
 
                         <div className="week-small" style={{ opacity: 0.7 }}>
                           {inter.technician_name}
                         </div>
                       </div>
                     ))}
+
                   </div>
                 ))}
               </div>
