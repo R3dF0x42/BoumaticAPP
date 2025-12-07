@@ -6,7 +6,8 @@ import NewIntervention from "./components/NewIntervention.jsx";
 import ClientsPage from "./components/ClientsPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
 
-const API_URL = "http://localhost:4000/api";
+const API_URL = "boumaticapp-production.up.railway.app";
+
 
 export default function App() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
