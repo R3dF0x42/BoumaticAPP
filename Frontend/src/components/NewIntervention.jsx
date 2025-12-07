@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_URL = "https://boumaticapp-production.up.railway.app/api";
+const API = "https://boumaticapp-production.up.railway.app/api/interventions";
 
 export default function NewIntervention({ onClose, onCreated }) {
   const [clients, setClients] = useState([]);
