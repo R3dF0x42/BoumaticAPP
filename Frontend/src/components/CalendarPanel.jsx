@@ -16,11 +16,7 @@ export default function CalendarPanel({
     slots[hour].push(i);
   });
 
-  const hours = [];
-for (let h = 0; h < 24; h++) {
-  hours.push(h.toString().padStart(2, "0"));
-}
-
+  const hours = Array.from({ length: 24 }, (_, h) => h.toString().padStart(2, "0"));
 
   const handleDrop = (e, hour) => {
     e.preventDefault();
@@ -84,7 +80,7 @@ for (let h = 0; h < 24; h++) {
                       hour: "2-digit",
                       minute: "2-digit"
                     })}
-                    {" · "}
+                    {" - "}
                     {i.description}
                   </div>
                 </div>
