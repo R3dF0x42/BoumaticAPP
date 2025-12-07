@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const API_BASE = "http://localhost:4000";
+const API_URL = "https://boumaticapp-production.up.railway.app/api";
 
 export default function DetailPanel({ data, onAddNote, onUploadPhoto }) {
   const [note, setNote] = useState("");
