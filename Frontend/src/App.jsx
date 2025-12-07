@@ -6,15 +6,14 @@ import NewIntervention from "./components/NewIntervention.jsx";
 import ClientsPage from "./components/ClientsPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
 
-const API_URL = "https://boumaticapp-production.up.railway.app/api";
-
+const API_URL = process.env.REACT_APP_API_URL || "https://boumaticapp-production.up.railway.app/api";
 
 export default function App() {
   const [date, setDate] = useState(() => {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10);
-});
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  });
   const [interventions, setInterventions] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedDetails, setSelectedDetails] = useState(null);
@@ -32,7 +31,7 @@ export default function App() {
       .catch(console.error);
   }, [date]);
 
-  // Charger détails intervention sélectionnée
+  // Charger details intervention selectionnee
   useEffect(() => {
     if (!selectedId) return;
     fetch(`${API_URL}/interventions/${selectedId}`)
@@ -71,13 +70,14 @@ export default function App() {
     return () => window.removeEventListener("openNewIntervention", open);
   }, []);
 
-  // 🔁 Déplacement drag & drop d'une intervention vers une autre heure
-  const handleMoveIntervention = async (id, newHour) => {
+  // Deplacement drag & drop d'une intervention vers une autre heure ou date
+  const handleMoveIntervention = async (id, newDateOrHour) => {
     const inter = interventions.find((i) => i.id === Number(id));
     if (!inter) return;
 
-    const datePart = date; // YYYY-MM-DD
-    const newDateTime = `${datePart}T${newHour}:00`;
+    const newDateTime = newDateOrHour.includes("T")
+      ? newDateOrHour
+      : `${date}T${newDateOrHour}:00`;
 
     await fetch(`${API_URL}/interventions/${id}`, {
       method: "PUT",
@@ -90,50 +90,46 @@ export default function App() {
       })
     });
 
-    // recharge le planning
     const res = await fetch(`${API_URL}/interventions?date=${date}`);
     const data = await res.json();
     setInterventions(data);
+
+    if (selectedId === Number(id)) {
+      const detailRes = await fetch(`${API_URL}/interventions/${id}`);
+      setSelectedDetails(await detailRes.json());
+    }
   };
 
-  // interventions urgentes (pour badge)
   const urgentCount = interventions.filter(
     (i) => i.priority && i.priority.toLowerCase().startsWith("urgent")
   ).length;
 
   const changeWeek = (offset) => {
-  const d = new Date(date);
+    const d = new Date(date);
 
-  if (offset === 0) {
-    // Revenir à aujourd’hui
-    setDate(new Date().toISOString().slice(0, 10));
-    return;
-  }
+    if (offset === 0) {
+      setDate(new Date().toISOString().slice(0, 10));
+      return;
+    }
 
-  // Avance ou recule de 7 jours
-  d.setDate(d.getDate() + offset * 7);
+    d.setDate(d.getDate() + offset * 7);
+    setDate(d.toISOString().slice(0, 10));
+  };
 
-  setDate(d.toISOString().slice(0, 10));
-};
+  const TECH_COLORS = [
+    "#1d6fff",
+    "#f38b1a",
+    "#b14ff2",
+    "#22c55e",
+    "#e11d48",
+    "#38bdf8",
+    "#ffb800"
+  ];
 
-// Palette de couleurs techniciens (BouMatic style)
-const TECH_COLORS = [
-  "#1d6fff",  // bleu
-  "#f38b1a",  // orange
-  "#b14ff2",  // violet
-  "#22c55e",  // vert
-  "#e11d48",  // rose
-  "#38bdf8",  // cyan
-  "#ffb800",  // jaune
-];
-
-// Assigne une couleur en fonction de l'ID (stable)
-const getTechColor = (techId) => {
-  if (!techId) return "#1d6fff";
-  return TECH_COLORS[techId % TECH_COLORS.length];
-};
-
-
+  const getTechColor = (techId) => {
+    if (!techId) return "#1d6fff";
+    return TECH_COLORS[techId % TECH_COLORS.length];
+  };
 
   return (
     <>
@@ -151,12 +147,10 @@ const getTechColor = (techId) => {
 
         {currentPage === "planning" && (
           <div className="planning-container">
-
-            {/* Boutons navigation semaine */}
             <div className="week-nav">
-              <button onClick={() => changeWeek(-1)}>← Semaine -1</button>
-              <button onClick={() => changeWeek(0)}>Aujourd’hui</button>
-              <button onClick={() => changeWeek(+1)}>Semaine +1 →</button>
+              <button onClick={() => changeWeek(-1)}>Semaine -1</button>
+              <button onClick={() => changeWeek(0)}>Aujourd'hui</button>
+              <button onClick={() => changeWeek(+1)}>Semaine +1</button>
             </div>
 
             <CalendarWeek
@@ -168,9 +162,15 @@ const getTechColor = (techId) => {
               getTechColor={getTechColor}
             />
 
+            {selectedDetails && (
+              <DetailPanel
+                intervention={selectedDetails}
+                onAddNote={handleAddNote}
+                onUploadPhoto={handleUploadPhoto}
+              />
+            )}
           </div>
-)}
-
+        )}
 
         {currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
 
