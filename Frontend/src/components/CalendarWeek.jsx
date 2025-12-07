@@ -38,22 +38,26 @@ export default function CalendarWeek({
   const slots = {};
 
   interventions.forEach((inter) => {
-    if (!inter.scheduled_at) return;
+  if (!inter.scheduled_at) return;
 
-    // Convertir depuis UTC vers locale
-    const d = new Date(inter.scheduled_at);
+  // 1️⃣ Découper la date brute pour éviter UTC
+  const [dayPart, timePart] = inter.scheduled_at.split("T");
+  const [year, month, day] = dayPart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
 
-    // Format YYYY-MM-DD en locale
-    const dayStr = d.toLocaleDateString("fr-CA");
+  // 2️⃣ Construire une date locale qui ne bouge pas
+  const d = new Date(year, month - 1, day, hour, minute);
 
-    // Heure locale
-    const hourStr = d.getHours().toString().padStart(2, "0");
+  // 3️⃣ Déterminer la journée exacte (sans UTC)
+  const dayStr = dayPart;
+  const hourStr = hour.toString().padStart(2, "0");
 
-    if (!slots[dayStr]) slots[dayStr] = {};
-    if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
+  if (!slots[dayStr]) slots[dayStr] = {};
+  if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
 
-    slots[dayStr][hourStr].push(inter);
-  });
+  slots[dayStr][hourStr].push(inter);
+});
+
 
   const handleDrop = (e, dayStr, hour) => {
     e.preventDefault();
