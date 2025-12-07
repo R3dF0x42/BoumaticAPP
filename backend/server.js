@@ -6,25 +6,12 @@ import { fileURLToPath } from "url";
 import pool from "./db.js";
 
 
-const { Pool } = pg;
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-/* ------------------------- POSTGRES CONNECTION ------------------------- */
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-/* TEST DATABASE CONNECTION */
-pool.connect()
-  .then(() => console.log("✅ Connected to PostgreSQL"))
-  .catch(err => console.error("❌ PostgreSQL error", err));
 
 app.use(cors());
 app.use(express.json());
