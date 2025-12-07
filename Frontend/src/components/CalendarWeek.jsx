@@ -30,28 +30,22 @@ export default function CalendarWeek({
 
   const slots = {};
 
-  interventions.forEach((inter) => {
-  // sécuriser la date
+interventions.forEach((inter) => {
   if (!inter.scheduled_at) return;
 
-  // scheduled_at = "2025-12-07T10:00:00.000Z" OU "2025-12-07 10:00:00"
-  let [dayPart, timePart] = inter.scheduled_at.split(" ");
+  // Convertir correctement depuis UTC vers l'heure locale
+  const d = new Date(inter.scheduled_at);  
 
-  // Si le backend renvoie au format ISO (avec "T")
-  if (!timePart) {
-    const isoParts = inter.scheduled_at.split("T");
-    dayPart = isoParts[0];
-    timePart = isoParts[1];
-  }
+  // Extraire YYYY-MM-DD (local, pas UTC)
+  const dayStr = d.toLocaleDateString("fr-CA"); // format YYYY-MM-DD
 
-  if (!dayPart || !timePart) return;
+  // Extraire l'heure locale (00–23)
+  const hourStr = d.getHours().toString().padStart(2, "0");
 
-  const hourStr = timePart.substring(0, 2);
+  if (!slots[dayStr]) slots[dayStr] = {};
+  if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
 
-  if (!slots[dayPart]) slots[dayPart] = {};
-  if (!slots[dayPart][hourStr]) slots[dayPart][hourStr] = [];
-
-  slots[dayPart][hourStr].push(inter);
+  slots[dayStr][hourStr].push(inter);
 });
 
 
