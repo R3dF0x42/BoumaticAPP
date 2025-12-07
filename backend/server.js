@@ -87,31 +87,54 @@ app.post("/api/technicians", async (req, res) => {
 app.get("/api/interventions", async (req, res) => {
   const { date } = req.query;
 
-  let sql = `
-    SELECT i.*,
-           c.name AS client_name,
-           t.name AS technician_name
-    FROM interventions i
-    LEFT JOIN clients c ON i.client_id = c.id
-    LEFT JOIN technicians t ON i.technician_id = t.id
-  `;
-
-  const params = [];
-
-  if (date) {
-    sql += " WHERE i.scheduled_at::date = $1";
-    params.push(date);
+  // Si aucune date → renvoyer tout
+  if (!date) {
+    const all = await pool.query(`
+      SELECT i.*, c.name AS client_name, t.name AS technician_name
+      FROM interventions i
+      LEFT JOIN clients c ON i.client_id = c.id
+      LEFT JOIN technicians t ON i.technician_id = t.id
+      ORDER BY i.scheduled_at
+    `);
+    return res.json(all.rows);
   }
 
-  sql += " ORDER BY i.scheduled_at";
+  // Trouver lundi de la semaine
+  const d = new Date(date);
+  const jsDay = d.getDay();
+  const diff = jsDay === 0 ? -6 : 1 - jsDay;
+
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diff);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const mondayStr = monday.toISOString().slice(0, 10);
+  const sundayStr = sunday.toISOString().slice(0, 10);
 
   try {
-    const result = await pool.query(sql, params);
+    const result = await pool.query(
+      `
+        SELECT i.*, 
+               c.name AS client_name,
+               t.name AS technician_name
+        FROM interventions i
+        LEFT JOIN clients c ON i.client_id = c.id
+        LEFT JOIN technicians t ON i.technician_id = t.id
+        WHERE i.scheduled_at::date BETWEEN $1 AND $2
+        ORDER BY i.scheduled_at
+      `,
+      [mondayStr, sundayStr]
+    );
+
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 app.post("/api/interventions", async (req, res) => {
   const { client_id, technician_id, scheduled_at, status, priority, description } = req.body;
