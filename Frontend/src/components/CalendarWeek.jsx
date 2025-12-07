@@ -1,20 +1,21 @@
 import React from "react";
 
-// Retourne les 7 jours de la semaine du lundi → dimanche
+// Retourne les 7 jours de la semaine du lundi → dimanche (sans UTC)
 function getWeekDays(dateStr) {
-  const base = new Date(dateStr);
-  const jsDay = base.getDay(); // 0 = dimanche, 1 = lundi...
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const base = new Date(y, m-1, d);
 
-  // Trouver le lundi
+  const jsDay = base.getDay(); // 0 = dimanche
+  const diff = jsDay === 0 ? -6 : 1 - jsDay; // trouver lundi
+
   const monday = new Date(base);
-  const diff = jsDay === 0 ? -6 : 1 - jsDay;
   monday.setDate(base.getDate() + diff);
 
   const days = [];
   for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        days.push(d);
+    const d2 = new Date(monday);
+    d2.setDate(monday.getDate() + i);
+    days.push(d2);
   }
 
   return days;
@@ -34,31 +35,31 @@ export default function CalendarWeek({
     i.toString().padStart(2, "0")
   );
 
-  // Tableau des créneaux
+  // Création des créneaux
   const slots = {};
 
   interventions.forEach((inter) => {
-  if (!inter.scheduled_at) return;
+    if (!inter.scheduled_at) return;
 
-  // 1️⃣ Découper la date brute pour éviter UTC
-  const [dayPart, timePart] = inter.scheduled_at.split("T");
-  const [year, month, day] = dayPart.split("-").map(Number);
-  const [hour, minute] = timePart.split(":").map(Number);
+    // 1️⃣ Split la date brute (PAS de new Date() direct !)
+    const [dayPart, timePart] = inter.scheduled_at.split("T");
+    const [year, month, day] = dayPart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
 
-  // 2️⃣ Construire une date locale qui ne bouge pas
-  const d = new Date(year, month - 1, day, hour, minute);
+    // 2️⃣ Construire date locale (sans UTC)
+    const d = new Date(year, month - 1, day, hour, minute);
 
-  // 3️⃣ Déterminer la journée exacte (sans UTC)
-  const dayStr = dayPart;
-  const hourStr = hour.toString().padStart(2, "0");
+    // 3️⃣ Déduire jour + heure (sans transformation)
+    const dayStr = dayPart;
+    const hourStr = hour.toString().padStart(2, "0");
 
-  if (!slots[dayStr]) slots[dayStr] = {};
-  if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
+    if (!slots[dayStr]) slots[dayStr] = {};
+    if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
 
-  slots[dayStr][hourStr].push(inter);
-});
+    slots[dayStr][hourStr].push(inter);
+  });
 
-
+  // Déplacement intervention
   const handleDrop = (e, dayStr, hour) => {
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain");
@@ -94,13 +95,13 @@ export default function CalendarWeek({
           ))}
         </div>
 
-        {/* Colonnes jours */}
+        {/* 7 colonnes */}
         <div className="week-days">
-          {days.map((d, i) => {
-            const dayStr = d.toLocaleDateString("fr-CA"); // YYYY-MM-DD correct
+          {days.map((d, indexDay) => {
+            const dayStr = d.toLocaleDateString("fr-CA"); // YYYY-MM-DD exact
 
             return (
-              <div key={i} className="week-day-col">
+              <div key={indexDay} className="week-day-col">
 
                 {hours.map((h) => (
                   <div
@@ -109,7 +110,7 @@ export default function CalendarWeek({
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(e, dayStr, h)}
                   >
-                    {/* Affichage des interventions */}
+                    {/* Interventions */}
                     {slots[dayStr]?.[h]?.map((inter) => (
                       <div
                         key={inter.id}
@@ -120,12 +121,11 @@ export default function CalendarWeek({
                         onClick={() => onSelect(inter.id)}
                         className={
                           "week-event " +
-                          (inter.priority === "Urgente"
-                            ? "week-event-urgent"
-                            : "week-event-normal") +
-                          (inter.id === selectedId ? " week-event-active" : "")
+                          (inter.id === selectedId ? "week-event-active " : "")
                         }
-                        style={{ background: getTechColor(inter.technician_id) }}
+                        style={{
+                          background: getTechColor(inter.technician_id)
+                        }}
                       >
                         <strong>{inter.client_name}</strong>
 
@@ -136,6 +136,7 @@ export default function CalendarWeek({
                         <div className="week-small" style={{ opacity: 0.7 }}>
                           {inter.technician_name}
                         </div>
+
                       </div>
                     ))}
                   </div>
