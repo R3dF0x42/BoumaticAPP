@@ -6,7 +6,7 @@ import NewIntervention from "./components/NewIntervention.jsx";
 import ClientsPage from "./components/ClientsPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
 
-const API_URL = "boumaticapp-production.up.railway.app";
+const API_URL = "https://boumaticapp-production.up.railway.app/api";
 
 
 export default function App() {
