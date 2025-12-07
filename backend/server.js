@@ -3,21 +3,7 @@ import cors from "cors";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
-import pkg from "pg";
-
-const { Pool } = pkg;
-
-// ------------------------- POSTGRES CONNECTION -------------------------
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// Test connexion
-pool.connect()
-  .then(() => console.log("✅ PostgreSQL connecté"))
-  .catch((err) => console.error("❌ Erreur PostgreSQL", err));
+import pool from "./db.js";
 
 // ------------------------- EXPRESS INIT -------------------------
 
@@ -185,11 +171,11 @@ app.post("/api/interventions/:id/photos", upload.single("photo"), async (req, re
 // ------------------------- ROOT -------------------------
 
 app.get("/", (req, res) => {
-  res.send("Maintenance Planner API - PostgreSQL ✔");
+  res.send("Maintenance Planner API - PostgreSQL OK");
 });
 
 // ------------------------- START -------------------------
 
 app.listen(PORT, () => {
-  console.log(`🚀 Backend running on port ${PORT}`);
+  console.log(`Backend running on port ${PORT}`);
 });
