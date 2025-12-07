@@ -1,18 +1,20 @@
-import sqlite3 from "sqlite3";
-import path from "path";
-import { fileURLToPath } from "url";
+import pg from "pg";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { Pool } = pg;
 
-const dbPath = path.join(__dirname, "data.db");
-const db = new sqlite3.Database(dbPath);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-// Création des tables si elles n’existent pas
-db.serialize(() => {
-  db.run(`
+/* -------------------------
+   Create tables if missing
+------------------------- */
+
+async function initDB() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS clients (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       address TEXT,
       gps_lat REAL,
@@ -22,49 +24,49 @@ db.serialize(() => {
     );
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS technicians (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       phone TEXT,
       email TEXT
     );
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS interventions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      client_id INTEGER,
-      technician_id INTEGER,
-      scheduled_at TEXT,
+      id SERIAL PRIMARY KEY,
+      client_id INTEGER REFERENCES clients(id),
+      technician_id INTEGER REFERENCES technicians(id),
+      scheduled_at TIMESTAMP,
       status TEXT,
       priority TEXT,
-      description TEXT,
-      FOREIGN KEY (client_id) REFERENCES clients(id),
-      FOREIGN KEY (technician_id) REFERENCES technicians(id)
+      description TEXT
     );
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS notes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      intervention_id INTEGER,
+      id SERIAL PRIMARY KEY,
+      intervention_id INTEGER REFERENCES interventions(id),
       author TEXT,
       content TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (intervention_id) REFERENCES interventions(id)
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS photos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      intervention_id INTEGER,
+      id SERIAL PRIMARY KEY,
+      intervention_id INTEGER REFERENCES interventions(id),
       filename TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (intervention_id) REFERENCES interventions(id)
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
-});
 
-export default db;
+  console.log("✅ PostgreSQL tables ready");
+}
+
+initDB().catch(console.error);
+
+export default pool;
