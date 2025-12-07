@@ -10,7 +10,11 @@ const API_URL = "https://boumaticapp-production.up.railway.app/api";
 
 
 export default function App() {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+});
   const [interventions, setInterventions] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedDetails, setSelectedDetails] = useState(null);

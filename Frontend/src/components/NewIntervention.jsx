@@ -29,7 +29,7 @@ export default function NewIntervention({ onClose, onCreated }) {
     const payload = {
       client_id: Number(form.client_id),
       technician_id: Number(form.technician_id),
-      scheduled_at: form.scheduled_at.replace("T", " "),
+      scheduled_at: form.scheduled_at.replace("T", " ") + ":00",
       priority: form.priority,
       status: form.status,
       description: form.description
