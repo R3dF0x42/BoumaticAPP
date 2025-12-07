@@ -76,16 +76,31 @@ export default function App() {
 
   /* NAVIGATE WEEKS */
   const changeWeek = (offset) => {
-    const d = new Date(date);
+  const today = new Date();
 
-    if (offset === 0) {
-      setDate(new Date().toISOString().slice(0, 10));
-      return;
-    }
+  if (offset === 0) {
+    // format YYYY-MM-DD sans UTC
+    const localToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    )
+      .toLocaleDateString("fr-CA"); // donne YYYY-MM-DD
 
-    d.setDate(d.getDate() + offset * 7);
-    setDate(d.toISOString().slice(0, 10));
-  };
+    setDate(localToday);
+    return;
+  }
+
+  const [y, m, d] = date.split("-").map(Number);
+  const current = new Date(y, m - 1, d);
+
+  current.setDate(current.getDate() + offset * 7);
+
+  const newDate = current.toLocaleDateString("fr-CA");
+
+  setDate(newDate);
+};
+
 
   return (
     <>
