@@ -31,14 +31,19 @@ export default function CalendarWeek({
   const slots = {};
 
   interventions.forEach((inter) => {
-    const d = new Date(inter.scheduled_at.replace(" ", "T"));
-    const dayStr = d.toISOString().split("T")[0];
-    const hourStr = d.getHours().toString().padStart(2, "0");
+  // NE PAS utiliser new Date + toISOString → bug UTC !
+  
+  // Récupère le jour EXACT sans conversion
+  const dayStr = inter.scheduled_at.split(" ")[0]; // "YYYY-MM-DD"
 
-    if (!slots[dayStr]) slots[dayStr] = {};
-    if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
-    slots[dayStr][hourStr].push(inter);
-  });
+  // Récupérer l'heure
+  const hourStr = inter.scheduled_at.split(" ")[1].substring(0, 2); // "HH"
+
+  if (!slots[dayStr]) slots[dayStr] = {};
+  if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
+
+  slots[dayStr][hourStr].push(inter);
+});
 
   const handleDrop = (e, dayStr, hour) => {
     e.preventDefault();
