@@ -31,19 +31,29 @@ export default function CalendarWeek({
   const slots = {};
 
   interventions.forEach((inter) => {
-  // NE PAS utiliser new Date + toISOString → bug UTC !
-  
-  // Récupère le jour EXACT sans conversion
-  const dayStr = inter.scheduled_at.split(" ")[0]; // "YYYY-MM-DD"
+  // sécuriser la date
+  if (!inter.scheduled_at) return;
 
-  // Récupérer l'heure
-  const hourStr = inter.scheduled_at.split(" ")[1].substring(0, 2); // "HH"
+  // scheduled_at = "2025-12-07T10:00:00.000Z" OU "2025-12-07 10:00:00"
+  let [dayPart, timePart] = inter.scheduled_at.split(" ");
 
-  if (!slots[dayStr]) slots[dayStr] = {};
-  if (!slots[dayStr][hourStr]) slots[dayStr][hourStr] = [];
+  // Si le backend renvoie au format ISO (avec "T")
+  if (!timePart) {
+    const isoParts = inter.scheduled_at.split("T");
+    dayPart = isoParts[0];
+    timePart = isoParts[1];
+  }
 
-  slots[dayStr][hourStr].push(inter);
+  if (!dayPart || !timePart) return;
+
+  const hourStr = timePart.substring(0, 2);
+
+  if (!slots[dayPart]) slots[dayPart] = {};
+  if (!slots[dayPart][hourStr]) slots[dayPart][hourStr] = [];
+
+  slots[dayPart][hourStr].push(inter);
 });
+
 
   const handleDrop = (e, dayStr, hour) => {
     e.preventDefault();
