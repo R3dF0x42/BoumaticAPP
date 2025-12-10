@@ -262,3 +262,16 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
+
+
+import { listEvents } from "./google.js";
+
+app.get("/api/google-calendar", async (req, res) => {
+  try {
+    const events = await listEvents();
+    res.json(events);
+  } catch (err) {
+    console.error("Google Calendar error:", err);
+    res.status(500).json({ error: "Failed to load Google Calendar" });
+  }
+});
