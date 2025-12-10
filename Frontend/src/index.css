@@ -13,6 +13,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@import "@fullcalendar/timegrid/main.css";
+@import "@fullcalendar/daygrid/main.css";
+
+
 a {
   font-weight: 500;
   color: #646cff;

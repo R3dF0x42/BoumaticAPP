@@ -5,6 +5,8 @@ import NewIntervention from "./components/NewIntervention.jsx";
 import ClientsPage from "./components/ClientsPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
 import GoogleCalendar from "./components/GoogleCalendar.jsx";
+import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
+
 
 const API_URL = "https://boumaticapp-production.up.railway.app/api";
 
@@ -54,7 +56,11 @@ export default function App() {
 
         {/* PAGE : GOOGLE AGENDA */}
         {currentPage === "planning" && (
-          <GoogleCalendar />
+          <GoogleCalendarFull
+            onSelectEvent={(event) => {
+              console.log("Événement cliqué :", event);
+            }}
+          />
         )}
 
         {/* PAGE : CLIENTS */}
