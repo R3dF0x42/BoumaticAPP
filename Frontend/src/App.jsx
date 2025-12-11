@@ -14,6 +14,16 @@ export default function App() {
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [showNewIntervention, setShowNewIntervention] = useState(false);
   const [currentPage, setCurrentPage] = useState("planning");
+  
+
+  // écoute le bouton "Nouvelle intervention"
+  useEffect(() => {
+    const open = () => setShowNewIntervention(true);
+
+    window.addEventListener("openNewIntervention", open);
+    return () => window.removeEventListener("openNewIntervention", open);
+  }, []);
+
 
   // charger détail intervention
   useEffect(() => {
