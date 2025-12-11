@@ -164,22 +164,33 @@ app.get("/api/interventions/:id", async (req, res) => {
 
 app.post("/api/interventions", async (req, res) => {
   const {
-    client_id,
-    technician_id,
-    scheduled_at,
-    status,
-    priority,
-    description
-  } = req.body;
+  client_id,
+  technician_id,
+  scheduled_at,
+  status,
+  priority,
+  description,
+  duration_minutes
+} = req.body;
+
 
   try {
     // 1) on insère l'intervention
     const result = await pool.query(
       `INSERT INTO interventions
-       (client_id, technician_id, scheduled_at, status, priority, description)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id`,
-      [client_id, technician_id, scheduled_at, status, priority, description]
+      (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      RETURNING id`,
+      [
+        client_id,
+        technician_id,
+        scheduled_at,
+        status,
+        priority,
+        description,
+        duration_minutes || 60
+      ]
+
     );
 
     const newId = result.rows[0].id;

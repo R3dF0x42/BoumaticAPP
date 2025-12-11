@@ -32,7 +32,8 @@ export default function NewIntervention({ onClose, onCreated }) {
       scheduled_at: form.scheduled_at.replace("T", " ") + ":00",
       priority: form.priority,
       status: form.status,
-      description: form.description
+      description: form.description,
+      duration_minutes: form.duration_minutes || 60
     };
 
     const res = await fetch(API + "/interventions", {
@@ -88,6 +89,17 @@ export default function NewIntervention({ onClose, onCreated }) {
             onChange={(e) => setValue("scheduled_at", e.target.value)} 
             required 
           />
+
+          <label>Durée (minutes)</label>
+          <input
+            type="number"
+            value={form.duration_minutes}
+            onChange={(e) => setValue("duration_minutes", Number(e.target.value))}
+            min="15"
+            step="15"
+            required
+          />
+
 
           <label>Priorité</label>
           <select 

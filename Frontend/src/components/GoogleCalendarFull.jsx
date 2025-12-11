@@ -57,19 +57,28 @@ export default function GoogleCalendarFull({
     fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59`)
       .then((r) => r.json())
       .then((data) => {
-        const formatted = data.map((i) => ({
-          id: i.id,
-          title: i.client_name || "Intervention",
-          start: i.scheduled_at,
-          end: i.scheduled_at, // 1h par défaut si tu veux
-          backgroundColor: getTechColor(i.technician_id),
-          borderColor: getTechColor(i.technician_id),
-          extendedProps: {
-            technician_name: i.technician_name,
-            description: i.description,
-            technician_id: i.technician_id
-          }
-        }));
+        const formatted = data.map(inter => {
+          const start = new Date(inter.scheduled_at);
+          const duration = inter.duration_minutes || 60; // 60 minutes par défaut
+          const end = new Date(start.getTime() + duration * 60000);
+
+          return {
+            id: inter.id,
+            title: inter.client_name || "Intervention",
+            start,
+            end,
+            backgroundColor: getTechColor(inter.technician_id),
+            borderColor: getTechColor(inter.technician_id),
+
+            extendedProps: {
+              technician_name: inter.technician_name,
+              description: inter.description,
+              technician_id: inter.technician_id,
+              duration_minutes: inter.duration_minutes
+            }
+          };
+        });
+
 
         setEvents(formatted);
         onInterventionsLoaded && onInterventionsLoaded(data);

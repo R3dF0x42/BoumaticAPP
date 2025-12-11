@@ -16,8 +16,9 @@ export async function createGoogleEvent(intervention) {
   const calendar = google.calendar({ version: "v3", auth });
 
   const start = new Date(intervention.scheduled_at);
-  // on met 1h par défaut
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const duration = intervention.duration_minutes || 60;
+  const end = new Date(start.getTime() + duration * 60000);
+
 
   const event = {
     summary: `Intervention - ${intervention.client_name || "Client"}`,
@@ -41,7 +42,9 @@ export async function updateGoogleEvent(googleEventId, newDateTime) {
   const calendar = google.calendar({ version: "v3", auth });
 
   const start = new Date(newDateTime);
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const duration = intervention.duration_minutes || 60;
+  const end = new Date(start.getTime() + duration * 60000);
+
 
   await calendar.events.patch({
     calendarId: process.env.GOOGLE_CALENDAR_ID || "primary",
