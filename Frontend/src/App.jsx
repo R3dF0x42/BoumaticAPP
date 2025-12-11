@@ -4,33 +4,18 @@ import DetailPanel from "./components/DetailPanel.jsx";
 import NewIntervention from "./components/NewIntervention.jsx";
 import ClientsPage from "./components/ClientsPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
-import GoogleCalendar from "./components/GoogleCalendar.jsx";
 import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
-
 
 const API_URL = "https://boumaticapp-production.up.railway.app/api";
 
 export default function App() {
-
   const [interventions, setInterventions] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [showNewIntervention, setShowNewIntervention] = useState(false);
   const [currentPage, setCurrentPage] = useState("planning");
 
-  /* Charger toutes les interventions (pour liste + sélection) */
-  const loadInterventions = () => {
-    fetch(`${API_URL}/interventions`)
-      .then((res) => res.json())
-      .then((data) => setInterventions(data))
-      .catch(console.error);
-  };
-
-  useEffect(() => {
-    loadInterventions();
-  }, []);
-
-  /* Charger une intervention sélectionnée */
+  // charger détail intervention
   useEffect(() => {
     if (!selectedId) return;
 
@@ -40,12 +25,9 @@ export default function App() {
       .catch(console.error);
   }, [selectedId]);
 
-
   return (
     <>
       <div className="app-layout">
-
-        {/* Sidebar */}
         <Sidebar
           interventions={interventions}
           selectedId={selectedId}
@@ -54,39 +36,32 @@ export default function App() {
           setCurrentPage={setCurrentPage}
         />
 
-        {/* PAGE : GOOGLE AGENDA */}
         {currentPage === "planning" && (
           <GoogleCalendarFull
-            onSelectEvent={(event) => {
-              console.log("Événement cliqué :", event);
+            onSelectEvent={(ev) => {
+              // quand on clique sur un event dans le calendrier
+              setSelectedId(Number(ev.id));
+            }}
+            onInterventionsLoaded={(list) => {
+              setInterventions(list);
             }}
           />
         )}
 
-        {/* PAGE : CLIENTS */}
-        {currentPage === "clients" && (
-          <ClientsPage apiUrl={API_URL} />
-        )}
+        {currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
+        {currentPage === "technicians" && <TechniciansPage apiUrl={API_URL} />}
 
-        {/* PAGE : TECHNICIANS */}
-        {currentPage === "technicians" && (
-          <TechniciansPage apiUrl={API_URL} />
-        )}
-
-        {/* DETAILS PANEL */}
-        {selectedDetails && (
-          <DetailPanel
-            data={selectedDetails}
-          />
-        )}
-
+        <DetailPanel
+          data={selectedDetails}
+        />
       </div>
 
-      {/* MODAL : NEW INTERVENTION */}
       {showNewIntervention && (
         <NewIntervention
           onClose={() => setShowNewIntervention(false)}
-          onCreated={loadInterventions}
+          onCreated={() => {
+            // on peut relancer un refresh du calendrier si besoin
+          }}
         />
       )}
     </>

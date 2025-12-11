@@ -4,6 +4,8 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import pool from "./db.js";
+import { createGoogleEvent, updateGoogleEvent } from "./google.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,29 +82,21 @@ app.post("/api/technicians", async (req, res) => {
 /* ----------------------- INTERVENTIONS ----------------------- */
 
 app.get("/api/interventions", async (req, res) => {
-  const { date } = req.query;
+  const { start, end } = req.query;
 
   let sql = `
-    SELECT 
-      i.id,
-      i.client_id,
-      i.technician_id,
-      to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI') AS scheduled_at,
-      i.status,
-      i.priority,
-      i.description,
-      c.name AS client_name,
-      t.name AS technician_name
+    SELECT i.*,
+           c.name AS client_name,
+           t.name AS technician_name
     FROM interventions i
     LEFT JOIN clients c ON i.client_id = c.id
     LEFT JOIN technicians t ON i.technician_id = t.id
   `;
-
   const params = [];
 
-  if (date) {
-    sql += " WHERE i.scheduled_at::date = $1";
-    params.push(date);
+  if (start && end) {
+    sql += " WHERE i.scheduled_at BETWEEN $1 AND $2";
+    params.push(start, end);
   }
 
   sql += " ORDER BY i.scheduled_at";
@@ -114,6 +108,7 @@ app.get("/api/interventions", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 app.get("/api/interventions/:id", async (req, res) => {
   const id = req.params.id;
@@ -178,6 +173,7 @@ app.post("/api/interventions", async (req, res) => {
   } = req.body;
 
   try {
+    // 1) on insère l'intervention
     const result = await pool.query(
       `INSERT INTO interventions
        (client_id, technician_id, scheduled_at, status, priority, description)
@@ -186,18 +182,61 @@ app.post("/api/interventions", async (req, res) => {
       [client_id, technician_id, scheduled_at, status, priority, description]
     );
 
-    res.status(201).json({ id: result.rows[0].id });
+    const newId = result.rows[0].id;
+
+    // 2) on récupère l'intervention + client pour créer l'event Google
+    const detail = await pool.query(
+      `
+        SELECT i.*, c.name AS client_name
+        FROM interventions i
+        LEFT JOIN clients c ON i.client_id = c.id
+        WHERE i.id = $1
+      `,
+      [newId]
+    );
+
+    const intervention = detail.rows[0];
+
+    // 3) on crée l'event Google
+    let googleEventId = null;
+    try {
+      googleEventId = await createGoogleEvent(intervention);
+    } catch (e) {
+      console.error("Erreur création event Google:", e.message);
+    }
+
+    // 4) on stocke l'id de l'event Google si dispo
+    if (googleEventId) {
+      await pool.query(
+        `UPDATE interventions
+         SET google_event_id = $1
+         WHERE id = $2`,
+        [googleEventId, newId]
+      );
+    }
+
+    res.status(201).json({ id: newId });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+
 app.put("/api/interventions/:id", async (req, res) => {
   const id = req.params.id;
   const { status, priority, description, scheduled_at } = req.body;
 
   try {
+    // récupérer l'intervention avant modif pour avoir google_event_id
+    const before = await pool.query(
+      "SELECT google_event_id FROM interventions WHERE id = $1",
+      [id]
+    );
+
+    const googleEventId = before.rows[0]?.google_event_id || null;
+
+    // mise à jour en base
     await pool.query(
       `UPDATE interventions
        SET status=$1, priority=$2, description=$3, scheduled_at=$4
@@ -205,11 +244,19 @@ app.put("/api/interventions/:id", async (req, res) => {
       [status, priority, description, scheduled_at, id]
     );
 
+    // mise à jour Google
+    try {
+      await updateGoogleEvent(googleEventId, scheduled_at);
+    } catch (e) {
+      console.error("Erreur maj event Google:", e.message);
+    }
+
     res.json({ updated: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 /* ----------------------- NOTES & PHOTOS ----------------------- */
 
