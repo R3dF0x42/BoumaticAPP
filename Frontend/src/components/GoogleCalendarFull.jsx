@@ -50,6 +50,7 @@ export default function GoogleCalendarFull({
     if (typeof window === "undefined") return false;
     return window.innerWidth <= 768;
   });
+  const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth <= 768 ? 0.9 : 1));
 
   // ---- charge la semaine ----
   const loadWeek = (dateObj) => {
@@ -112,70 +113,99 @@ export default function GoogleCalendarFull({
       left: "prev,next today",
       center: "title",
       right: isMobile
-        ? "timeGridDay,dayGridMonth"
+        ? "timeGridWeek,timeGridDay,dayGridMonth"
         : "timeGridWeek,timeGridDay,dayGridMonth"
     }),
     [isMobile]
   );
 
   const calendarKey = isMobile ? "calendar-mobile" : "calendar-desktop";
+  const calendarHeight = isMobile ? "auto" : "85vh";
 
   return (
     <div className="page calendar-shell">
       <div className="page-header">
         <h2>Planning interventions</h2>
         <p className="muted-small">Synchro Google Calendar</p>
+        <div className="calendar-zoom">
+          <button
+            type="button"
+            className="btn small ghost"
+            onClick={() => setZoom((z) => Math.max(0.7, parseFloat((z - 0.05).toFixed(2))))}
+          >
+            -
+          </button>
+          <span className="calendar-zoom-value">{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => setZoom((z) => Math.min(1.15, parseFloat((z + 0.05).toFixed(2))))}
+          >
+            +
+          </button>
+        </div>
       </div>
 
-      <FullCalendar
-        key={calendarKey}
-        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
-        allDaySlot={false}
-        slotDuration={isMobile ? "00:30:00" : "01:00:00"}
-        nowIndicator
-        events={events}
-        firstDay={1}
-        locale="fr"
-        height={isMobile ? "auto" : "85vh"}
-        contentHeight="auto"
-        handleWindowResize={false}
-        dayHeaderFormat={{ weekday: "short", day: "numeric", month: "short" }}
-        slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-        eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-        headerToolbar={headerToolbar}
-        stickyHeaderDates
-        dayMaxEventRows={isMobile ? 2 : 4}
-        expandRows
-        editable
-        datesSet={(arg) => {
-          if (!arg.start) return;
-          loadWeek(arg.start);
+      <div
+        className="calendar-zoom-wrapper"
+        style={{
+          transform: isMobile ? undefined : `scale(${zoom})`,
+          transformOrigin: "top left",
+          width: isMobile ? "100%" : `${100 / zoom}%`,
+          height: isMobile ? "auto" : "100%",
+          maxHeight: isMobile ? "none" : "100%"
         }}
-        eventClick={(info) => {
-          onSelectEvent && onSelectEvent(info.event);
-        }}
-        eventDrop={async (info) => {
-          const newDate = info.event.start;
-          const iso = newDate.toISOString().slice(0, 19).replace("T", " ");
+      >
+        <FullCalendar
+          key={calendarKey}
+          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+          initialView={isMobile ? "dayGridWeek" : "timeGridWeek"}
+          allDaySlot={false}
+          slotDuration={isMobile ? "00:30:00" : "01:00:00"}
+          nowIndicator
+          events={events}
+          firstDay={1}
+          locale="fr"
+          height={calendarHeight}
+          contentHeight={isMobile ? "auto" : "100%"}
+          handleWindowResize={false}
+          dayHeaderFormat={{ weekday: "short", day: "numeric", month: "short" }}
+          slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+          eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+          headerToolbar={headerToolbar}
+          stickyHeaderDates
+          dayMaxEventRows={isMobile ? 3 : 4}
+          expandRows
+          editable
+          datesSet={(arg) => {
+            if (!arg.start) return;
+            loadWeek(arg.start);
+          }}
+          eventClick={(info) => {
+            onSelectEvent && onSelectEvent(info.event);
+          }}
+          eventDrop={async (info) => {
+            const newDate = info.event.start;
+            const iso = newDate.toISOString().slice(0, 19).replace("T", " ");
 
-          try {
-            await fetch(`${API}/interventions/${info.event.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                status: "A FAIRE",
-                priority: "Normale",
-                description: info.event.extendedProps.description || "",
-                scheduled_at: iso
-              })
-            });
-          } catch (e) {
-            console.error("Erreur maj intervention drag & drop :", e);
-            info.revert();
-          }
-        }}
-      />
+            try {
+              await fetch(`${API}/interventions/${info.event.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  status: "A FAIRE",
+                  priority: "Normale",
+                  description: info.event.extendedProps.description || "",
+                  scheduled_at: iso
+                })
+              });
+            } catch (e) {
+              console.error("Erreur maj intervention drag & drop :", e);
+              info.revert();
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }

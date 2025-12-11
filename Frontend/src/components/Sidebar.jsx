@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 export default function Sidebar({
   date,
@@ -8,8 +8,91 @@ export default function Sidebar({
   onSelect,
   currentPage,
   setCurrentPage,
-  urgentCount
+  urgentCount,
+  isMobile
 }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [currentPage]);
+
+  const NavButtons = () => (
+    <>
+      <button
+        className={
+          "nav-item " + (currentPage === "planning" ? "nav-item--active" : "")
+        }
+        onClick={() => setCurrentPage("planning")}
+      >
+        Planning
+        {urgentCount > 0 && <span className="nav-badge">{urgentCount}</span>}
+      </button>
+
+      <button
+        className={
+          "nav-item " + (currentPage === "clients" ? "nav-item--active" : "")
+        }
+        onClick={() => setCurrentPage("clients")}
+      >
+        Clients
+      </button>
+
+      <button
+        className={
+          "nav-item " +
+          (currentPage === "technicians" ? "nav-item--active" : "")
+        }
+        onClick={() => setCurrentPage("technicians")}
+      >
+        Techniciens
+      </button>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <aside className="sidebar sidebar--mobile">
+        <div className="mobile-nav-bar">
+          <div className="brand brand--inline">
+            <div className="brand-box">
+              <span className="brand-bou">Bou</span>
+              <span className="brand-matic">Matic</span>
+            </div>
+            <span className="brand-sub">Maintenance</span>
+          </div>
+          <button
+            className="mobile-nav-toggle"
+            onClick={() => setMobileOpen((o) => !o)}
+          >
+            {mobileOpen ? "Fermer" : "Menu"}
+          </button>
+        </div>
+
+        {mobileOpen && (
+          <div className="mobile-nav-panel">
+            <nav className="nav-menu nav-menu--mobile">
+              <NavButtons />
+            </nav>
+
+            {currentPage === "planning" && (
+              <div className="sidebar-section">
+                <button
+                  className="btn new-intervention"
+                  onClick={() =>
+                    window.dispatchEvent(new Event("openNewIntervention"))
+                  }
+                >
+                  + Nouvelle intervention
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </aside>
+    );
+  }
+
   return (
     <aside className="sidebar">
 

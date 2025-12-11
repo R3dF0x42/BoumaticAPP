@@ -14,6 +14,11 @@ export default function App() {
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [showNewIntervention, setShowNewIntervention] = useState(false);
   const [currentPage, setCurrentPage] = useState("planning");
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 900;
+  });
+  const [showDetailModal, setShowDetailModal] = useState(false);
   
 
   // écoute le bouton "Nouvelle intervention"
@@ -22,6 +27,13 @@ export default function App() {
 
     window.addEventListener("openNewIntervention", open);
     return () => window.removeEventListener("openNewIntervention", open);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 900);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
 
@@ -35,35 +47,74 @@ export default function App() {
       .catch(console.error);
   }, [selectedId]);
 
+  const handleSelectEvent = (ev) => {
+    setSelectedId(Number(ev.id));
+    if (isMobile) setShowDetailModal(true);
+  };
+
+  const renderTopNavMobile = () => (
+    <div className="mobile-topbar">
+      <div className="brand brand--inline">
+        <div className="brand-box">
+          <span className="brand-bou">Bou</span>
+          <span className="brand-matic">Matic</span>
+        </div>
+        <span className="brand-sub">Maintenance</span>
+      </div>
+      <select
+        className="mobile-nav-select"
+        value={currentPage}
+        onChange={(e) => setCurrentPage(e.target.value)}
+      >
+        <option value="planning">Planning</option>
+        <option value="clients">Clients</option>
+        <option value="technicians">Techniciens</option>
+      </select>
+    </div>
+  );
+
   return (
     <>
-      <div className="app-layout">
-        <Sidebar
-          interventions={interventions}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-        />
+      {isMobile && renderTopNavMobile()}
+
+      <div className={isMobile ? "app-layout mobile-layout" : "app-layout"}>
+        {!isMobile && (
+          <Sidebar
+            interventions={interventions}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            isMobile={isMobile}
+          />
+        )}
 
         {currentPage === "planning" && (
           <GoogleCalendarFull
-            onSelectEvent={(ev) => {
-              // quand on clique sur un event dans le calendrier
-              setSelectedId(Number(ev.id));
-            }}
+            onSelectEvent={handleSelectEvent}
             onInterventionsLoaded={(list) => {
               setInterventions(list);
             }}
           />
         )}
 
-        {currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
-        {currentPage === "technicians" && <TechniciansPage apiUrl={API_URL} />}
+        {!isMobile && (
+          <>
+            {currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
+            {currentPage === "technicians" && (
+              <TechniciansPage apiUrl={API_URL} />
+            )}
 
-        <DetailPanel
-          data={selectedDetails}
-        />
+            <DetailPanel data={selectedDetails} />
+          </>
+        )}
+
+        {isMobile && currentPage === "clients" && (
+          <ClientsPage apiUrl={API_URL} />
+        )}
+        {isMobile && currentPage === "technicians" && (
+          <TechniciansPage apiUrl={API_URL} />
+        )}
       </div>
 
       {showNewIntervention && (
@@ -74,6 +125,21 @@ export default function App() {
             window.dispatchEvent(new Event("refreshCalendar"));
           }}
         />
+      )}
+
+      {isMobile && showDetailModal && selectedDetails && (
+        <div className="modal detail-modal">
+          <div className="modal-box modal-box--large">
+            <button
+              className="modal-close"
+              onClick={() => setShowDetailModal(false)}
+              aria-label="Fermer"
+            >
+              ×
+            </button>
+            <DetailPanel data={selectedDetails} />
+          </div>
+        </div>
       )}
 
     </>
