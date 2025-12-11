@@ -7,13 +7,13 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 const API = "https://boumaticapp-production.up.railway.app/api";
 
 const TECH_COLORS = [
-  "#1d6fff",  // bleu
-  "#f38b1a",  // orange
-  "#b14ff2",  // violet
-  "#22c55e",  // vert
-  "#e11d48",  // rose
-  "#38bdf8",  // cyan
-  "#ffb800",  // jaune
+  "#1d6fff",
+  "#f38b1a",
+  "#b14ff2",
+  "#22c55e",
+  "#e11d48",
+  "#38bdf8",
+  "#ffb800",
 ];
 
 function getTechColor(techId) {
@@ -21,7 +21,6 @@ function getTechColor(techId) {
   return TECH_COLORS[techId % TECH_COLORS.length];
 }
 
-// calcule la période semaine visible
 function getWeekRange(date) {
   const d = new Date(date);
   const js = d.getDay();
@@ -37,70 +36,63 @@ function getWeekRange(date) {
     new Date(x.getFullYear(), x.getMonth(), x.getDate())
       .toLocaleDateString("fr-CA");
 
-  return {
-    start: fmt(monday),
-    end: fmt(sunday),
-  };
+  return { start: fmt(monday), end: fmt(sunday) };
 }
 
-export default function GoogleCalendarFull({ onSelectEvent, onInterventionsLoaded }) {
+export default function GoogleCalendarFull({
+  onSelectEvent,
+  onInterventionsLoaded
+}) {
   const [events, setEvents] = useState([]);
   const [currentStart, setCurrentStart] = useState(null);
 
+  // ---- CHARGE LA SEMAINE ----
+  const loadWeek = (dateObj) => {
+    if (!dateObj) return;
 
+    setCurrentStart(dateObj);
 
-  const loadWeek = (startStr) => {
-    const { start, end } = getWeekRange(startStr);
-      useEffect(() => {
-        const handler = () => {
-          if (!currentStart) return;     // ← évite erreur au démarrage
-          loadWeek(currentStart);
-        };
-
-        window.addEventListener("refreshCalendar", handler);
-        return () => window.removeEventListener("refreshCalendar", handler);
-      }, [currentStart]);
-
+    const { start, end } = getWeekRange(dateObj);
 
     fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59`)
-      .then(r => r.json())
-      .then(data => {
-        const formatted = data.map(inter => ({
-          id: inter.id,
-          title: inter.client_name || "Intervention",
-          start: inter.scheduled_at,
-          end: inter.scheduled_at, // on peut améliorer en ajoutant une heure
-          backgroundColor: getTechColor(inter.technician_id),
-          borderColor: getTechColor(inter.technician_id),
+      .then((r) => r.json())
+      .then((data) => {
+        const formatted = data.map((i) => ({
+          id: i.id,
+          title: i.client_name || "Intervention",
+          start: i.scheduled_at,
+          end: i.scheduled_at, // 1h par défaut si tu veux
+          backgroundColor: getTechColor(i.technician_id),
+          borderColor: getTechColor(i.technician_id),
           extendedProps: {
-            technician_name: inter.technician_name,
-            description: inter.description,
-            technician_id: inter.technician_id
+            technician_name: i.technician_name,
+            description: i.description,
+            technician_id: i.technician_id
           }
         }));
+
         setEvents(formatted);
         onInterventionsLoaded && onInterventionsLoaded(data);
       })
-      .catch(err => console.error("Erreur chargement interventions :", err));
+      .catch((err) =>
+        console.error("Erreur chargement interventions :", err)
+      );
   };
 
+  // ---- REFRESH DU CALENDRIER EXTERNE (nouvelle intervention) ----
+  useEffect(() => {
+    const handler = () => {
+      if (currentStart) loadWeek(currentStart);
+    };
 
-      console.log("DEBUG events =", events);
-      console.log("DEBUG currentStart =", currentStart);
-
-
-      const fixDate = (d) => {
-        if (!d) return null;
-        if (d.includes("T") && d.length === 16) return d + ":00"; // ajoute les secondes
-        return d;
-      };
+    window.addEventListener("refreshCalendar", handler);
+    return () => window.removeEventListener("refreshCalendar", handler);
+  }, [currentStart]);
 
   return (
     <div className="page" style={{ padding: "10px" }}>
       <h2>📅 Planning interventions (Google synchro)</h2>
 
-
-        
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
@@ -108,23 +100,19 @@ export default function GoogleCalendarFull({ onSelectEvent, onInterventionsLoade
         slotDuration="01:00:00"
         nowIndicator={true}
         events={events}
-        height="85vh"
-        locale="fr"
         firstDay={1}
+        locale="fr"
+        height="85vh"
         editable={true}
+        
+        datesSet={(arg) => {
+          if (!arg.start) return;
+          loadWeek(arg.start);
+        }}
+
         eventClick={(info) => {
           onSelectEvent && onSelectEvent(info.event);
         }}
-        datesSet={(arg) => {
-          if (!arg?.start) return;     // <-- évite crash
-
-          const start = new Date(arg.start);
-          if (isNaN(start.getTime())) return;   // <-- sécurité max
-
-          setCurrentStart(start);
-          loadWeek(start);
-        }}
-
 
         eventDrop={async (info) => {
           const newDate = info.event.start;
@@ -135,14 +123,14 @@ export default function GoogleCalendarFull({ onSelectEvent, onInterventionsLoade
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                status: "À FAIRE",        // ou garder ancien statut côté app
-                priority: "Normale",      // idem
+                status: "À FAIRE",
+                priority: "Normale",
                 description: info.event.extendedProps.description || "",
                 scheduled_at: iso
               })
             });
           } catch (e) {
-            console.error("Erreur maj intervention drag & drop:", e);
+            console.error("Erreur maj intervention drag & drop :", e);
             info.revert();
           }
         }}
