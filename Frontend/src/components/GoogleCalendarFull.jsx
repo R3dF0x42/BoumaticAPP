@@ -84,10 +84,23 @@ export default function GoogleCalendarFull({ onSelectEvent, onInterventionsLoade
       .catch(err => console.error("Erreur chargement interventions :", err));
   };
 
+
+      console.log("DEBUG events =", events);
+      console.log("DEBUG currentStart =", currentStart);
+
+
+      const fixDate = (d) => {
+        if (!d) return null;
+        if (d.includes("T") && d.length === 16) return d + ":00"; // ajoute les secondes
+        return d;
+      };
+
   return (
     <div className="page" style={{ padding: "10px" }}>
       <h2>📅 Planning interventions (Google synchro)</h2>
 
+
+        
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"

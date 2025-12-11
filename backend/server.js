@@ -120,7 +120,7 @@ app.get("/api/interventions/:id", async (req, res) => {
         i.id,
         i.client_id,
         i.technician_id,
-        to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI') AS scheduled_at,
+        to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
         i.status,
         i.priority,
         i.description,
