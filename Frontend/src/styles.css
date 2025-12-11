@@ -26,10 +26,10 @@ body {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 270px 1fr 360px;
-  gap: 18px;
-  padding: 18px;
-  height: 100vh;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 12px;
+  min-height: 100vh;
 }
 
 /* -------- Sidebar -------- */
@@ -152,6 +152,13 @@ body {
   flex-direction: column;
 }
 
+.calendar-shell {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+
 .calendar-header {
   display: flex;
   justify-content: space-between;
@@ -231,6 +238,71 @@ body {
 
 .calendar-event--active {
   outline: 2px solid #ffffffcc;
+}
+
+.calendar-shell .fc {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.calendar-shell .fc .fc-toolbar.fc-header-toolbar {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.calendar-shell .fc .fc-toolbar-title {
+  font-size: 18px;
+}
+
+.calendar-shell .fc .fc-toolbar-chunk {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.calendar-shell .fc .fc-button {
+  background: #0d1226;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.calendar-shell .fc .fc-button-primary:not(:disabled).fc-button-active,
+.calendar-shell .fc .fc-button-primary:not(:disabled):active,
+.calendar-shell .fc .fc-button-primary:not(:disabled):focus {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+.calendar-shell .fc-theme-standard td,
+.calendar-shell .fc-theme-standard th {
+  border-color: #1f2436;
+}
+
+.calendar-shell .fc .fc-day-today {
+  background: rgba(29, 111, 255, 0.08);
+}
+
+.calendar-shell .fc .fc-timegrid-slot {
+  height: 52px;
+}
+
+.calendar-shell .fc .fc-timegrid-axis-cushion,
+.calendar-shell .fc .fc-timegrid-slot-label-cushion {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.calendar-shell .fc .fc-timegrid-event-harness-inset .fc-timegrid-event,
+.calendar-shell .fc .fc-daygrid-event {
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+.calendar-shell .fc .fc-daygrid-day-number {
+  color: var(--muted);
 }
 
 /* -------- Detail panel -------- */
@@ -361,49 +433,78 @@ body {
   font-size: 14px;
 }
 
-/* -------- Responsive (mobile) -------- */
+.modal-actions .btn.new-intervention {
+  width: auto;
+  margin-bottom: 0;
+}
 
-@media (max-width: 1000px) {
-  .app-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    height: auto;
-  }
+/* -------- Responsive (mobile first) -------- */
 
+@media (max-width: 719px) {
   .sidebar {
-    order: 1;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
-  .calendar-panel {
-    order: 2;
+
+  .page {
+    padding: 12px;
   }
-  .detail-panel {
-    order: 3;
+}
+
+@media (min-width: 720px) {
+  .app-layout {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .page-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1100px) {
+  .app-layout {
+    grid-template-columns: 270px 1fr 360px;
+    gap: 18px;
+    padding: 18px;
+    height: 100vh;
+    align-items: start;
+  }
+
+  .page {
+    grid-column: span 2;
+    min-height: calc(100vh - 36px);
   }
 }
 
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding: 12px;
   z-index: 999;
 }
 
 .modal-box {
   background: var(--surface);
-  padding: 20px;
+  padding: 16px;
   border-radius: 12px;
-  width: 400px;
+  width: min(460px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
   border: 1px solid var(--border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 .modal-box h2 {
-  margin-top: 0;
+  margin: 0 0 8px 0;
 }
 
-.modal-box form {
+.modal-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -417,6 +518,38 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .modal {
+    padding: 8px;
+  }
+
+  .modal-box {
+    width: 100%;
+    max-width: none;
+    height: auto;
+    border-radius: 10px;
+    margin-top: 12px;
+  }
 }
 
 /* NAV MENU */
@@ -458,7 +591,7 @@ body {
 /* PAGES GENERIQUES */
 
 .page {
-  grid-column: span 2;
+  grid-column: span 1;
   background: var(--card);
   border-radius: 12px;
   padding: 16px;
@@ -468,8 +601,25 @@ body {
 
 .page-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+}
+
+.page-header h2 {
+  margin: 0;
+}
+
+.page-header p {
+  margin: 0;
 }
 
 .card {
@@ -514,27 +664,40 @@ body {
   flex: 1;
 }
 
-/* Mobile : sidebar en haut, contenu en dessous (99% mobile) */
+/* Small screens tweaks */
 
 @media (max-width: 900px) {
-  .app-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    height: auto;
+  .detail-panel {
+    max-height: none;
   }
 
-  .sidebar {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  .calendar-shell {
+    padding: 10px;
   }
 
-  .page {
-    grid-column: span 1;
+  .calendar-shell .fc {
+    font-size: 12px;
   }
 
-  .page-grid {
-    grid-template-columns: 1fr;
+  .calendar-shell .fc .fc-toolbar.fc-header-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .calendar-shell .fc .fc-toolbar-chunk {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .calendar-shell .fc .fc-button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .calendar-shell .fc .fc-toolbar-title {
+    width: 100%;
+    text-align: left;
+    font-size: 16px;
   }
 }
 

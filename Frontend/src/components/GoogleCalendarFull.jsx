@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -13,7 +13,7 @@ const TECH_COLORS = [
   "#22c55e",
   "#e11d48",
   "#38bdf8",
-  "#ffb800",
+  "#ffb800"
 ];
 
 function getTechColor(techId) {
@@ -33,8 +33,9 @@ function getWeekRange(date) {
   sunday.setDate(monday.getDate() + 6);
 
   const fmt = (x) =>
-    new Date(x.getFullYear(), x.getMonth(), x.getDate())
-      .toLocaleDateString("fr-CA");
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).toLocaleDateString(
+      "fr-CA"
+    );
 
   return { start: fmt(monday), end: fmt(sunday) };
 }
@@ -45,8 +46,12 @@ export default function GoogleCalendarFull({
 }) {
   const [events, setEvents] = useState([]);
   const [currentStart, setCurrentStart] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= 768;
+  });
 
-  // ---- CHARGE LA SEMAINE ----
+  // ---- charge la semaine ----
   const loadWeek = (dateObj) => {
     if (!dateObj) return;
 
@@ -57,9 +62,9 @@ export default function GoogleCalendarFull({
     fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59`)
       .then((r) => r.json())
       .then((data) => {
-        const formatted = data.map(inter => {
+        const formatted = data.map((inter) => {
           const start = new Date(inter.scheduled_at);
-          const duration = inter.duration_minutes || 60; // 60 minutes par défaut
+          const duration = inter.duration_minutes || 60; // 60 minutes par defaut
           const end = new Date(start.getTime() + duration * 60000);
 
           return {
@@ -69,7 +74,6 @@ export default function GoogleCalendarFull({
             end,
             backgroundColor: getTechColor(inter.technician_id),
             borderColor: getTechColor(inter.technician_id),
-
             extendedProps: {
               technician_name: inter.technician_name,
               description: inter.description,
@@ -79,16 +83,13 @@ export default function GoogleCalendarFull({
           };
         });
 
-
         setEvents(formatted);
         onInterventionsLoaded && onInterventionsLoaded(data);
       })
-      .catch((err) =>
-        console.error("Erreur chargement interventions :", err)
-      );
+      .catch((err) => console.error("Erreur chargement interventions :", err));
   };
 
-  // ---- REFRESH DU CALENDRIER EXTERNE (nouvelle intervention) ----
+  // ---- refresh du calendrier externe (nouvelle intervention) ----
   useEffect(() => {
     const handler = () => {
       if (currentStart) loadWeek(currentStart);
@@ -98,31 +99,62 @@ export default function GoogleCalendarFull({
     return () => window.removeEventListener("refreshCalendar", handler);
   }, [currentStart]);
 
+  // ---- mode mobile ----
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const headerToolbar = useMemo(
+    () => ({
+      left: "prev,next today",
+      center: "title",
+      right: isMobile
+        ? "timeGridDay,dayGridMonth"
+        : "timeGridWeek,timeGridDay,dayGridMonth"
+    }),
+    [isMobile]
+  );
+
+  const calendarKey = isMobile ? "calendar-mobile" : "calendar-desktop";
+
   return (
-    <div className="page" style={{ padding: "10px" }}>
-      <h2>📅 Planning interventions (Google synchro)</h2>
+    <div className="page calendar-shell">
+      <div className="page-header">
+        <h2>Planning interventions</h2>
+        <p className="muted-small">Synchro Google Calendar</p>
+      </div>
 
       <FullCalendar
+        key={calendarKey}
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
+        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
         allDaySlot={false}
-        slotDuration="01:00:00"
-        nowIndicator={true}
+        slotDuration={isMobile ? "00:30:00" : "01:00:00"}
+        nowIndicator
         events={events}
         firstDay={1}
         locale="fr"
-        height="85vh"
-        editable={true}
-        
+        height={isMobile ? "auto" : "85vh"}
+        contentHeight="auto"
+        handleWindowResize={false}
+        dayHeaderFormat={{ weekday: "short", day: "numeric", month: "short" }}
+        slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+        eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+        headerToolbar={headerToolbar}
+        stickyHeaderDates
+        dayMaxEventRows={isMobile ? 2 : 4}
+        expandRows
+        editable
         datesSet={(arg) => {
           if (!arg.start) return;
           loadWeek(arg.start);
         }}
-
         eventClick={(info) => {
           onSelectEvent && onSelectEvent(info.event);
         }}
-
         eventDrop={async (info) => {
           const newDate = info.event.start;
           const iso = newDate.toISOString().slice(0, 19).replace("T", " ");
@@ -132,7 +164,7 @@ export default function GoogleCalendarFull({
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                status: "À FAIRE",
+                status: "A FAIRE",
                 priority: "Normale",
                 description: info.event.extendedProps.description || "",
                 scheduled_at: iso

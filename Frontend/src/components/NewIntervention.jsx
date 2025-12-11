@@ -10,13 +10,18 @@ export default function NewIntervention({ onClose, onCreated }) {
     technician_id: "",
     scheduled_at: "",
     priority: "Normale",
-    status: "À FAIRE",
-    description: ""
+    status: "A FAIRE",
+    description: "",
+    duration_minutes: 60
   });
 
   useEffect(() => {
-    fetch(API + "/clients").then(r => r.json()).then(setClients);
-    fetch(API + "/technicians").then(r => r.json()).then(setTechs);
+    fetch(API + "/clients")
+      .then((r) => r.json())
+      .then(setClients);
+    fetch(API + "/technicians")
+      .then((r) => r.json())
+      .then(setTechs);
   }, []);
 
   const setValue = (field, value) => {
@@ -47,7 +52,7 @@ export default function NewIntervention({ onClose, onCreated }) {
       onClose();
     } else {
       console.error("Erreur API :", await res.text());
-      alert("Erreur lors de la création de l'intervention.");
+      alert("Erreur lors de la creation de l'intervention.");
     }
   };
 
@@ -56,53 +61,56 @@ export default function NewIntervention({ onClose, onCreated }) {
       <div className="modal-box">
         <h2>Nouvelle intervention</h2>
 
-        <form onSubmit={submit}>
-
+        <form className="modal-form" onSubmit={submit}>
           <label>Client</label>
-          <select 
+          <select
             value={form.client_id}
             onChange={(e) => setValue("client_id", e.target.value)}
             required
           >
-            <option value="">Sélectionner</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            <option value="">Selectionner</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
           </select>
 
           <label>Technicien</label>
-          <select 
+          <select
             value={form.technician_id}
             onChange={(e) => setValue("technician_id", e.target.value)}
             required
           >
-            <option value="">Sélectionner</option>
-            {techs.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+            <option value="">Selectionner</option>
+            {techs.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
             ))}
           </select>
 
           <label>Date & Heure</label>
-          <input 
-            type="datetime-local" 
+          <input
+            type="datetime-local"
             value={form.scheduled_at}
-            onChange={(e) => setValue("scheduled_at", e.target.value)} 
-            required 
+            onChange={(e) => setValue("scheduled_at", e.target.value)}
+            required
           />
 
-          <label>Durée (minutes)</label>
+          <label>Duree (minutes)</label>
           <input
             type="number"
             value={form.duration_minutes}
             onChange={(e) => setValue("duration_minutes", Number(e.target.value))}
             min="15"
             step="15"
+            inputMode="numeric"
             required
           />
 
-
-          <label>Priorité</label>
-          <select 
+          <label>Priorite</label>
+          <select
             value={form.priority}
             onChange={(e) => setValue("priority", e.target.value)}
           >
@@ -111,31 +119,32 @@ export default function NewIntervention({ onClose, onCreated }) {
           </select>
 
           <label>Statut</label>
-          <select 
+          <select
             value={form.status}
             onChange={(e) => setValue("status", e.target.value)}
           >
-            <option>À FAIRE</option>
+            <option>A FAIRE</option>
             <option>EN COURS</option>
-            <option>TERMINÉE</option>
+            <option>TERMINE</option>
           </select>
 
           <label>Description</label>
           <textarea
             value={form.description}
             onChange={(e) => setValue("description", e.target.value)}
-            placeholder="Maintenance, panne, action à effectuer..."
+            placeholder="Maintenance, panne, action a effectuer..."
             required
           />
 
-          <button className="btn new-intervention" type="submit">
-            Créer
-          </button>
+          <div className="modal-actions">
+            <button className="btn new-intervention" type="submit">
+              Creer
+            </button>
+            <button className="btn small ghost" onClick={onClose} type="button">
+              Annuler
+            </button>
+          </div>
         </form>
-
-        <button className="btn small" onClick={onClose} style={{ marginTop: 10 }}>
-          Annuler
-        </button>
       </div>
     </div>
   );
