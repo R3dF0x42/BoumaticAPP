@@ -213,6 +213,28 @@ body {
   border: 1px solid var(--border);
 }
 
+.calendar-shell--mobile {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.calendar-shell--mobile .fc {
+  height: 100%;
+}
+
+.calendar-shell--mobile .fc .fc-scroller-harness,
+.calendar-shell--mobile .fc .fc-scroller {
+  overflow: hidden !important;
+}
+
+.calendar-shell--mobile .fc .fc-timegrid-slot {
+  height: 34px;
+}
+
+.calendar-shell--mobile .fc .fc-timegrid-slot-label {
+  padding: 2px 6px;
+}
+
 .calendar-header {
   display: flex;
   justify-content: space-between;
@@ -943,4 +965,3 @@ body {
 .week-event:hover {
   transform: scale(1.03);
 }
-

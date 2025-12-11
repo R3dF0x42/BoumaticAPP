@@ -112,18 +112,16 @@ export default function GoogleCalendarFull({
     () => ({
       left: "prev,next today",
       center: "title",
-      right: isMobile
-        ? "timeGridWeek,timeGridDay,dayGridMonth"
-        : "timeGridWeek,timeGridDay,dayGridMonth"
+      right: "timeGridWeek,timeGridDay,dayGridMonth"
     }),
     [isMobile]
   );
 
   const calendarKey = isMobile ? "calendar-mobile" : "calendar-desktop";
-  const calendarHeight = isMobile ? "auto" : "85vh";
+  const calendarHeight = isMobile ? "100vh" : "85vh";
 
   return (
-    <div className="page calendar-shell">
+    <div className={`page calendar-shell ${isMobile ? "calendar-shell--mobile" : ""}`}>
       <div className="page-header">
         <h2>Planning interventions</h2>
         <p className="muted-small">Synchro Google Calendar</p>
@@ -152,16 +150,18 @@ export default function GoogleCalendarFull({
           transform: isMobile ? undefined : `scale(${zoom})`,
           transformOrigin: "top left",
           width: isMobile ? "100%" : `${100 / zoom}%`,
-          height: isMobile ? "auto" : "100%",
-          maxHeight: isMobile ? "none" : "100%"
+          height: isMobile ? "100%" : "100%",
+          maxHeight: isMobile ? "100%" : "100%"
         }}
       >
         <FullCalendar
           key={calendarKey}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-          initialView={isMobile ? "dayGridWeek" : "timeGridWeek"}
+          initialView="timeGridWeek"
           allDaySlot={false}
-          slotDuration={isMobile ? "00:30:00" : "01:00:00"}
+          slotDuration={isMobile ? "01:00:00" : "00:30:00"}
+          slotMinTime={isMobile ? "06:00:00" : "00:00:00"}
+          slotMaxTime={isMobile ? "20:00:00" : "24:00:00"}
           nowIndicator
           events={events}
           firstDay={1}
