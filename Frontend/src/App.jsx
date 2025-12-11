@@ -70,10 +70,12 @@ export default function App() {
         <NewIntervention
           onClose={() => setShowNewIntervention(false)}
           onCreated={() => {
-            // on peut relancer un refresh du calendrier si besoin
+            // dire au calendrier de se recharger
+            window.dispatchEvent(new Event("refreshCalendar"));
           }}
         />
       )}
+
     </>
   );
 }

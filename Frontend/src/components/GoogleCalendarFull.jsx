@@ -45,9 +45,20 @@ function getWeekRange(date) {
 
 export default function GoogleCalendarFull({ onSelectEvent, onInterventionsLoaded }) {
   const [events, setEvents] = useState([]);
+  const [currentStart, setCurrentStart] = useState(new Date());
+
 
   const loadWeek = (startStr) => {
     const { start, end } = getWeekRange(startStr);
+      useEffect(() => {
+        const handler = () => {
+          // recharge la semaine actuellement affichée
+          loadWeek(currentStart);
+        };
+
+        window.addEventListener("refreshCalendar", handler);
+        return () => window.removeEventListener("refreshCalendar", handler);
+      }, [currentStart]);
 
     fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59`)
       .then(r => r.json())
@@ -90,8 +101,10 @@ export default function GoogleCalendarFull({ onSelectEvent, onInterventionsLoade
           onSelectEvent && onSelectEvent(info.event);
         }}
         datesSet={(arg) => {
+          setCurrentStart(arg.start);
           loadWeek(arg.start);
         }}
+
         eventDrop={async (info) => {
           const newDate = info.event.start;
           const iso = newDate.toISOString().slice(0, 19).replace("T", " ");
