@@ -213,7 +213,7 @@ export default function ClientsPage({ apiUrl }) {
             <p className="muted-small">Fiche client et interventions</p>
           </div>
           <button className="btn small ghost" onClick={() => setMode("list")} type="button">
-            <- Retour liste
+            {"<- Retour liste"}
           </button>
         </div>
 
