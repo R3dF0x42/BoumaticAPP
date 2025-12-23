@@ -2,7 +2,13 @@ import React, { useState } from "react";
 
 const API_BASE = "https://boumaticapp-production.up.railway.app/api";
 
-export default function DetailPanel({ data, onAddNote, onUploadPhoto }) {
+export default function DetailPanel({
+  data,
+  onAddNote,
+  onUploadPhoto,
+  onUpdateStatus,
+  updatingStatus
+}) {
   const [note, setNote] = useState("");
 
   if (!data) {
@@ -58,6 +64,16 @@ export default function DetailPanel({ data, onAddNote, onUploadPhoto }) {
           <span className="badge badge-status">{intervention.status}</span>
           <span className="badge badge-priority">{intervention.priority}</span>
         </div>
+        {intervention.status !== "TERMINE" && onUpdateStatus && (
+          <button
+            className="btn small"
+            type="button"
+            onClick={() => onUpdateStatus("TERMINE")}
+            disabled={updatingStatus}
+          >
+            {updatingStatus ? "Mise a jour..." : "Marquer comme termine"}
+          </button>
+        )}
       </div>
 
       <div className="detail-section">

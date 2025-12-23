@@ -19,6 +19,7 @@ export default function App() {
     return window.innerWidth < 900;
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   
 
   // écoute le bouton "Nouvelle intervention"
@@ -46,6 +47,35 @@ export default function App() {
       .then(setSelectedDetails)
       .catch(console.error);
   }, [selectedId]);
+
+  const handleUpdateStatus = async (newStatus) => {
+    if (!selectedId || !selectedDetails?.intervention) return;
+    const { intervention } = selectedDetails;
+    setUpdatingStatus(true);
+    try {
+      const payload = {
+        status: newStatus,
+        priority: intervention.priority,
+        description: intervention.description,
+        scheduled_at: intervention.scheduled_at?.replace("T", " ")
+      };
+      await fetch(`${API_URL}/interventions/${selectedId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then((r) =>
+        r.json()
+      );
+      setSelectedDetails(refreshed);
+      window.dispatchEvent(new Event("refreshCalendar"));
+    } catch (e) {
+      console.error("Erreur mise a jour statut :", e);
+      alert("Impossible de mettre a jour le statut pour le moment.");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   const handleSelectEvent = (ev) => {
     setSelectedId(Number(ev.id));
@@ -105,7 +135,11 @@ export default function App() {
               <TechniciansPage apiUrl={API_URL} />
             )}
 
-            <DetailPanel data={selectedDetails} />
+            <DetailPanel
+              data={selectedDetails}
+              onUpdateStatus={handleUpdateStatus}
+              updatingStatus={updatingStatus}
+            />
           </>
         )}
 
@@ -135,9 +169,13 @@ export default function App() {
               onClick={() => setShowDetailModal(false)}
               aria-label="Fermer"
             >
-              ×
+              X
             </button>
-            <DetailPanel data={selectedDetails} />
+            <DetailPanel
+              data={selectedDetails}
+              onUpdateStatus={handleUpdateStatus}
+              updatingStatus={updatingStatus}
+            />
           </div>
         </div>
       )}
