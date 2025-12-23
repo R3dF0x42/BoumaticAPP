@@ -211,10 +211,14 @@ body {
   border-radius: 12px;
   padding: 12px;
   border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .calendar-shell--mobile {
-  height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
   overflow: hidden;
 }
 
@@ -233,6 +237,11 @@ body {
 
 .calendar-shell--mobile .fc .fc-timegrid-slot-label {
   padding: 2px 6px;
+}
+
+.calendar-zoom-wrapper {
+  flex: 1;
+  min-height: 0;
 }
 
 .calendar-header {
@@ -839,6 +848,30 @@ body {
     background: transparent;
     border: none;
     padding: 0;
+  }
+
+  .page.calendar-shell--mobile {
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    background: var(--card);
+  }
+
+  .calendar-shell--mobile {
+    width: 100vw;
+  }
+
+  .calendar-shell--mobile .page-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--card);
+    padding: 12px;
+    margin: 0 0 6px 0;
+  }
+
+  .calendar-shell--mobile .calendar-zoom-wrapper {
+    padding: 0 10px 12px 10px;
   }
 }
 

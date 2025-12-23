@@ -51,6 +51,7 @@ export default function GoogleCalendarFull({
     return window.innerWidth <= 768;
   });
   const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth <= 768 ? 0.9 : 1));
+  const mobileViewportHeight = "calc(var(--vh, 1vh) * 100)";
 
   // ---- charge la semaine ----
   const loadWeek = (dateObj) => {
@@ -108,6 +109,18 @@ export default function GoogleCalendarFull({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ---- hauteur viewport mobile (gère la barre d'adresse) ----
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const setViewportVar = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty("--vh", `${vh}px`);
+    };
+    setViewportVar();
+    window.addEventListener("resize", setViewportVar);
+    return () => window.removeEventListener("resize", setViewportVar);
+  }, []);
+
   const headerToolbar = useMemo(
     () => ({
       left: "prev,next today",
@@ -118,7 +131,7 @@ export default function GoogleCalendarFull({
   );
 
   const calendarKey = isMobile ? "calendar-mobile" : "calendar-desktop";
-  const calendarHeight = isMobile ? "100vh" : "85vh";
+  const calendarHeight = isMobile ? "100%" : "85vh";
 
   return (
     <div className={`page calendar-shell ${isMobile ? "calendar-shell--mobile" : ""}`}>
@@ -150,8 +163,9 @@ export default function GoogleCalendarFull({
           transform: isMobile ? undefined : `scale(${zoom})`,
           transformOrigin: "top left",
           width: isMobile ? "100%" : `${100 / zoom}%`,
-          height: isMobile ? "100%" : "100%",
-          maxHeight: isMobile ? "100%" : "100%"
+          height: isMobile ? mobileViewportHeight : "100%",
+          maxHeight: isMobile ? mobileViewportHeight : "100%",
+          minHeight: isMobile ? mobileViewportHeight : "100%"
         }}
       >
         <FullCalendar
@@ -167,7 +181,7 @@ export default function GoogleCalendarFull({
           firstDay={1}
           locale="fr"
           height={calendarHeight}
-          contentHeight={isMobile ? "auto" : "100%"}
+          contentHeight={isMobile ? "100%" : "100%"}
           handleWindowResize={false}
           dayHeaderFormat={{ weekday: "short", day: "numeric", month: "short" }}
           slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
