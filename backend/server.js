@@ -74,6 +74,53 @@ app.post("/api/clients", async (req, res) => {
   }
 });
 
+app.put("/api/clients/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const { name, address, gps_lat, gps_lng, phone, robot_model } = req.body;
+  const safeName = name?.trim();
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  if (!safeName) {
+    return res.status(400).json({ error: "Le nom du client est requis." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE clients
+      SET name = $1,
+          address = $2,
+          gps_lat = $3,
+          gps_lng = $4,
+          phone = $5,
+          robot_model = $6
+      WHERE id = $7
+      RETURNING id, name, address, gps_lat, gps_lng, phone, robot_model
+      `,
+      [
+        safeName,
+        address || null,
+        gps_lat ?? null,
+        gps_lng ?? null,
+        phone || null,
+        robot_model || null,
+        id
+      ]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Client introuvable." });
+    }
+
+    res.json({ client: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ----------------------- TECHNICIANS ----------------------- */
 
 app.get("/api/technicians", async (req, res) => {

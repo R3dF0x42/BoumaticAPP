@@ -10,7 +10,18 @@ export default function ClientsPage({ apiUrl }) {
   const [techFilter, setTechFilter] = useState("all");
   const [mode, setMode] = useState("list"); // list | detail
   const [showNewForm, setShowNewForm] = useState(false);
+  const [clientError, setClientError] = useState("");
+  const [clientInfo, setClientInfo] = useState("");
+  const [isEditingClient, setIsEditingClient] = useState(false);
   const [form, setForm] = useState({
+    name: "",
+    address: "",
+    gps_lat: "",
+    gps_lng: "",
+    phone: "",
+    robot_model: ""
+  });
+  const [editForm, setEditForm] = useState({
     name: "",
     address: "",
     gps_lat: "",
@@ -49,9 +60,16 @@ export default function ClientsPage({ apiUrl }) {
     setForm((f) => ({ ...f, [field]: value }));
   };
 
+  const setEditValue = (field, value) => {
+    setEditForm((f) => ({ ...f, [field]: value }));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
-    await fetch(`${apiUrl}/clients`, {
+    setClientError("");
+    setClientInfo("");
+
+    const res = await fetch(`${apiUrl}/clients`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -60,6 +78,13 @@ export default function ClientsPage({ apiUrl }) {
         gps_lng: form.gps_lng ? Number(form.gps_lng) : null
       })
     });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setClientError(data.error || "Impossible de creer le client.");
+      return;
+    }
+
     setForm({
       name: "",
       address: "",
@@ -68,6 +93,7 @@ export default function ClientsPage({ apiUrl }) {
       phone: "",
       robot_model: ""
     });
+    setClientInfo("Client cree.");
     loadClients();
     setShowNewForm(false);
   };
@@ -82,6 +108,18 @@ export default function ClientsPage({ apiUrl }) {
     () => clients.find((c) => c.id === selectedClientId),
     [clients, selectedClientId]
   );
+
+  useEffect(() => {
+    if (!selectedClient) return;
+    setEditForm({
+      name: selectedClient.name || "",
+      address: selectedClient.address || "",
+      gps_lat: selectedClient.gps_lat ?? "",
+      gps_lng: selectedClient.gps_lng ?? "",
+      phone: selectedClient.phone || "",
+      robot_model: selectedClient.robot_model || ""
+    });
+  }, [selectedClient]);
 
   const historyForClient = useMemo(() => {
     if (!selectedClientId) return [];
@@ -100,7 +138,9 @@ export default function ClientsPage({ apiUrl }) {
         techFilter === "all" || Number(techFilter) === h.technician_id;
       const matchTerm =
         !term ||
-        `${h.description || ""} ${h.status || ""} ${h.priority || ""} ${h.technician_name || ""}`
+        `${h.description || ""} ${h.status || ""} ${h.priority || ""} ${
+          h.technician_name || ""
+        }`
           .toLowerCase()
           .includes(term);
       return matchTech && matchTerm;
@@ -128,6 +168,42 @@ export default function ClientsPage({ apiUrl }) {
       .join("")
       .slice(0, 2)
       .toUpperCase();
+  };
+
+  const submitClientUpdate = async (e) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+
+    setClientError("");
+    setClientInfo("");
+
+    const res = await fetch(`${apiUrl}/clients/${selectedClient.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...editForm,
+        gps_lat: editForm.gps_lat ? Number(editForm.gps_lat) : null,
+        gps_lng: editForm.gps_lng ? Number(editForm.gps_lng) : null
+      })
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setClientError(data.error || "Impossible de modifier le client.");
+      return;
+    }
+
+    setIsEditingClient(false);
+    setClientInfo("Client mis a jour.");
+    loadClients();
+  };
+
+  const handleSelectClient = (id) => {
+    setSelectedClientId(id);
+    setMode("detail");
+    setIsEditingClient(false);
+    setClientError("");
+    setClientInfo("");
   };
 
   const renderHistory = () => {
@@ -174,11 +250,6 @@ export default function ClientsPage({ apiUrl }) {
     );
   };
 
-  const handleSelectClient = (id) => {
-    setSelectedClientId(id);
-    setMode("detail");
-  };
-
   const renderHistoryFilters = () => (
     <div className="history-filters">
       <input
@@ -212,10 +283,26 @@ export default function ClientsPage({ apiUrl }) {
             <h2>{selectedClient.name}</h2>
             <p className="muted-small">Fiche client et interventions</p>
           </div>
-          <button className="btn small ghost" onClick={() => setMode("list")} type="button">
-            {"<- Retour liste"}
-          </button>
+          <div className="client-actions">
+            <button
+              className="btn small"
+              onClick={() => {
+                setIsEditingClient((v) => !v);
+                setClientError("");
+                setClientInfo("");
+              }}
+              type="button"
+            >
+              {isEditingClient ? "Annuler edition" : "Modifier client"}
+            </button>
+            <button className="btn small ghost" onClick={() => setMode("list")} type="button">
+              {"<- Retour liste"}
+            </button>
+          </div>
         </div>
+
+        {clientError && <p className="login-error">{clientError}</p>}
+        {clientInfo && <p className="ok-message">{clientInfo}</p>}
 
         <div className="card">
           <div className="client-hero">
@@ -248,41 +335,103 @@ export default function ClientsPage({ apiUrl }) {
             </div>
           </div>
 
-          <div className="client-detail-grid">
-            <div className="client-field">
-              <label>Adresse</label>
-              <p className="muted-small">{selectedClient.address || "Non renseignee"}</p>
+          {isEditingClient ? (
+            <form className="client-detail-grid client-edit-grid" onSubmit={submitClientUpdate}>
+              <div className="client-field">
+                <label>Nom de la ferme</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditValue("name", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="client-field">
+                <label>Telephone</label>
+                <input
+                  value={editForm.phone}
+                  onChange={(e) => setEditValue("phone", e.target.value)}
+                />
+              </div>
+              <div className="client-field">
+                <label>Adresse</label>
+                <textarea
+                  value={editForm.address}
+                  onChange={(e) => setEditValue("address", e.target.value)}
+                />
+              </div>
+              <div className="client-field">
+                <label>Robot de traite</label>
+                <input
+                  value={editForm.robot_model}
+                  onChange={(e) => setEditValue("robot_model", e.target.value)}
+                />
+              </div>
+              <div className="client-field">
+                <label>GPS latitude</label>
+                <input
+                  value={editForm.gps_lat}
+                  onChange={(e) => setEditValue("gps_lat", e.target.value)}
+                  placeholder="45.1234"
+                />
+              </div>
+              <div className="client-field">
+                <label>GPS longitude</label>
+                <input
+                  value={editForm.gps_lng}
+                  onChange={(e) => setEditValue("gps_lng", e.target.value)}
+                  placeholder="4.5678"
+                />
+              </div>
+              <div className="client-edit-actions">
+                <button className="btn small" type="submit">
+                  Enregistrer modifications
+                </button>
+                <button
+                  className="btn small ghost"
+                  type="button"
+                  onClick={() => setIsEditingClient(false)}
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="client-detail-grid">
+              <div className="client-field">
+                <label>Adresse</label>
+                <p className="muted-small">{selectedClient.address || "Non renseignee"}</p>
+              </div>
+              <div className="client-field">
+                <label>Telephone</label>
+                <p className="muted-small">
+                  {selectedClient.phone ? (
+                    <a href={`tel:${selectedClient.phone}`}>{selectedClient.phone}</a>
+                  ) : (
+                    "Non renseigne"
+                  )}
+                </p>
+              </div>
+              <div className="client-field">
+                <label>Robot de traite</label>
+                <p className="muted-small">{selectedClient.robot_model || "Non renseigne"}</p>
+              </div>
+              <div className="client-field">
+                <label>GPS</label>
+                <p className="muted-small">
+                  {mapLink ? (
+                    <>
+                      {selectedClient.gps_lat}, {selectedClient.gps_lng}{" "}
+                      <a className="muted-small" href={mapLink} target="_blank" rel="noreferrer">
+                        Ouvrir carte
+                      </a>
+                    </>
+                  ) : (
+                    "Non renseigne"
+                  )}
+                </p>
+              </div>
             </div>
-            <div className="client-field">
-              <label>Telephone</label>
-              <p className="muted-small">
-                {selectedClient.phone ? (
-                  <a href={`tel:${selectedClient.phone}`}>{selectedClient.phone}</a>
-                ) : (
-                  "Non renseigne"
-                )}
-              </p>
-            </div>
-            <div className="client-field">
-              <label>Robot de traite</label>
-              <p className="muted-small">{selectedClient.robot_model || "Non renseigne"}</p>
-            </div>
-            <div className="client-field">
-              <label>GPS</label>
-              <p className="muted-small">
-                {mapLink ? (
-                  <>
-                    {selectedClient.gps_lat}, {selectedClient.gps_lng}{" "}
-                    <a className="muted-small" href={mapLink} target="_blank" rel="noreferrer">
-                      Ouvrir carte
-                    </a>
-                  </>
-                ) : (
-                  "Non renseigne"
-                )}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="card">
@@ -309,6 +458,10 @@ export default function ClientsPage({ apiUrl }) {
           {showNewForm ? "Fermer" : "Nouveau client"}
         </button>
       </div>
+
+      {clientError && <p className="login-error">{clientError}</p>}
+      {clientInfo && <p className="ok-message">{clientInfo}</p>}
+
       <div className="page-grid">
         {showNewForm && (
           <div className="card">

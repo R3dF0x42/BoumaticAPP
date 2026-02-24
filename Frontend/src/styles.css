@@ -1051,6 +1051,28 @@ body {
   gap: 12px;
 }
 
+.client-edit-grid input,
+.client-edit-grid textarea {
+  width: 100%;
+  background: #050713;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text);
+}
+
+.client-edit-grid textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.client-edit-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .client-field label {
   display: block;
   font-size: 12px;
