@@ -2,9 +2,28 @@ import pg from "pg";
 
 const { Pool } = pg;
 
+function parseBooleanEnv(value, fallback = false) {
+  if (value === undefined || value === null || value === "") return fallback;
+  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+}
+
+const useSsl = parseBooleanEnv(
+  process.env.DB_SSL,
+  process.env.NODE_ENV === "production"
+);
+
+const sslConfig = useSsl
+  ? {
+      rejectUnauthorized: parseBooleanEnv(
+        process.env.DB_SSL_REJECT_UNAUTHORIZED,
+        false
+      )
+    }
+  : false;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
+  ssl: sslConfig
 });
 
 /* -------------------------
