@@ -4,8 +4,11 @@ export default function ClientsPage({ apiUrl }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [clientPhotos, setClientPhotos] = useState([]);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [techFilter, setTechFilter] = useState("all");
   const [mode, setMode] = useState("list"); // list | detail
@@ -29,6 +32,7 @@ export default function ClientsPage({ apiUrl }) {
     phone: "",
     robot_model: ""
   });
+  const apiOrigin = apiUrl.replace(/\/api$/, "");
 
   const loadClients = async () => {
     const res = await fetch(`${apiUrl}/clients`);
@@ -48,6 +52,21 @@ export default function ClientsPage({ apiUrl }) {
   const loadTechnicians = async () => {
     const res = await fetch(`${apiUrl}/technicians`);
     setTechnicians(await res.json());
+  };
+
+  const loadClientPhotos = async (clientId) => {
+    if (!clientId) {
+      setClientPhotos([]);
+      return;
+    }
+
+    setLoadingPhotos(true);
+    try {
+      const res = await fetch(`${apiUrl}/clients/${clientId}/photos`);
+      setClientPhotos(await res.json());
+    } finally {
+      setLoadingPhotos(false);
+    }
   };
 
   useEffect(() => {
@@ -120,6 +139,11 @@ export default function ClientsPage({ apiUrl }) {
       robot_model: selectedClient.robot_model || ""
     });
   }, [selectedClient]);
+
+  useEffect(() => {
+    if (!selectedClientId) return;
+    loadClientPhotos(selectedClientId);
+  }, [selectedClientId]);
 
   const historyForClient = useMemo(() => {
     if (!selectedClientId) return [];
@@ -204,6 +228,35 @@ export default function ClientsPage({ apiUrl }) {
     setIsEditingClient(false);
     setClientError("");
     setClientInfo("");
+  };
+
+  const handleUploadClientPhoto = async (file) => {
+    if (!file || !selectedClient?.id) return;
+
+    setClientError("");
+    setClientInfo("");
+    setUploadingPhoto(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+
+      const res = await fetch(`${apiUrl}/clients/${selectedClient.id}/photos`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setClientError(data.error || "Impossible d'ajouter la photo client.");
+        return;
+      }
+
+      setClientInfo("Photo client ajoutee.");
+      await loadClientPhotos(selectedClient.id);
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const renderHistory = () => {
@@ -438,6 +491,46 @@ export default function ClientsPage({ apiUrl }) {
           <h3>Historique des interventions</h3>
           {renderHistoryFilters()}
           {renderHistory()}
+        </div>
+
+        <div className="card">
+          <h3>Photos du client</h3>
+          <label className="btn small">
+            {uploadingPhoto ? "Upload en cours..." : "+ Ajouter une photo"}
+            <input
+              type="file"
+              style={{ display: "none" }}
+              accept="image/*"
+              disabled={uploadingPhoto}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                handleUploadClientPhoto(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+
+          {loadingPhotos ? (
+            <p className="muted-small">Chargement des photos...</p>
+          ) : (
+            <div className="photo-grid">
+              {clientPhotos.map((p) => (
+                <div key={p.id} className="photo-item">
+                  <img
+                    src={
+                      p.url
+                        ? `${apiOrigin}${p.url}`
+                        : `${apiOrigin}/uploads/${p.filename}`
+                    }
+                    alt="client"
+                  />
+                </div>
+              ))}
+              {!clientPhotos.length && (
+                <p className="muted-small">Aucune photo pour ce client.</p>
+              )}
+            </div>
+          )}
         </div>
       </section>
     );

@@ -97,6 +97,15 @@ async function initDB() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS client_photos (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        filename TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
       ALTER TABLE clients
         ALTER COLUMN gps_lat TYPE DOUBLE PRECISION,
         ALTER COLUMN gps_lng TYPE DOUBLE PRECISION;
@@ -127,6 +136,9 @@ async function initDB() {
 
         ALTER TABLE photos DROP CONSTRAINT IF EXISTS photos_intervention_id_fkey;
         ALTER TABLE photos ADD CONSTRAINT photos_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES interventions(id) ON DELETE CASCADE;
+
+        ALTER TABLE client_photos DROP CONSTRAINT IF EXISTS client_photos_client_id_fkey;
+        ALTER TABLE client_photos ADD CONSTRAINT client_photos_client_id_fkey FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE;
       END
       $$;
     `);
@@ -145,6 +157,10 @@ async function initDB() {
         IF NOT EXISTS (SELECT 1 FROM photos WHERE intervention_id IS NULL) THEN
           ALTER TABLE photos ALTER COLUMN intervention_id SET NOT NULL;
         END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM client_photos WHERE client_id IS NULL) THEN
+          ALTER TABLE client_photos ALTER COLUMN client_id SET NOT NULL;
+        END IF;
       END
       $$;
     `);
@@ -154,6 +170,7 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_interventions_technician_id ON interventions(technician_id);
       CREATE INDEX IF NOT EXISTS idx_notes_intervention_id ON notes(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_photos_intervention_id ON photos(intervention_id);
+      CREATE INDEX IF NOT EXISTS idx_client_photos_client_id ON client_photos(client_id);
     `);
 
     await client.query("COMMIT");

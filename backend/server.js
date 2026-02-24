@@ -121,6 +121,60 @@ app.put("/api/clients/:id", async (req, res) => {
   }
 });
 
+app.get("/api/clients/:id/photos", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT id, client_id, filename, created_at
+      FROM client_photos
+      WHERE client_id = $1
+      ORDER BY created_at DESC
+      `,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/clients/:id/photos", upload.single("photo"), async (req, res) => {
+  const id = Number(req.params.id);
+  const filename = req.file?.filename;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  if (!filename) {
+    return res.status(400).json({ error: "Aucun fichier recu." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO client_photos (client_id, filename)
+      VALUES ($1, $2)
+      RETURNING id
+      `,
+      [id, filename]
+    );
+
+    res.status(201).json({
+      id: result.rows[0].id,
+      url: `/uploads/${filename}`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ----------------------- TECHNICIANS ----------------------- */
 
 app.get("/api/technicians", async (req, res) => {
