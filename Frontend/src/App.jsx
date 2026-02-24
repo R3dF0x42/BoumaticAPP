@@ -151,6 +151,34 @@ export default function App() {
     }
   };
 
+  const handleDeletePhoto = async (photoId) => {
+    if (!selectedId || !photoId) return;
+
+    const confirmed = window.confirm("Confirmer la suppression de cette photo ?");
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(
+        `${API_URL}/interventions/${selectedId}/photos/${photoId}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Erreur suppression photo");
+      }
+
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+        (r) => r.json()
+      );
+      setSelectedDetails(refreshed);
+    } catch (e) {
+      console.error("Erreur suppression photo intervention :", e);
+      alert("Impossible de supprimer la photo pour le moment.");
+    }
+  };
+
   const handleSelectEvent = (ev) => {
     setSelectedId(Number(ev.id));
     if (isMobile) setShowDetailModal(true);
@@ -252,6 +280,7 @@ export default function App() {
                 data={selectedDetails}
                 onAddNote={handleAddNote}
                 onUploadPhoto={handleUploadPhoto}
+                onDeletePhoto={handleDeletePhoto}
                 onUpdateStatus={handleUpdateStatus}
                 updatingStatus={updatingStatus}
               />
@@ -289,6 +318,7 @@ export default function App() {
               data={selectedDetails}
               onAddNote={handleAddNote}
               onUploadPhoto={handleUploadPhoto}
+              onDeletePhoto={handleDeletePhoto}
               onUpdateStatus={handleUpdateStatus}
               updatingStatus={updatingStatus}
             />

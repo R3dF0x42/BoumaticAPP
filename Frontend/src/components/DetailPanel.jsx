@@ -6,6 +6,7 @@ export default function DetailPanel({
   data,
   onAddNote,
   onUploadPhoto,
+  onDeletePhoto,
   onUpdateStatus,
   updatingStatus
 }) {
@@ -126,6 +127,13 @@ export default function DetailPanel({
                 src={`${apiOrigin}/uploads/${p.filename}`}
                 alt="intervention"
               />
+              <button
+                className="photo-delete-btn"
+                type="button"
+                onClick={() => onDeletePhoto?.(p.id)}
+              >
+                Supprimer
+              </button>
             </div>
           ))}
           {!photos.length && (

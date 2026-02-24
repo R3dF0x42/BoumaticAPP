@@ -663,6 +663,50 @@ app.post("/api/interventions/:id/photos", upload.single("photo"), async (req, re
   }
 });
 
+app.delete("/api/interventions/:interventionId/photos/:photoId", async (req, res) => {
+  const interventionId = Number(req.params.interventionId);
+  const photoId = Number(req.params.photoId);
+
+  if (!Number.isInteger(interventionId) || interventionId <= 0) {
+    return res.status(400).json({ error: "Identifiant intervention invalide." });
+  }
+
+  if (!Number.isInteger(photoId) || photoId <= 0) {
+    return res.status(400).json({ error: "Identifiant photo invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      DELETE FROM photos
+      WHERE id = $1 AND intervention_id = $2
+      RETURNING filename
+      `,
+      [photoId, interventionId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Photo introuvable." });
+    }
+
+    const filename = path.basename(result.rows[0].filename || "");
+    if (filename) {
+      const filePath = path.join(uploadsDir, filename);
+      try {
+        await fs.promises.unlink(filePath);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          console.error("Impossible de supprimer le fichier photo:", err.message);
+        }
+      }
+    }
+
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ----------------------- ROOT ----------------------- */
 
 app.get("/", (req, res) => {
