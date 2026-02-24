@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 
 export default function TechniciansPage({ apiUrl }) {
   const [techs, setTechs] = useState([]);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    email: ""
+    email: "",
+    password: ""
   });
 
   const load = async () => {
@@ -23,12 +25,21 @@ export default function TechniciansPage({ apiUrl }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    await fetch(`${apiUrl}/technicians`, {
+    setError("");
+
+    const res = await fetch(`${apiUrl}/technicians`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form)
     });
-    setForm({ name: "", phone: "", email: "" });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "Impossible de creer le technicien.");
+      return;
+    }
+
+    setForm({ name: "", phone: "", email: "", password: "" });
     load();
   };
 
@@ -46,18 +57,29 @@ export default function TechniciansPage({ apiUrl }) {
               required
             />
 
-            <label>Téléphone</label>
+            <label>Telephone</label>
             <input
               value={form.phone}
               onChange={(e) => setValue("phone", e.target.value)}
             />
 
-            <label>Email</label>
+            <label>Email (optionnel)</label>
             <input
               type="email"
               value={form.email}
               onChange={(e) => setValue("email", e.target.value)}
             />
+
+            <label>Mot de passe</label>
+            <input
+              type="password"
+              value={form.password}
+              onChange={(e) => setValue("password", e.target.value)}
+              minLength={4}
+              required
+            />
+
+            {error && <p className="login-error">{error}</p>}
 
             <button className="btn small" type="submit">
               Enregistrer
@@ -84,7 +106,7 @@ export default function TechniciansPage({ apiUrl }) {
               </div>
             ))}
             {!techs.length && (
-              <div className="muted-small">Aucun technicien enregistré</div>
+              <div className="muted-small">Aucun technicien enregistre</div>
             )}
           </div>
         </div>

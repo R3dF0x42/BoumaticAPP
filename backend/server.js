@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import pool from "./db.js";
 import { createGoogleEvent, updateGoogleEvent } from "./google.js";
@@ -15,6 +16,24 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+/* ----------------------- AUTH HELPERS ----------------------- */
+
+const PASSWORD_KEYLEN = 64;
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.scryptSync(password, salt, PASSWORD_KEYLEN).toString("hex");
+  return { salt, hash };
+}
+
+function verifyPassword(password, salt, expectedHash) {
+  if (!password || !salt || !expectedHash) return false;
+  const computed = crypto.scryptSync(password, salt, PASSWORD_KEYLEN).toString("hex");
+  const computedBuffer = Buffer.from(computed, "hex");
+  const expectedBuffer = Buffer.from(expectedHash, "hex");
+  if (computedBuffer.length !== expectedBuffer.length) return false;
+  return crypto.timingSafeEqual(computedBuffer, expectedBuffer);
+}
 
 /* ----------------------- UPLOADS ----------------------- */
 
@@ -58,7 +77,9 @@ app.post("/api/clients", async (req, res) => {
 
 app.get("/api/technicians", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM technicians ORDER BY name");
+    const result = await pool.query(
+      "SELECT id, name, phone, email FROM technicians ORDER BY name"
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -66,14 +87,97 @@ app.get("/api/technicians", async (req, res) => {
 });
 
 app.post("/api/technicians", async (req, res) => {
-  const { name, phone, email } = req.body;
+  const { name, phone, email, password } = req.body;
+  const safeName = name?.trim();
+  const safeEmail = email?.trim();
+
+  if (!safeName) {
+    return res.status(400).json({ error: "Le nom du technicien est requis." });
+  }
+
+  if (!password || password.length < 4) {
+    return res
+      .status(400)
+      .json({ error: "Le mot de passe doit contenir au moins 4 caracteres." });
+  }
+
+  const { salt, hash } = hashPassword(password);
+
   try {
     const result = await pool.query(
-      `INSERT INTO technicians (name, phone, email)
-       VALUES ($1,$2,$3) RETURNING id`,
-      [name, phone, email]
+      `INSERT INTO technicians (name, phone, email, password_salt, password_hash)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+      [safeName, phone || null, safeEmail || null, salt, hash]
     );
     res.status(201).json({ id: result.rows[0].id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/auth/technician/login", async (req, res) => {
+  const identifier = req.body?.identifier?.trim();
+  const password = req.body?.password;
+
+  if (!identifier || !password) {
+    return res
+      .status(400)
+      .json({ error: "Identifiant et mot de passe requis." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT id, name, email, phone, password_salt, password_hash
+      FROM technicians
+      WHERE LOWER(name) = LOWER($1) OR LOWER(email) = LOWER($1)
+      ORDER BY id ASC
+      LIMIT 1
+      `,
+      [identifier]
+    );
+
+    if (!result.rows.length) {
+      return res.status(401).json({ error: "Identifiants invalides." });
+    }
+
+    const technician = result.rows[0];
+    let valid = false;
+
+    if (!technician.password_hash || !technician.password_salt) {
+      const fallbackPassword = technician.phone?.trim();
+      valid = Boolean(fallbackPassword && password === fallbackPassword);
+
+      if (valid) {
+        const { salt, hash } = hashPassword(password);
+        await pool.query(
+          `
+          UPDATE technicians
+          SET password_salt = $1, password_hash = $2
+          WHERE id = $3
+          `,
+          [salt, hash, technician.id]
+        );
+      }
+    } else {
+      valid = verifyPassword(
+        password,
+        technician.password_salt,
+        technician.password_hash
+      );
+    }
+
+    if (!valid) {
+      return res.status(401).json({ error: "Identifiants invalides." });
+    }
+
+    res.json({
+      technician: {
+        id: technician.id,
+        name: technician.name,
+        email: technician.email
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

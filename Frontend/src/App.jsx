@@ -5,8 +5,10 @@ import NewIntervention from "./components/NewIntervention.jsx";
 import ClientsPage from "./components/ClientsPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
 import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
+import TechnicianLogin from "./components/TechnicianLogin.jsx";
 
 const API_URL = "https://boumaticapp-production.up.railway.app/api";
+const TECH_SESSION_KEY = "boumatic-tech-session";
 
 export default function App() {
   const [interventions, setInterventions] = useState([]);
@@ -20,9 +22,17 @@ export default function App() {
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  
+  const [loggedTechnician, setLoggedTechnician] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(TECH_SESSION_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  });
 
-  // écoute le bouton "Nouvelle intervention"
   useEffect(() => {
     const open = () => setShowNewIntervention(true);
 
@@ -37,8 +47,6 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-
-  // charger détail intervention
   useEffect(() => {
     if (!selectedId) return;
 
@@ -64,8 +72,8 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then((r) =>
-        r.json()
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+        (r) => r.json()
       );
       setSelectedDetails(refreshed);
       window.dispatchEvent(new Event("refreshCalendar"));
@@ -82,6 +90,28 @@ export default function App() {
     if (isMobile) setShowDetailModal(true);
   };
 
+  const handleLogin = (technician) => {
+    setLoggedTechnician(technician);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TECH_SESSION_KEY, JSON.stringify(technician));
+    }
+  };
+
+  const handleLogout = () => {
+    setLoggedTechnician(null);
+    setSelectedId(null);
+    setSelectedDetails(null);
+    setShowNewIntervention(false);
+    setShowDetailModal(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(TECH_SESSION_KEY);
+    }
+  };
+
+  if (!loggedTechnician) {
+    return <TechnicianLogin apiUrl={API_URL} onLogin={handleLogin} />;
+  }
+
   const renderTopNavMobile = () => (
     <div className="mobile-topbar">
       <div className="brand brand--inline">
@@ -91,15 +121,22 @@ export default function App() {
         </div>
         <span className="brand-sub">Maintenance</span>
       </div>
-      <select
-        className="mobile-nav-select"
-        value={currentPage}
-        onChange={(e) => setCurrentPage(e.target.value)}
-      >
-        <option value="planning">Planning</option>
-        <option value="clients">Clients</option>
-        <option value="technicians">Techniciens</option>
-      </select>
+
+      <div className="mobile-topbar-actions">
+        <span className="session-chip">{loggedTechnician.name}</span>
+        <select
+          className="mobile-nav-select"
+          value={currentPage}
+          onChange={(e) => setCurrentPage(e.target.value)}
+        >
+          <option value="planning">Planning</option>
+          <option value="clients">Clients</option>
+          <option value="technicians">Techniciens</option>
+        </select>
+        <button className="btn small ghost" type="button" onClick={handleLogout}>
+          Deconnexion
+        </button>
+      </div>
     </div>
   );
 
@@ -116,6 +153,8 @@ export default function App() {
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             isMobile={isMobile}
+            loggedTechnician={loggedTechnician}
+            onLogout={handleLogout}
           />
         )}
 
@@ -131,9 +170,7 @@ export default function App() {
         {!isMobile && (
           <>
             {currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
-            {currentPage === "technicians" && (
-              <TechniciansPage apiUrl={API_URL} />
-            )}
+            {currentPage === "technicians" && <TechniciansPage apiUrl={API_URL} />}
 
             <DetailPanel
               data={selectedDetails}
@@ -143,9 +180,7 @@ export default function App() {
           </>
         )}
 
-        {isMobile && currentPage === "clients" && (
-          <ClientsPage apiUrl={API_URL} />
-        )}
+        {isMobile && currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
         {isMobile && currentPage === "technicians" && (
           <TechniciansPage apiUrl={API_URL} />
         )}
@@ -155,7 +190,6 @@ export default function App() {
         <NewIntervention
           onClose={() => setShowNewIntervention(false)}
           onCreated={() => {
-            // dire au calendrier de se recharger
             window.dispatchEvent(new Event("refreshCalendar"));
           }}
         />
@@ -179,7 +213,6 @@ export default function App() {
           </div>
         </div>
       )}
-
     </>
   );
 }

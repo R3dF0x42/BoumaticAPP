@@ -34,8 +34,16 @@ async function initDB() {
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         phone TEXT,
-        email TEXT
+        email TEXT,
+        password_salt TEXT,
+        password_hash TEXT
       );
+    `);
+
+    await client.query(`
+      ALTER TABLE technicians
+        ADD COLUMN IF NOT EXISTS password_salt TEXT,
+        ADD COLUMN IF NOT EXISTS password_hash TEXT;
     `);
 
     await client.query(`

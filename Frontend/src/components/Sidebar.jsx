@@ -9,9 +9,14 @@ export default function Sidebar({
   currentPage,
   setCurrentPage,
   urgentCount,
-  isMobile
+  isMobile,
+  loggedTechnician,
+  onLogout
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const safeDate = date || "";
+  const handleDateChange =
+    typeof setDate === "function" ? setDate : () => {};
 
   useEffect(() => {
     setMobileOpen(false);
@@ -95,8 +100,6 @@ export default function Sidebar({
 
   return (
     <aside className="sidebar">
-
-      {/* LOGO */}
       <div className="brand">
         <div className="brand-box">
           <span className="brand-bou">Bou</span>
@@ -105,39 +108,19 @@ export default function Sidebar({
         <span className="brand-sub">Maintenance</span>
       </div>
 
-      {/* MENU */}
+      {loggedTechnician && (
+        <div className="sidebar-section session-row">
+          <div className="session-chip">{loggedTechnician.name}</div>
+          <button className="btn small ghost session-logout" onClick={onLogout}>
+            Deconnexion
+          </button>
+        </div>
+      )}
+
       <nav className="nav-menu">
-
-        <button
-          className={
-            "nav-item " + (currentPage === "planning" ? "nav-item--active" : "")
-          }
-          onClick={() => setCurrentPage("planning")}
-        >
-          📅 Planning
-          {urgentCount > 0 && <span className="nav-badge">{urgentCount}</span>}
-        </button>
-
-        <button
-          className={
-            "nav-item " + (currentPage === "clients" ? "nav-item--active" : "")
-          }
-          onClick={() => setCurrentPage("clients")}
-        >
-          🐄 Clients
-        </button>
-
-        <button
-          className={
-            "nav-item " + (currentPage === "technicians" ? "nav-item--active" : "")
-          }
-          onClick={() => setCurrentPage("technicians")}
-        >
-          👨‍🔧 Techniciens
-        </button>
+        <NavButtons />
       </nav>
 
-      {/* BOUTON NOUVELLE INTERVENTION */}
       {currentPage === "planning" && (
         <div className="sidebar-section">
           <button
@@ -149,15 +132,14 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* LISTE INTERVENTIONS DU JOUR */}
       {currentPage === "planning" && (
         <>
           <div className="sidebar-section">
             <label>Date</label>
             <input
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={safeDate}
+              onChange={(e) => handleDateChange(e.target.value)}
             />
           </div>
 
@@ -182,7 +164,7 @@ export default function Sidebar({
                   <div>
                     <div className="intervention-client">{i.client_name}</div>
                     <div className="intervention-status">
-                      {i.status} · {i.priority}
+                      {i.status} - {i.priority}
                     </div>
                   </div>
                 </li>
