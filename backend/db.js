@@ -73,7 +73,9 @@ async function initDB() {
         scheduled_at TIMESTAMP,
         status TEXT DEFAULT 'pending' NOT NULL,
         priority TEXT DEFAULT 'normal' NOT NULL,
-        description TEXT
+        description TEXT,
+        duration_minutes INTEGER DEFAULT 60 NOT NULL,
+        google_event_id TEXT
       );
     `);
 
@@ -113,11 +115,16 @@ async function initDB() {
 
     await client.query(`
       ALTER TABLE interventions
+        ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
+        ADD COLUMN IF NOT EXISTS google_event_id TEXT,
         ALTER COLUMN status SET DEFAULT 'pending',
         ALTER COLUMN priority SET DEFAULT 'normal';
+      UPDATE interventions SET duration_minutes = 60 WHERE duration_minutes IS NULL;
       UPDATE interventions SET status = 'pending' WHERE status IS NULL;
       UPDATE interventions SET priority = 'normal' WHERE priority IS NULL;
       ALTER TABLE interventions
+        ALTER COLUMN duration_minutes SET DEFAULT 60,
+        ALTER COLUMN duration_minutes SET NOT NULL,
         ALTER COLUMN status SET NOT NULL,
         ALTER COLUMN priority SET NOT NULL;
     `);
