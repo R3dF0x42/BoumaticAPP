@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import MapAppChooserModal from "./MapAppChooserModal.jsx";
+import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 
 export default function ClientsPage({ apiUrl }) {
   const [clients, setClients] = useState([]);
@@ -17,6 +19,7 @@ export default function ClientsPage({ apiUrl }) {
   const [clientError, setClientError] = useState("");
   const [clientInfo, setClientInfo] = useState("");
   const [isEditingClient, setIsEditingClient] = useState(false);
+  const [mapChooser, setMapChooser] = useState(null);
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -31,15 +34,36 @@ export default function ClientsPage({ apiUrl }) {
   });
   const apiOrigin = apiUrl.replace(/\/api$/, "");
 
-  const getClientMapLink = (client) => {
+  const getClientMapTarget = (client) => {
     if (!client) return null;
     if (client.gps_lat != null && client.gps_lng != null) {
-      return `https://www.google.com/maps?q=${client.gps_lat},${client.gps_lng}`;
+      return {
+        lat: client.gps_lat,
+        lng: client.gps_lng,
+        address: client.address || ""
+      };
     }
     if (client.address) {
-      return `https://www.google.com/maps?q=${encodeURIComponent(client.address)}`;
+      return {
+        lat: null,
+        lng: null,
+        address: client.address
+      };
     }
     return null;
+  };
+
+  const handleOpenMap = (target, title = "") => {
+    if (!target) return;
+    const links = buildMapAppLinks(target);
+    if (!links) return;
+
+    if (isMobileDevice()) {
+      setMapChooser({ title, links });
+      return;
+    }
+
+    window.open(links.google, "_blank", "noopener,noreferrer");
   };
 
   const loadClients = async () => {
@@ -367,10 +391,12 @@ export default function ClientsPage({ apiUrl }) {
   );
 
   if (mode === "detail" && selectedClient) {
-    const mapLink = getClientMapLink(selectedClient);
+    const mapTarget = getClientMapTarget(selectedClient);
+    const hasMapTarget = Boolean(mapTarget);
     const initials = getInitials(selectedClient.name);
 
     return (
+      <>
       <section className="page">
         <div className="page-header">
           <div>
@@ -412,7 +438,7 @@ export default function ClientsPage({ apiUrl }) {
                 {selectedClient.phone && (
                   <span className="pill pill-muted">{selectedClient.phone}</span>
                 )}
-                {mapLink && <span className="pill pill-muted">GPS ok</span>}
+                {hasMapTarget && <span className="pill pill-muted">GPS ok</span>}
               </div>
             </div>
             <div className="client-actions">
@@ -421,10 +447,14 @@ export default function ClientsPage({ apiUrl }) {
                   Appeler
                 </a>
               )}
-              {mapLink && (
-                <a className="btn small ghost" href={mapLink} target="_blank" rel="noreferrer">
+              {hasMapTarget && (
+                <button
+                  className="btn small ghost"
+                  type="button"
+                  onClick={() => handleOpenMap(mapTarget, selectedClient.name)}
+                >
                   Ouvrir carte
-                </a>
+                </button>
               )}
             </div>
           </div>
@@ -496,10 +526,14 @@ export default function ClientsPage({ apiUrl }) {
               <div className="client-field">
                 <label>Navigation GPS</label>
                 <p className="muted-small">
-                  {mapLink ? (
-                    <a className="muted-small" href={mapLink} target="_blank" rel="noreferrer">
+                  {hasMapTarget ? (
+                    <button
+                      className="btn small ghost"
+                      type="button"
+                      onClick={() => handleOpenMap(mapTarget, selectedClient.name)}
+                    >
                       Ouvrir carte
-                    </a>
+                    </button>
                   ) : (
                     "Adresse non renseignee"
                   )}
@@ -563,10 +597,18 @@ export default function ClientsPage({ apiUrl }) {
           )}
         </div>
       </section>
+      <MapAppChooserModal
+        open={Boolean(mapChooser)}
+        title={mapChooser?.title}
+        links={mapChooser?.links}
+        onClose={() => setMapChooser(null)}
+      />
+      </>
     );
   }
 
   return (
+    <>
     <section className="page">
       <div className="page-header">
         <div>
@@ -627,7 +669,7 @@ export default function ClientsPage({ apiUrl }) {
           <h3>Liste des clients</h3>
           <div className="table">
             {clients.map((c) => {
-              const mapLink = getClientMapLink(c);
+              const mapTarget = getClientMapTarget(c);
               return (
               <div
                 key={c.id}
@@ -644,16 +686,17 @@ export default function ClientsPage({ apiUrl }) {
                   </div>
                 </div>
                 <div className="table-side">
-                  {mapLink ? (
-                    <a
+                  {mapTarget ? (
+                    <button
                       className="btn small ghost"
-                      href={mapLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenMap(mapTarget, c.name);
+                      }}
                     >
                       GPS
-                    </a>
+                    </button>
                   ) : (
                     <div className="muted-small">GPS ?</div>
                   )}
@@ -673,5 +716,12 @@ export default function ClientsPage({ apiUrl }) {
         </div>
       </div>
     </section>
+    <MapAppChooserModal
+      open={Boolean(mapChooser)}
+      title={mapChooser?.title}
+      links={mapChooser?.links}
+      onClose={() => setMapChooser(null)}
+    />
+    </>
   );
 }

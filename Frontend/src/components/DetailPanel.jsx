@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { getApiOrigin } from "../config/api.js";
+import MapAppChooserModal from "./MapAppChooserModal.jsx";
+import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 
 export default function DetailPanel({
   apiUrl,
@@ -11,6 +13,7 @@ export default function DetailPanel({
   updatingStatus
 }) {
   const [note, setNote] = useState("");
+  const [mapChooser, setMapChooser] = useState(null);
   const apiOrigin = (apiUrl || getApiOrigin()).replace(/\/api$/, "");
 
   if (!data) {
@@ -22,11 +25,24 @@ export default function DetailPanel({
   }
 
   const { intervention, notes, photos } = data;
+  const mapLinks = buildMapAppLinks({
+    lat: intervention.gps_lat ?? null,
+    lng: intervention.gps_lng ?? null,
+    address: intervention.address || ""
+  });
 
   const openGps = () => {
-    if (!intervention.gps_lat || !intervention.gps_lng) return;
-    const url = `https://www.google.com/maps?q=${intervention.gps_lat},${intervention.gps_lng}`;
-    window.open(url, "_blank");
+    if (!mapLinks) return;
+
+    if (isMobileDevice()) {
+      setMapChooser({
+        title: intervention.client_name || "",
+        links: mapLinks
+      });
+      return;
+    }
+
+    window.open(mapLinks.google, "_blank", "noopener,noreferrer");
   };
 
   const handleSubmitNote = (e) => {
@@ -43,6 +59,7 @@ export default function DetailPanel({
   };
 
   return (
+    <>
     <aside className="detail-panel">
       <div className="detail-header">
         <h3>{intervention.client_name}</h3>
@@ -51,7 +68,7 @@ export default function DetailPanel({
           <br />
           {intervention.robot_model}
         </p>
-        <button className="btn gps" onClick={openGps}>
+        <button className="btn gps" onClick={openGps} disabled={!mapLinks}>
           OUVRIR GPS
         </button>
       </div>
@@ -142,5 +159,12 @@ export default function DetailPanel({
         </div>
       </div>
     </aside>
+    <MapAppChooserModal
+      open={Boolean(mapChooser)}
+      title={mapChooser?.title}
+      links={mapChooser?.links}
+      onClose={() => setMapChooser(null)}
+    />
+    </>
   );
 }
