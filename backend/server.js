@@ -179,6 +179,50 @@ app.post("/api/clients/:id/photos", upload.single("photo"), async (req, res) => 
   }
 });
 
+app.delete("/api/clients/:clientId/photos/:photoId", async (req, res) => {
+  const clientId = Number(req.params.clientId);
+  const photoId = Number(req.params.photoId);
+
+  if (!Number.isInteger(clientId) || clientId <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  if (!Number.isInteger(photoId) || photoId <= 0) {
+    return res.status(400).json({ error: "Identifiant photo invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      DELETE FROM client_photos
+      WHERE id = $1 AND client_id = $2
+      RETURNING filename
+      `,
+      [photoId, clientId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Photo introuvable." });
+    }
+
+    const filename = path.basename(result.rows[0].filename || "");
+    if (filename) {
+      const filePath = path.join(uploadsDir, filename);
+      try {
+        await fs.promises.unlink(filePath);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          console.error("Impossible de supprimer le fichier photo:", err.message);
+        }
+      }
+    }
+
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ----------------------- TECHNICIANS ----------------------- */
 
 app.get("/api/technicians", async (req, res) => {

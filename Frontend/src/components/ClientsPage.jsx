@@ -9,6 +9,7 @@ export default function ClientsPage({ apiUrl }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [techFilter, setTechFilter] = useState("all");
   const [mode, setMode] = useState("list"); // list | detail
@@ -267,6 +268,39 @@ export default function ClientsPage({ apiUrl }) {
       await loadClientPhotos(selectedClient.id);
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeleteClientPhoto = async (photoId) => {
+    if (!selectedClient?.id || !photoId) return;
+
+    const confirmed = window.confirm("Confirmer la suppression de cette photo ?");
+    if (!confirmed) return;
+
+    setClientError("");
+    setClientInfo("");
+    setDeletingPhotoId(photoId);
+
+    try {
+      const res = await fetch(
+        `${apiUrl}/clients/${selectedClient.id}/photos/${photoId}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setClientError(data.error || "Impossible de supprimer la photo client.");
+        return;
+      }
+
+      setClientInfo("Photo client supprimee.");
+      await loadClientPhotos(selectedClient.id);
+    } catch {
+      setClientError("Impossible de supprimer la photo client.");
+    } finally {
+      setDeletingPhotoId(null);
     }
   };
 
@@ -535,6 +569,14 @@ export default function ClientsPage({ apiUrl }) {
                     }
                     alt="client"
                   />
+                  <button
+                    className="photo-delete-btn"
+                    type="button"
+                    onClick={() => handleDeleteClientPhoto(p.id)}
+                    disabled={deletingPhotoId === p.id}
+                  >
+                    {deletingPhotoId === p.id ? "..." : "Supprimer"}
+                  </button>
                 </div>
               ))}
               {!clientPhotos.length && (
