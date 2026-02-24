@@ -20,20 +20,27 @@ export default function ClientsPage({ apiUrl }) {
   const [form, setForm] = useState({
     name: "",
     address: "",
-    gps_lat: "",
-    gps_lng: "",
     phone: "",
     robot_model: ""
   });
   const [editForm, setEditForm] = useState({
     name: "",
     address: "",
-    gps_lat: "",
-    gps_lng: "",
     phone: "",
     robot_model: ""
   });
   const apiOrigin = apiUrl.replace(/\/api$/, "");
+
+  const getClientMapLink = (client) => {
+    if (!client) return null;
+    if (client.gps_lat != null && client.gps_lng != null) {
+      return `https://www.google.com/maps?q=${client.gps_lat},${client.gps_lng}`;
+    }
+    if (client.address) {
+      return `https://www.google.com/maps?q=${encodeURIComponent(client.address)}`;
+    }
+    return null;
+  };
 
   const loadClients = async () => {
     const res = await fetch(`${apiUrl}/clients`);
@@ -104,9 +111,7 @@ export default function ClientsPage({ apiUrl }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...form,
-        gps_lat: form.gps_lat ? Number(form.gps_lat) : null,
-        gps_lng: form.gps_lng ? Number(form.gps_lng) : null
+        ...form
       })
     });
 
@@ -119,8 +124,6 @@ export default function ClientsPage({ apiUrl }) {
     setForm({
       name: "",
       address: "",
-      gps_lat: "",
-      gps_lng: "",
       phone: "",
       robot_model: ""
     });
@@ -145,8 +148,6 @@ export default function ClientsPage({ apiUrl }) {
     setEditForm({
       name: selectedClient.name || "",
       address: selectedClient.address || "",
-      gps_lat: selectedClient.gps_lat ?? "",
-      gps_lng: selectedClient.gps_lng ?? "",
       phone: selectedClient.phone || "",
       robot_model: selectedClient.robot_model || ""
     });
@@ -217,9 +218,7 @@ export default function ClientsPage({ apiUrl }) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...editForm,
-        gps_lat: editForm.gps_lat ? Number(editForm.gps_lat) : null,
-        gps_lng: editForm.gps_lng ? Number(editForm.gps_lng) : null
+        ...editForm
       })
     });
 
@@ -368,10 +367,7 @@ export default function ClientsPage({ apiUrl }) {
   );
 
   if (mode === "detail" && selectedClient) {
-    const mapLink =
-      selectedClient.gps_lat && selectedClient.gps_lng
-        ? `https://www.google.com/maps?q=${selectedClient.gps_lat},${selectedClient.gps_lng}`
-        : null;
+    const mapLink = getClientMapLink(selectedClient);
     const initials = getInitials(selectedClient.name);
 
     return (
@@ -464,22 +460,6 @@ export default function ClientsPage({ apiUrl }) {
                   onChange={(e) => setEditValue("robot_model", e.target.value)}
                 />
               </div>
-              <div className="client-field">
-                <label>GPS latitude</label>
-                <input
-                  value={editForm.gps_lat}
-                  onChange={(e) => setEditValue("gps_lat", e.target.value)}
-                  placeholder="45.1234"
-                />
-              </div>
-              <div className="client-field">
-                <label>GPS longitude</label>
-                <input
-                  value={editForm.gps_lng}
-                  onChange={(e) => setEditValue("gps_lng", e.target.value)}
-                  placeholder="4.5678"
-                />
-              </div>
               <div className="client-edit-actions">
                 <button className="btn small" type="submit">
                   Enregistrer modifications
@@ -514,17 +494,14 @@ export default function ClientsPage({ apiUrl }) {
                 <p className="muted-small">{selectedClient.robot_model || "Non renseigne"}</p>
               </div>
               <div className="client-field">
-                <label>GPS</label>
+                <label>Navigation GPS</label>
                 <p className="muted-small">
                   {mapLink ? (
-                    <>
-                      {selectedClient.gps_lat}, {selectedClient.gps_lng}{" "}
-                      <a className="muted-small" href={mapLink} target="_blank" rel="noreferrer">
-                        Ouvrir carte
-                      </a>
-                    </>
+                    <a className="muted-small" href={mapLink} target="_blank" rel="noreferrer">
+                      Ouvrir carte
+                    </a>
                   ) : (
-                    "Non renseigne"
+                    "Adresse non renseignee"
                   )}
                 </p>
               </div>
@@ -626,20 +603,6 @@ export default function ClientsPage({ apiUrl }) {
                 onChange={(e) => setValue("address", e.target.value)}
               />
 
-              <label>GPS latitude</label>
-              <input
-                value={form.gps_lat}
-                onChange={(e) => setValue("gps_lat", e.target.value)}
-                placeholder="45.1234"
-              />
-
-              <label>GPS longitude</label>
-              <input
-                value={form.gps_lng}
-                onChange={(e) => setValue("gps_lng", e.target.value)}
-                placeholder="4.5678"
-              />
-
               <label>Telephone</label>
               <input
                 value={form.phone}
@@ -663,7 +626,9 @@ export default function ClientsPage({ apiUrl }) {
         <div className="card">
           <h3>Liste des clients</h3>
           <div className="table">
-            {clients.map((c) => (
+            {clients.map((c) => {
+              const mapLink = getClientMapLink(c);
+              return (
               <div
                 key={c.id}
                 className={`table-row table-row--clickable ${
@@ -679,13 +644,19 @@ export default function ClientsPage({ apiUrl }) {
                   </div>
                 </div>
                 <div className="table-side">
-                  <div className="muted-small">
-                    {c.gps_lat && c.gps_lng
-                      ? `${c.gps_lat.toFixed?.(4) ?? c.gps_lat}, ${
-                          c.gps_lng.toFixed?.(4) ?? c.gps_lng
-                        }`
-                      : "GPS ?"}
-                  </div>
+                  {mapLink ? (
+                    <a
+                      className="btn small ghost"
+                      href={mapLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      GPS
+                    </a>
+                  ) : (
+                    <div className="muted-small">GPS ?</div>
+                  )}
                   {c.phone && (
                     <a className="muted-small" href={`tel:${c.phone}`}>
                       {c.phone}
@@ -693,7 +664,8 @@ export default function ClientsPage({ apiUrl }) {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
             {!clients.length && (
               <div className="muted-small">Aucun client enregistre</div>
             )}

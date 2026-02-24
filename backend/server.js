@@ -97,8 +97,8 @@ app.put("/api/clients/:id", async (req, res) => {
       UPDATE clients
       SET name = $1,
           address = $2,
-          gps_lat = $3,
-          gps_lng = $4,
+          gps_lat = COALESCE($3, gps_lat),
+          gps_lng = COALESCE($4, gps_lng),
           phone = $5,
           robot_model = $6
       WHERE id = $7
