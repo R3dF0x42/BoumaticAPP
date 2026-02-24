@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-export default function TechniciansPage({ apiUrl }) {
+export default function TechniciansPage({ apiUrl, canManage = false }) {
   const [techs, setTechs] = useState([]);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -13,6 +13,13 @@ export default function TechniciansPage({ apiUrl }) {
   const [resetForId, setResetForId] = useState(null);
   const [resetPassword, setResetPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [editForId, setEditForId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    phone: "",
+    email: ""
+  });
+  const [editLoading, setEditLoading] = useState(false);
 
   const load = async () => {
     const res = await fetch(`${apiUrl}/technicians`);
@@ -92,50 +99,104 @@ export default function TechniciansPage({ apiUrl }) {
     }
   };
 
+  const startEdit = (tech) => {
+    setError("");
+    setInfo("");
+    setEditForId(tech.id);
+    setEditForm({
+      name: tech.name || "",
+      phone: tech.phone || "",
+      email: tech.email || ""
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditForId(null);
+    setEditForm({ name: "", phone: "", email: "" });
+    setEditLoading(false);
+  };
+
+  const submitEdit = async (techId) => {
+    setError("");
+    setInfo("");
+
+    if (!editForm.name.trim()) {
+      setError("Le nom du technicien est requis.");
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/technicians/${techId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name,
+          phone: editForm.phone,
+          email: editForm.email
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Impossible de modifier le technicien.");
+        return;
+      }
+
+      setInfo("Technicien mis a jour.");
+      cancelEdit();
+      load();
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   return (
     <section className="page">
-      <h2>Techniciens</h2>
+      <h2>{canManage ? "Administration techniciens" : "Techniciens"}</h2>
       <div className="page-grid">
-        <div className="card">
-          <h3>Nouveau technicien</h3>
-          <form className="form" onSubmit={submit}>
-            <label>Nom</label>
-            <input
-              value={form.name}
-              onChange={(e) => setValue("name", e.target.value)}
-              required
-            />
+        {canManage && (
+          <div className="card">
+            <h3>Nouveau technicien</h3>
+            <form className="form" onSubmit={submit}>
+              <label>Nom</label>
+              <input
+                value={form.name}
+                onChange={(e) => setValue("name", e.target.value)}
+                required
+              />
 
-            <label>Telephone</label>
-            <input
-              value={form.phone}
-              onChange={(e) => setValue("phone", e.target.value)}
-            />
+              <label>Telephone</label>
+              <input
+                value={form.phone}
+                onChange={(e) => setValue("phone", e.target.value)}
+              />
 
-            <label>Email (optionnel)</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => setValue("email", e.target.value)}
-            />
+              <label>Email (optionnel)</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setValue("email", e.target.value)}
+              />
 
-            <label>Mot de passe</label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => setValue("password", e.target.value)}
-              minLength={4}
-              required
-            />
+              <label>Mot de passe</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setValue("password", e.target.value)}
+                minLength={4}
+                required
+              />
 
-            {error && <p className="login-error">{error}</p>}
-            {info && <p className="ok-message">{info}</p>}
+              {error && <p className="login-error">{error}</p>}
+              {info && <p className="ok-message">{info}</p>}
 
-            <button className="btn small" type="submit">
-              Enregistrer
-            </button>
-          </form>
-        </div>
+              <button className="btn small" type="submit">
+                Enregistrer
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="card">
           <h3>Liste des techniciens</h3>
@@ -147,7 +208,7 @@ export default function TechniciansPage({ apiUrl }) {
                 <div className="table-row-head">
                   <div className="table-main">
                     <strong>{t.name}</strong>
-                    <div className="muted-small">{t.email}</div>
+                    <div className="muted-small">{t.email || "Sans email"}</div>
                   </div>
 
                   <div className="table-side">
@@ -156,17 +217,74 @@ export default function TechniciansPage({ apiUrl }) {
                         {t.phone}
                       </a>
                     )}
-                    <button
-                      className="btn small ghost"
-                      type="button"
-                      onClick={() => startReset(t.id)}
-                    >
-                      Reinitialiser MDP
-                    </button>
+
+                    {canManage && (
+                      <div className="tech-actions">
+                        <button
+                          className="btn small ghost"
+                          type="button"
+                          onClick={() => startEdit(t)}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          className="btn small ghost"
+                          type="button"
+                          onClick={() => startReset(t.id)}
+                        >
+                          Reinitialiser MDP
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {resetForId === t.id && (
+                {canManage && editForId === t.id && (
+                  <div className="edit-inline">
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, name: e.target.value }))
+                      }
+                      placeholder="Nom"
+                    />
+                    <input
+                      type="text"
+                      value={editForm.phone}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, phone: e.target.value }))
+                      }
+                      placeholder="Telephone"
+                    />
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, email: e.target.value }))
+                      }
+                      placeholder="Email"
+                    />
+                    <button
+                      className="btn small"
+                      type="button"
+                      onClick={() => submitEdit(t.id)}
+                      disabled={editLoading}
+                    >
+                      {editLoading ? "En cours..." : "Sauvegarder"}
+                    </button>
+                    <button
+                      className="btn small ghost"
+                      type="button"
+                      onClick={cancelEdit}
+                      disabled={editLoading}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                )}
+
+                {canManage && resetForId === t.id && (
                   <div className="reset-inline">
                     <input
                       type="password"

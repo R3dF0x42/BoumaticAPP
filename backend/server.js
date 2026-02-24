@@ -13,6 +13,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "coco";
 
 app.use(cors());
 app.use(express.json());
@@ -115,6 +116,43 @@ app.post("/api/technicians", async (req, res) => {
   }
 });
 
+app.put("/api/technicians/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const { name, phone, email } = req.body;
+  const safeName = name?.trim();
+  const safeEmail = email?.trim();
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant technicien invalide." });
+  }
+
+  if (!safeName) {
+    return res.status(400).json({ error: "Le nom du technicien est requis." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE technicians
+      SET name = $1,
+          phone = $2,
+          email = $3
+      WHERE id = $4
+      RETURNING id, name, phone, email
+      `,
+      [safeName, phone || null, safeEmail || null, id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Technicien introuvable." });
+    }
+
+    res.json({ technician: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put("/api/technicians/:id/password", async (req, res) => {
   const id = Number(req.params.id);
   const password = req.body?.password;
@@ -151,6 +189,26 @@ app.put("/api/technicians/:id/password", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.post("/api/auth/admin/login", async (req, res) => {
+  const password = req.body?.password;
+
+  if (!password) {
+    return res.status(400).json({ error: "Mot de passe admin requis." });
+  }
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Mot de passe admin invalide." });
+  }
+
+  res.json({
+    user: {
+      id: "admin",
+      name: "Admin",
+      role: "admin"
+    }
+  });
 });
 
 app.post("/api/auth/technician/login", async (req, res) => {
@@ -210,10 +268,11 @@ app.post("/api/auth/technician/login", async (req, res) => {
     }
 
     res.json({
-      technician: {
+      user: {
         id: technician.id,
         name: technician.name,
-        email: technician.email
+        email: technician.email,
+        role: "technician"
       }
     });
   } catch (err) {

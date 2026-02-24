@@ -196,6 +196,29 @@ body {
   margin: -8px 0 14px 0;
 }
 
+.auth-mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.auth-mode-btn {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: #0d1226;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.auth-mode-btn--active {
+  background: rgba(29, 111, 255, 0.18);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
@@ -941,13 +964,21 @@ body {
   gap: 6px;
 }
 
+.tech-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .reset-inline {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.reset-inline input {
+.reset-inline input,
+.edit-inline input {
   flex: 1;
   min-width: 180px;
   background: #050713;
@@ -955,6 +986,12 @@ body {
   border: 1px solid var(--border);
   padding: 8px;
   color: var(--text);
+}
+
+.edit-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .history-list {

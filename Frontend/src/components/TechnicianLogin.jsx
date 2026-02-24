@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 
 export default function TechnicianLogin({ apiUrl, onLogin }) {
+  const [mode, setMode] = useState("technician");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [bootstrapMode, setBootstrapMode] = useState(false);
@@ -30,7 +32,7 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
     checkBootstrap();
   }, [apiUrl]);
 
-  const loginWithCredentials = async (loginIdentifier, loginPassword) => {
+  const loginTechnician = async (loginIdentifier, loginPassword) => {
     const res = await fetch(`${apiUrl}/auth/technician/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,18 +48,48 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
       throw new Error(data.error || "Connexion impossible pour le moment.");
     }
 
-    onLogin(data.technician);
+    onLogin(data.user);
   };
 
-  const submitLogin = async (e) => {
+  const loginAdmin = async (loginPassword) => {
+    const res = await fetch(`${apiUrl}/auth/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: loginPassword })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data.error || "Connexion admin impossible.");
+    }
+
+    onLogin(data.user);
+  };
+
+  const submitTechLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      await loginWithCredentials(identifier, password);
+      await loginTechnician(identifier, password);
     } catch (err) {
       setError(err.message || "Connexion impossible pour le moment.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitAdminLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      await loginAdmin(adminPassword);
+    } catch (err) {
+      setError(err.message || "Connexion admin impossible.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +117,7 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
         throw new Error(data.error || "Creation du technicien impossible.");
       }
 
-      await loginWithCredentials(createForm.name, createForm.password);
+      await loginTechnician(createForm.name, createForm.password);
     } catch (err) {
       setError(err.message || "Creation du technicien impossible.");
     } finally {
@@ -118,7 +150,59 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
           <span className="brand-sub">Maintenance</span>
         </div>
 
-        {bootstrapMode ? (
+        <div className="auth-mode-switch">
+          <button
+            className={`auth-mode-btn ${
+              mode === "technician" ? "auth-mode-btn--active" : ""
+            }`}
+            type="button"
+            onClick={() => {
+              setMode("technician");
+              setError("");
+            }}
+          >
+            Technicien
+          </button>
+          <button
+            className={`auth-mode-btn ${mode === "admin" ? "auth-mode-btn--active" : ""}`}
+            type="button"
+            onClick={() => {
+              setMode("admin");
+              setError("");
+            }}
+          >
+            Admin
+          </button>
+        </div>
+
+        {mode === "admin" ? (
+          <>
+            <h1>Connexion admin</h1>
+            <p className="muted">Acces a la page Administration.</p>
+
+            <form className="login-form" onSubmit={submitAdminLogin}>
+              <label htmlFor="admin-password">Mot de passe admin</label>
+              <input
+                id="admin-password"
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+
+              {error && <p className="login-error">{error}</p>}
+
+              <button
+                className="btn new-intervention"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Connexion..." : "Se connecter (admin)"}
+              </button>
+            </form>
+          </>
+        ) : bootstrapMode ? (
           <>
             <h1>Premier technicien</h1>
             <p className="muted">Aucun compte detecte. Cree le premier acces.</p>
@@ -178,7 +262,7 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
               Compte existant sans mot de passe: utilise ton numero de telephone.
             </p>
 
-            <form className="login-form" onSubmit={submitLogin}>
+            <form className="login-form" onSubmit={submitTechLogin}>
               <label htmlFor="tech-identifier">Nom ou email</label>
               <input
                 id="tech-identifier"

@@ -8,7 +8,13 @@ import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
 
 const API_URL = "https://boumaticapp-production.up.railway.app/api";
-const TECH_SESSION_KEY = "boumatic-tech-session";
+const SESSION_KEY = "boumatic-user-session";
+
+function normalizeSession(rawSession) {
+  if (!rawSession) return null;
+  if (rawSession.role) return rawSession;
+  return { ...rawSession, role: "technician" };
+}
 
 export default function App() {
   const [interventions, setInterventions] = useState([]);
@@ -22,16 +28,18 @@ export default function App() {
   });
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [loggedTechnician, setLoggedTechnician] = useState(() => {
+  const [loggedUser, setLoggedUser] = useState(() => {
     if (typeof window === "undefined") return null;
-    const raw = window.localStorage.getItem(TECH_SESSION_KEY);
+    const raw = window.localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     try {
-      return JSON.parse(raw);
+      return normalizeSession(JSON.parse(raw));
     } catch {
       return null;
     }
   });
+
+  const isAdmin = loggedUser?.role === "admin";
 
   useEffect(() => {
     const open = () => setShowNewIntervention(true);
@@ -55,6 +63,12 @@ export default function App() {
       .then(setSelectedDetails)
       .catch(console.error);
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!isAdmin && currentPage === "admin") {
+      setCurrentPage("planning");
+    }
+  }, [isAdmin, currentPage]);
 
   const handleUpdateStatus = async (newStatus) => {
     if (!selectedId || !selectedDetails?.intervention) return;
@@ -90,25 +104,28 @@ export default function App() {
     if (isMobile) setShowDetailModal(true);
   };
 
-  const handleLogin = (technician) => {
-    setLoggedTechnician(technician);
+  const handleLogin = (userSession) => {
+    const normalized = normalizeSession(userSession);
+    setLoggedUser(normalized);
+    setCurrentPage(normalized?.role === "admin" ? "admin" : "planning");
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(TECH_SESSION_KEY, JSON.stringify(technician));
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(normalized));
     }
   };
 
   const handleLogout = () => {
-    setLoggedTechnician(null);
+    setLoggedUser(null);
     setSelectedId(null);
     setSelectedDetails(null);
     setShowNewIntervention(false);
     setShowDetailModal(false);
+    setCurrentPage("planning");
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(TECH_SESSION_KEY);
+      window.localStorage.removeItem(SESSION_KEY);
     }
   };
 
-  if (!loggedTechnician) {
+  if (!loggedUser) {
     return <TechnicianLogin apiUrl={API_URL} onLogin={handleLogin} />;
   }
 
@@ -123,7 +140,9 @@ export default function App() {
       </div>
 
       <div className="mobile-topbar-actions">
-        <span className="session-chip">{loggedTechnician.name}</span>
+        <span className="session-chip">
+          {isAdmin ? "Admin" : loggedUser.name}
+        </span>
         <select
           className="mobile-nav-select"
           value={currentPage}
@@ -131,7 +150,7 @@ export default function App() {
         >
           <option value="planning">Planning</option>
           <option value="clients">Clients</option>
-          <option value="technicians">Techniciens</option>
+          {isAdmin && <option value="admin">Administration</option>}
         </select>
         <button className="btn small ghost" type="button" onClick={handleLogout}>
           Deconnexion
@@ -153,7 +172,8 @@ export default function App() {
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             isMobile={isMobile}
-            loggedTechnician={loggedTechnician}
+            loggedUser={loggedUser}
+            isAdmin={isAdmin}
             onLogout={handleLogout}
           />
         )}
@@ -170,19 +190,23 @@ export default function App() {
         {!isMobile && (
           <>
             {currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
-            {currentPage === "technicians" && <TechniciansPage apiUrl={API_URL} />}
+            {currentPage === "admin" && isAdmin && (
+              <TechniciansPage apiUrl={API_URL} canManage />
+            )}
 
-            <DetailPanel
-              data={selectedDetails}
-              onUpdateStatus={handleUpdateStatus}
-              updatingStatus={updatingStatus}
-            />
+            {currentPage !== "admin" && (
+              <DetailPanel
+                data={selectedDetails}
+                onUpdateStatus={handleUpdateStatus}
+                updatingStatus={updatingStatus}
+              />
+            )}
           </>
         )}
 
         {isMobile && currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
-        {isMobile && currentPage === "technicians" && (
-          <TechniciansPage apiUrl={API_URL} />
+        {isMobile && currentPage === "admin" && isAdmin && (
+          <TechniciansPage apiUrl={API_URL} canManage />
         )}
       </div>
 

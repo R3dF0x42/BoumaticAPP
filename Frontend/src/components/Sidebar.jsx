@@ -10,13 +10,13 @@ export default function Sidebar({
   setCurrentPage,
   urgentCount,
   isMobile,
-  loggedTechnician,
+  loggedUser,
+  isAdmin,
   onLogout
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const safeDate = date || "";
-  const handleDateChange =
-    typeof setDate === "function" ? setDate : () => {};
+  const handleDateChange = typeof setDate === "function" ? setDate : () => {};
 
   useEffect(() => {
     setMobileOpen(false);
@@ -43,15 +43,14 @@ export default function Sidebar({
         Clients
       </button>
 
-      <button
-        className={
-          "nav-item " +
-          (currentPage === "technicians" ? "nav-item--active" : "")
-        }
-        onClick={() => setCurrentPage("technicians")}
-      >
-        Techniciens
-      </button>
+      {isAdmin && (
+        <button
+          className={"nav-item " + (currentPage === "admin" ? "nav-item--active" : "")}
+          onClick={() => setCurrentPage("admin")}
+        >
+          Administration
+        </button>
+      )}
     </>
   );
 
@@ -108,9 +107,9 @@ export default function Sidebar({
         <span className="brand-sub">Maintenance</span>
       </div>
 
-      {loggedTechnician && (
+      {loggedUser && (
         <div className="sidebar-section session-row">
-          <div className="session-chip">{loggedTechnician.name}</div>
+          <div className="session-chip">{isAdmin ? "Admin" : loggedUser.name}</div>
           <button className="btn small ghost session-logout" onClick={onLogout}>
             Deconnexion
           </button>
