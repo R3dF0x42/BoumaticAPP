@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { API_URL } from "../config/api.js";
 
 export default function GoogleCalendar() {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    fetch("https://boumaticapp-production.up.railway.app/api/google-calendar")
+    fetch(`${API_URL}/google-calendar`)
       .then(res => res.json())
       .then(setEvents)
       .catch(err => console.error("Google Calendar error :", err));

@@ -16,6 +16,14 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
     password: ""
   });
 
+  const mapFetchError = (err, fallbackMessage) => {
+    const msg = String(err?.message || "");
+    if (msg.toLowerCase().includes("failed to fetch")) {
+      return `Connexion API impossible (${apiUrl}).`;
+    }
+    return fallbackMessage;
+  };
+
   useEffect(() => {
     const checkBootstrap = async () => {
       try {
@@ -75,7 +83,7 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
     try {
       await loginTechnician(identifier, password);
     } catch (err) {
-      setError(err.message || "Connexion impossible pour le moment.");
+      setError(mapFetchError(err, err.message || "Connexion impossible pour le moment."));
     } finally {
       setLoading(false);
     }
@@ -89,7 +97,7 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
     try {
       await loginAdmin(adminPassword);
     } catch (err) {
-      setError(err.message || "Connexion admin impossible.");
+      setError(mapFetchError(err, err.message || "Connexion admin impossible."));
     } finally {
       setLoading(false);
     }
@@ -119,7 +127,7 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
 
       await loginTechnician(createForm.name, createForm.password);
     } catch (err) {
-      setError(err.message || "Creation du technicien impossible.");
+      setError(mapFetchError(err, err.message || "Creation du technicien impossible."));
     } finally {
       setLoading(false);
     }

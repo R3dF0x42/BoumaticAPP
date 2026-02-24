@@ -6,8 +6,8 @@ import ClientsPage from "./components/ClientsPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
 import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
+import { API_URL } from "./config/api.js";
 
-const API_URL = "https://boumaticapp-production.up.railway.app/api";
 const SESSION_KEY = "boumatic-user-session";
 
 function normalizeSession(rawSession) {
@@ -196,6 +196,7 @@ export default function App() {
 
             {currentPage !== "admin" && (
               <DetailPanel
+                apiUrl={API_URL}
                 data={selectedDetails}
                 onUpdateStatus={handleUpdateStatus}
                 updatingStatus={updatingStatus}
@@ -230,6 +231,7 @@ export default function App() {
               X
             </button>
             <DetailPanel
+              apiUrl={API_URL}
               data={selectedDetails}
               onUpdateStatus={handleUpdateStatus}
               updatingStatus={updatingStatus}

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-
-const API_BASE = "https://boumaticapp-production.up.railway.app/api";
+import { getApiOrigin } from "../config/api.js";
 
 export default function DetailPanel({
+  apiUrl,
   data,
   onAddNote,
   onUploadPhoto,
@@ -10,6 +10,7 @@ export default function DetailPanel({
   updatingStatus
 }) {
   const [note, setNote] = useState("");
+  const apiOrigin = (apiUrl || getApiOrigin()).replace(/\/api$/, "");
 
   if (!data) {
     return (
@@ -122,7 +123,7 @@ export default function DetailPanel({
           {photos.map((p) => (
             <div key={p.id} className="photo-item">
               <img
-                src={`${API_BASE}/uploads/${p.filename}`}
+                src={`${apiOrigin}/uploads/${p.filename}`}
                 alt="intervention"
               />
             </div>

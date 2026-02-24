@@ -3,8 +3,9 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import { API_URL } from "../config/api.js";
 
-const API = "https://boumaticapp-production.up.railway.app/api";
+const API = API_URL;
 
 const TECH_COLORS = [
   "#1d6fff",
