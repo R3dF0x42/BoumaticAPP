@@ -220,6 +220,16 @@ body {
   font-size: 12px;
 }
 
+.ok-message {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(34, 197, 94, 0.55);
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 8px;
+  color: #d6ffe5;
+  font-size: 12px;
+}
+
 .sidebar-section label {
   display: block;
   font-size: 12px;
@@ -892,6 +902,17 @@ body {
   background: #111320;
 }
 
+.table-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.table-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .table-row--clickable {
   cursor: pointer;
   border: 1px solid transparent;
@@ -911,6 +932,29 @@ body {
 
 .table-main {
   flex: 1;
+}
+
+.table-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.reset-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reset-inline input {
+  flex: 1;
+  min-width: 180px;
+  background: #050713;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 8px;
+  color: var(--text);
 }
 
 .history-list {

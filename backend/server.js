@@ -115,6 +115,44 @@ app.post("/api/technicians", async (req, res) => {
   }
 });
 
+app.put("/api/technicians/:id/password", async (req, res) => {
+  const id = Number(req.params.id);
+  const password = req.body?.password;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant technicien invalide." });
+  }
+
+  if (!password || password.length < 4) {
+    return res
+      .status(400)
+      .json({ error: "Le mot de passe doit contenir au moins 4 caracteres." });
+  }
+
+  const { salt, hash } = hashPassword(password);
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE technicians
+      SET password_salt = $1,
+          password_hash = $2
+      WHERE id = $3
+      RETURNING id
+      `,
+      [salt, hash, id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Technicien introuvable." });
+    }
+
+    res.json({ updated: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/auth/technician/login", async (req, res) => {
   const identifier = req.body?.identifier?.trim();
   const password = req.body?.password;
