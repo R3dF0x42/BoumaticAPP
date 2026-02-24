@@ -63,7 +63,18 @@ export default function ClientsPage({ apiUrl }) {
     setLoadingPhotos(true);
     try {
       const res = await fetch(`${apiUrl}/clients/${clientId}/photos`);
-      setClientPhotos(await res.json());
+      const data = await res.json().catch(() => []);
+
+      if (!res.ok) {
+        setClientPhotos([]);
+        setClientError(data.error || "Impossible de charger les photos client.");
+        return;
+      }
+
+      setClientPhotos(Array.isArray(data) ? data : []);
+    } catch {
+      setClientPhotos([]);
+      setClientError("Impossible de charger les photos client.");
     } finally {
       setLoadingPhotos(false);
     }
