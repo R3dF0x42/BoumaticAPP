@@ -640,7 +640,11 @@ app.post("/api/interventions/:id/notes", async (req, res) => {
 
 app.post("/api/interventions/:id/photos", upload.single("photo"), async (req, res) => {
   const intervention_id = req.params.id;
-  const filename = req.file.filename;
+  const filename = req.file?.filename;
+
+  if (!filename) {
+    return res.status(400).json({ error: "Aucun fichier recu." });
+  }
 
   try {
     const result = await pool.query(

@@ -99,6 +99,58 @@ export default function App() {
     }
   };
 
+  const handleAddNote = async (content) => {
+    if (!selectedId || !content?.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/interventions/${selectedId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          author: isAdmin ? "Admin" : loggedUser?.name || "Tech",
+          content: content.trim()
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur ajout note");
+      }
+
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+        (r) => r.json()
+      );
+      setSelectedDetails(refreshed);
+    } catch (e) {
+      console.error("Erreur ajout note :", e);
+      alert("Impossible d'ajouter la note pour le moment.");
+    }
+  };
+
+  const handleUploadPhoto = async (file) => {
+    if (!selectedId || !file) return;
+
+    const formData = new FormData();
+    formData.append("photo", file);
+
+    try {
+      const res = await fetch(`${API_URL}/interventions/${selectedId}/photos`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur upload photo");
+      }
+
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+        (r) => r.json()
+      );
+      setSelectedDetails(refreshed);
+    } catch (e) {
+      console.error("Erreur upload photo intervention :", e);
+      alert("Impossible d'ajouter la photo pour le moment.");
+    }
+  };
+
   const handleSelectEvent = (ev) => {
     setSelectedId(Number(ev.id));
     if (isMobile) setShowDetailModal(true);
@@ -198,6 +250,8 @@ export default function App() {
               <DetailPanel
                 apiUrl={API_URL}
                 data={selectedDetails}
+                onAddNote={handleAddNote}
+                onUploadPhoto={handleUploadPhoto}
                 onUpdateStatus={handleUpdateStatus}
                 updatingStatus={updatingStatus}
               />
@@ -233,6 +287,8 @@ export default function App() {
             <DetailPanel
               apiUrl={API_URL}
               data={selectedDetails}
+              onAddNote={handleAddNote}
+              onUploadPhoto={handleUploadPhoto}
               onUpdateStatus={handleUpdateStatus}
               updatingStatus={updatingStatus}
             />
