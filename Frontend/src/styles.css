@@ -822,6 +822,16 @@ body {
   cursor: pointer;
 }
 
+.mobile-create-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 14px 32px rgba(29, 111, 255, 0.35);
+}
+
 /* NAV MENU */
 
 .nav-menu {
@@ -1255,6 +1265,11 @@ body {
 
   .calendar-shell--mobile .calendar-zoom-wrapper {
     padding: 0 10px 12px 10px;
+  }
+
+  .mobile-create-fab {
+    right: 12px;
+    bottom: 12px;
   }
 }
 

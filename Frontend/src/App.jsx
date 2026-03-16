@@ -294,6 +294,16 @@ export default function App() {
         )}
       </div>
 
+      {isMobile && currentPage === "planning" && (
+        <button
+          className="btn mobile-create-fab"
+          type="button"
+          onClick={() => setShowNewIntervention(true)}
+        >
+          + Intervention
+        </button>
+      )}
+
       {showNewIntervention && (
         <NewIntervention
           onClose={() => setShowNewIntervention(false)}
