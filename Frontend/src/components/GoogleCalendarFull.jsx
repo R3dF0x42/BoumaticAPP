@@ -52,7 +52,8 @@ export default function GoogleCalendarFull({
     return window.innerWidth <= 768;
   });
   const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth <= 768 ? 0.9 : 1));
-  const mobileViewportHeight = "calc(var(--vh, 1vh) * 100)";
+  const mobileViewportHeight =
+    "clamp(280px, calc((var(--vh, 1vh) * 100) - 220px), 760px)";
 
   // ---- charge la semaine ----
   const loadWeek = (dateObj) => {
@@ -132,7 +133,7 @@ export default function GoogleCalendarFull({
   );
 
   const calendarKey = isMobile ? "calendar-mobile" : "calendar-desktop";
-  const calendarHeight = isMobile ? "100%" : "85vh";
+  const calendarHeight = isMobile ? mobileViewportHeight : "85vh";
 
   return (
     <div className={`page calendar-shell ${isMobile ? "calendar-shell--mobile" : ""}`}>

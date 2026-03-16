@@ -209,33 +209,47 @@ export default function App() {
     return <TechnicianLogin apiUrl={API_URL} onLogin={handleLogin} />;
   }
 
+  const mobilePages = [
+    { value: "planning", label: "Planning" },
+    { value: "clients", label: "Clients" },
+    ...(isAdmin ? [{ value: "admin", label: "Admin" }] : [])
+  ];
+
   const renderTopNavMobile = () => (
     <div className="mobile-topbar">
-      <div className="brand brand--inline">
-        <div className="brand-box">
-          <span className="brand-bou">Bou</span>
-          <span className="brand-matic">Matic</span>
+      <div className="mobile-topbar-main">
+        <div className="brand brand--inline">
+          <div className="brand-box">
+            <span className="brand-bou">Bou</span>
+            <span className="brand-matic">Matic</span>
+          </div>
+          <span className="brand-sub">Maintenance</span>
         </div>
-        <span className="brand-sub">Maintenance</span>
+
+        <div className="mobile-topbar-actions">
+          <span className="session-chip">
+            {isAdmin ? "Admin" : loggedUser.name}
+          </span>
+          <button className="btn small ghost" type="button" onClick={handleLogout}>
+            Deconnexion
+          </button>
+        </div>
       </div>
 
-      <div className="mobile-topbar-actions">
-        <span className="session-chip">
-          {isAdmin ? "Admin" : loggedUser.name}
-        </span>
-        <select
-          className="mobile-nav-select"
-          value={currentPage}
-          onChange={(e) => setCurrentPage(e.target.value)}
-        >
-          <option value="planning">Planning</option>
-          <option value="clients">Clients</option>
-          {isAdmin && <option value="admin">Administration</option>}
-        </select>
-        <button className="btn small ghost" type="button" onClick={handleLogout}>
-          Deconnexion
-        </button>
-      </div>
+      <nav className="mobile-page-tabs" aria-label="Navigation mobile">
+        {mobilePages.map((page) => (
+          <button
+            key={page.value}
+            className={`mobile-page-tab ${
+              currentPage === page.value ? "mobile-page-tab--active" : ""
+            }`}
+            type="button"
+            onClick={() => setCurrentPage(page.value)}
+          >
+            {page.label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 
