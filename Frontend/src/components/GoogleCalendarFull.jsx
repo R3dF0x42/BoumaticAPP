@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -47,13 +47,12 @@ export default function GoogleCalendarFull({
 }) {
   const [events, setEvents] = useState([]);
   const [currentStart, setCurrentStart] = useState(null);
+  const calendarWrapperRef = useRef(null);
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.innerWidth <= 768;
   });
-  const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth <= 768 ? 0.9 : 1));
-  const mobileViewportHeight =
-    "clamp(280px, calc((var(--vh, 1vh) * 100) - 220px), 760px)";
+  const [mobileViewportHeight, setMobileViewportHeight] = useState("100%");
 
   // ---- charge la semaine ----
   const loadWeek = (dateObj) => {
@@ -123,6 +122,27 @@ export default function GoogleCalendarFull({
     return () => window.removeEventListener("resize", setViewportVar);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateCalendarHeight = () => {
+      if (!isMobile || !calendarWrapperRef.current) {
+        setMobileViewportHeight("100%");
+        return;
+      }
+
+      const top = calendarWrapperRef.current.getBoundingClientRect().top;
+      const availableHeight = Math.max(320, Math.floor(window.innerHeight - top - 12));
+      setMobileViewportHeight(`${availableHeight}px`);
+    };
+
+    const scheduleUpdate = () => window.requestAnimationFrame(updateCalendarHeight);
+
+    scheduleUpdate();
+    window.addEventListener("resize", scheduleUpdate);
+    return () => window.removeEventListener("resize", scheduleUpdate);
+  }, [isMobile]);
+
   const headerToolbar = useMemo(
     () => ({
       left: "prev,next today",
@@ -138,33 +158,17 @@ export default function GoogleCalendarFull({
   return (
     <div className={`page calendar-shell ${isMobile ? "calendar-shell--mobile" : ""}`}>
       <div className="page-header">
-        <h2>Planning interventions</h2>
-        <p className="muted-small">Synchro Google Calendar</p>
-        <div className="calendar-zoom">
-          <button
-            type="button"
-            className="btn small ghost"
-            onClick={() => setZoom((z) => Math.max(0.7, parseFloat((z - 0.05).toFixed(2))))}
-          >
-            -
-          </button>
-          <span className="calendar-zoom-value">{Math.round(zoom * 100)}%</span>
-          <button
-            type="button"
-            className="btn small"
-            onClick={() => setZoom((z) => Math.min(1.15, parseFloat((z + 0.05).toFixed(2))))}
-          >
-            +
-          </button>
+        <div>
+          <h2>Planning interventions</h2>
+          <p className="muted-small">Synchro Google Calendar</p>
         </div>
       </div>
 
       <div
+        ref={calendarWrapperRef}
         className="calendar-zoom-wrapper"
         style={{
-          transform: isMobile ? undefined : `scale(${zoom})`,
-          transformOrigin: "top left",
-          width: isMobile ? "100%" : `${100 / zoom}%`,
+          width: "100%",
           height: isMobile ? mobileViewportHeight : "100%",
           maxHeight: isMobile ? mobileViewportHeight : "100%",
           minHeight: isMobile ? mobileViewportHeight : "100%"
