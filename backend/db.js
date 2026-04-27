@@ -127,6 +127,8 @@ async function initDB() {
 
     await client.query(`
       ALTER TABLE clients
+        ADD COLUMN IF NOT EXISTS gps_lat DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS gps_lng DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS commissioning_date DATE,
         ALTER COLUMN gps_lat TYPE DOUBLE PRECISION,
         ALTER COLUMN gps_lng TYPE DOUBLE PRECISION;

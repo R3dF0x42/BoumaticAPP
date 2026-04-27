@@ -1,0 +1,1501 @@
+{
+  "source": "fiche client robot.xlsx",
+  "clients": [
+    {
+      "name": "LA PAIX",
+      "responsible": "remi",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-03-05",
+          "piece": "accumulateur hydraulique",
+          "comment": "membrane hs suite à maintenance",
+          "technician": ""
+        },
+        {
+          "date": "2024-05-03",
+          "piece": "capteur precense vache",
+          "comment": "plus de detection box 1",
+          "technician": ""
+        },
+        {
+          "date": "2024-08-12",
+          "piece": "câble présence vache",
+          "comment": "manger par les souris",
+          "technician": ""
+        },
+        {
+          "date": "2024-08-22",
+          "piece": "encodeur z",
+          "comment": "saute en du verrin",
+          "technician": ""
+        },
+        {
+          "date": "2024-09-03",
+          "piece": "changement verrin prepa",
+          "comment": "l'aiment ne fonctionne plus",
+          "technician": ""
+        },
+        {
+          "date": "2024-09-02",
+          "piece": "contacteur du compresseur",
+          "comment": "hs",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-13",
+          "piece": "",
+          "comment": "panne electrovanne lavage principale box2 raccord pneumatiques cassé, remplacé",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-14",
+          "piece": "câble capteur vide arg arracher",
+          "comment": "changement câble capteur vide box 1",
+          "technician": ""
+        },
+        {
+          "date": "2025-11-12",
+          "piece": "capteur niveau box 1",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2026-03-03",
+          "piece": "encodeur Z",
+          "comment": "Sous garentie vu que les encodeurs sont dans la maintenance",
+          "technician": "alex"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-01-23",
+          "kit": "3"
+        },
+        {
+          "date": "2024-05-22",
+          "kit": "4"
+        },
+        {
+          "date": "2024-09-19",
+          "kit": "5"
+        },
+        {
+          "date": "2025-01-17",
+          "kit": "6"
+        },
+        {
+          "date": "2025-05-17",
+          "kit": "7"
+        },
+        {
+          "date": "2025-09-14",
+          "kit": "8"
+        },
+        {
+          "date": "2026-01-12",
+          "kit": "1"
+        },
+        {
+          "date": "2026-05-12",
+          "kit": "2"
+        },
+        {
+          "date": "2026-09-09",
+          "kit": "3"
+        }
+      ],
+      "todos": [
+        "tefon en haut"
+      ]
+    },
+    {
+      "name": "GARNIER",
+      "responsible": "remi",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-04-17",
+          "piece": "accumulateur hydraulique",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-05-30",
+          "piece": "encodeur z changé",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-12-29",
+          "piece": "verrin d'aimant gauche",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-02-05",
+          "piece": "teflon de doigt droit",
+          "comment": "",
+          "technician": "adrien"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-04-21",
+          "kit": "3"
+        },
+        {
+          "date": "2024-08-19",
+          "kit": "4"
+        },
+        {
+          "date": "2024-12-17",
+          "kit": "5"
+        },
+        {
+          "date": "2025-04-16",
+          "kit": "6"
+        },
+        {
+          "date": "2025-08-14",
+          "kit": "7"
+        },
+        {
+          "date": "2025-12-12",
+          "kit": "8"
+        },
+        {
+          "date": "2026-04-11",
+          "kit": "1"
+        },
+        {
+          "date": "2026-08-09",
+          "kit": "2"
+        },
+        {
+          "date": "2026-12-07",
+          "kit": "3"
+        },
+        {
+          "date": "2027-04-06",
+          "kit": "4"
+        }
+      ],
+      "todos": [
+        "vérin aimant gauche"
+      ]
+    },
+    {
+      "name": "CHEVROTIERE",
+      "responsible": "alexandre",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-02-15",
+          "piece": "changement câble camera et coupleur rj45",
+          "comment": "problème com camera 3d",
+          "technician": ""
+        },
+        {
+          "date": "2024-06-25",
+          "piece": "changement encodeur auge box 2",
+          "comment": "probleme vache position",
+          "technician": ""
+        },
+        {
+          "date": "2024-06-25",
+          "piece": "mise en essaie carte traite box 1",
+          "comment": "promeble branchement",
+          "technician": ""
+        },
+        {
+          "date": "2024-10-15",
+          "piece": "câble anti crash",
+          "comment": "manger par souris",
+          "technician": ""
+        },
+        {
+          "date": "2024-12-19",
+          "piece": "changement sonde à vide box 2 rr",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2024-12-21",
+          "piece": "changement courroie compresseur A67 1371",
+          "comment": "casser A67 1371",
+          "technician": ""
+        },
+        {
+          "date": "2025-06-12",
+          "piece": "capteurs de vide box 1 arrière droit",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-06-19",
+          "piece": "courroie d'encodeur y",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-07-12",
+          "piece": "encodeur z",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-07-14",
+          "piece": "Modeuter hydraulique désacouplé",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-09-03",
+          "piece": "résistance de chaudière",
+          "comment": "",
+          "technician": "Adrien"
+        },
+        {
+          "date": "2025-09-10",
+          "piece": "remplacement gaine tuyau tete robot",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-09-24",
+          "piece": "encodeur z remplacement par occasion de lucinge",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2026-02-02",
+          "piece": "capteur compteur de lait box 1",
+          "comment": "",
+          "technician": "Corentin"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-05-18",
+          "kit": "1"
+        },
+        {
+          "date": "2024-09-09",
+          "kit": "2"
+        },
+        {
+          "date": "2025-01-01",
+          "kit": "3"
+        },
+        {
+          "date": "2025-04-25",
+          "kit": "4"
+        },
+        {
+          "date": "2025-08-17",
+          "kit": "5"
+        },
+        {
+          "date": "2025-12-09",
+          "kit": "6"
+        },
+        {
+          "date": "2026-04-02",
+          "kit": "7"
+        },
+        {
+          "date": "2026-07-25",
+          "kit": "8"
+        },
+        {
+          "date": "2026-11-16",
+          "kit": "1"
+        },
+        {
+          "date": "2027-03-10",
+          "kit": "2"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "FAVERGE",
+      "responsible": "remi",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-04-04",
+          "piece": "garniture et roulement cardent",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2024-05-29",
+          "piece": "suppresion filtre compresseur",
+          "comment": "detendeur hs",
+          "technician": ""
+        },
+        {
+          "date": "2024-08-12",
+          "piece": "canne a lait faite en inox",
+          "comment": "probleme germe",
+          "technician": ""
+        },
+        {
+          "date": "2024-08-06",
+          "piece": "garniture pompe a lait tank tampon",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-02-19",
+          "piece": "capteur et cable anti crash",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-03-20",
+          "piece": "vanne eau chaude lavage prepa et eau froide lavage",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-05-06",
+          "piece": "soupape servo valve hs",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-05-07",
+          "piece": "verin de vanne coupe vide hs",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2026-01-29",
+          "piece": "electrovanne d'eau chaude de traite hs",
+          "comment": "",
+          "technician": "adrien"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-04-25",
+          "kit": "1"
+        },
+        {
+          "date": "2024-08-09",
+          "kit": "2"
+        },
+        {
+          "date": "2024-11-23",
+          "kit": "3"
+        },
+        {
+          "date": "2025-03-09",
+          "kit": "4"
+        },
+        {
+          "date": "2025-06-23",
+          "kit": "5"
+        },
+        {
+          "date": "2025-10-07",
+          "kit": "6"
+        },
+        {
+          "date": "2026-01-21",
+          "kit": "7"
+        },
+        {
+          "date": "2026-05-07",
+          "kit": "8"
+        },
+        {
+          "date": "2026-08-21",
+          "kit": "1"
+        },
+        {
+          "date": "2026-12-05",
+          "kit": "2"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "TERRON",
+      "responsible": "adrien",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2023-11-23",
+          "piece": "ordinateur",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2024-02-03",
+          "piece": "resistance chaudirere",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2024-03-20",
+          "piece": "moteur hydraulique",
+          "comment": "robot inondations",
+          "technician": ""
+        },
+        {
+          "date": "2024-03-27",
+          "piece": "batterie + chargeur",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2024-06-26",
+          "piece": "verrin de remonté de gobelet box2 avant droit",
+          "comment": "hs",
+          "technician": ""
+        },
+        {
+          "date": "2024-07-23",
+          "piece": "air filtrer",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2024-08-27",
+          "piece": "verrin doitg",
+          "comment": "pas de vis casser",
+          "technician": ""
+        },
+        {
+          "date": "2024-10-09",
+          "piece": "changement accu hydraulique",
+          "comment": "ne tien plus la pression",
+          "technician": ""
+        },
+        {
+          "date": "2025-04-15",
+          "piece": "câble et capteur anti crash",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-09-10",
+          "piece": "garniture box2 et vérification lavage",
+          "comment": "",
+          "technician": "Adrien"
+        },
+        {
+          "date": "2025-09-26",
+          "piece": "remise en état prepa",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-11-12",
+          "piece": "chenille sous le bras",
+          "comment": "hs",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-11-26",
+          "piece": "ev peroxyde prepa",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-02-07",
+          "piece": "rondelle restriction moteur rotaion et entretoise hs",
+          "comment": "",
+          "technician": "alex"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-04-01",
+          "kit": "1"
+        },
+        {
+          "date": "2024-07-30",
+          "kit": "2"
+        },
+        {
+          "date": "2024-11-27",
+          "kit": "3"
+        },
+        {
+          "date": "2025-03-27",
+          "kit": "4"
+        },
+        {
+          "date": "2025-07-25",
+          "kit": "5"
+        },
+        {
+          "date": "2025-11-22",
+          "kit": "6"
+        },
+        {
+          "date": "2026-03-22",
+          "kit": "7"
+        },
+        {
+          "date": "2026-07-20",
+          "kit": "8"
+        },
+        {
+          "date": "2026-11-17",
+          "kit": "1"
+        },
+        {
+          "date": "2027-03-17",
+          "kit": "2"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "BERNUIZET",
+      "responsible": "alexandre",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-07-01",
+          "piece": "kit garniture PAL",
+          "comment": "garniture HS",
+          "technician": ""
+        },
+        {
+          "date": "2024-12-10",
+          "piece": "changement antene rfid",
+          "comment": "mis en place nouveau rfid gemini up",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-11",
+          "piece": "boule azote + electrovanne",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-11-12",
+          "piece": "pince batman contrôle laitier",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2026-01-20",
+          "piece": "changement bage de rotation et visse",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-02-06",
+          "piece": "",
+          "comment": "Verrin de doigt sortie de son axe",
+          "technician": "Alex"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-04-15",
+          "kit": "1"
+        },
+        {
+          "date": "2024-08-13",
+          "kit": "2"
+        },
+        {
+          "date": "2024-12-11",
+          "kit": "3"
+        },
+        {
+          "date": "2025-04-10",
+          "kit": "4"
+        },
+        {
+          "date": "2025-08-08",
+          "kit": "5"
+        },
+        {
+          "date": "2025-12-06",
+          "kit": "6"
+        },
+        {
+          "date": "2026-04-05",
+          "kit": "7"
+        },
+        {
+          "date": "2026-08-03",
+          "kit": "8"
+        },
+        {
+          "date": "2026-12-01",
+          "kit": "1"
+        },
+        {
+          "date": "2027-03-31",
+          "kit": "2"
+        }
+      ],
+      "todos": [
+        "raccord pour verrin de doignt"
+      ]
+    },
+    {
+      "name": "HAUT BEJURE",
+      "responsible": "alexandre",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-01-21",
+          "piece": "refit",
+          "comment": "porte à finir",
+          "technician": ""
+        },
+        {
+          "date": "2025-09-30",
+          "piece": "niveau huile hydraulique 9l",
+          "comment": "fuite hydraupack",
+          "technician": "faye"
+        },
+        {
+          "date": "2025-10-23",
+          "piece": "changement distributeur hydraulique et verin de butée trie du lait",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-11-20",
+          "piece": "changement verin leve queu et leve queu",
+          "comment": "",
+          "technician": ""
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-12-01",
+          "kit": "1"
+        },
+        {
+          "date": "2025-04-01",
+          "kit": "2"
+        },
+        {
+          "date": "2025-08-01",
+          "kit": "3"
+        },
+        {
+          "date": "2025-12-01",
+          "kit": "4"
+        },
+        {
+          "date": "2026-04-01",
+          "kit": "5"
+        },
+        {
+          "date": "2026-08-01",
+          "kit": "6"
+        },
+        {
+          "date": "2026-12-01",
+          "kit": "1"
+        },
+        {
+          "date": "2027-04-01",
+          "kit": "2"
+        },
+        {
+          "date": "2027-08-01",
+          "kit": "3"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "4 ROUTES",
+      "responsible": "remi",
+      "commissioning_date": "2024-12-09",
+      "attention": "attention machon a facturer !!!",
+      "history": [
+        {
+          "date": "2025-01-21",
+          "piece": "carte jb5",
+          "comment": "carte hs",
+          "technician": ""
+        },
+        {
+          "date": "2025-04-17",
+          "piece": "moteur électrique pompe à vide",
+          "comment": "hs",
+          "technician": ""
+        },
+        {
+          "date": "2025-05-05",
+          "piece": "tuyau Pneumatiques et raccord taille 4",
+          "comment": "rotation de la tête ne fonctionner pas à la traite du à un tuyau perser dans la petite chenilles",
+          "technician": ""
+        },
+        {
+          "date": "2025-04-28",
+          "piece": "membrane coupe vide x16",
+          "comment": "suite a probleme de traite et de mamite",
+          "technician": ""
+        },
+        {
+          "date": "2025-06-04",
+          "piece": "moteur pompe a vide changer",
+          "comment": "cramer suite a trop faible fréquence mini 20hz",
+          "technician": ""
+        },
+        {
+          "date": "2025-07-28",
+          "piece": "dosatron segondaire",
+          "comment": "suite a demande du veterinaire",
+          "technician": ""
+        },
+        {
+          "date": "2025-07-09",
+          "piece": "capteur sang",
+          "comment": "remise en route des capteur box 2",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-07",
+          "piece": "verin z / charnière porte",
+          "comment": "dosatron monter à 1,5%",
+          "technician": ""
+        },
+        {
+          "date": "2025-09-14",
+          "piece": "2 moteur pompe a vide",
+          "comment": "réglage 6,6A",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-07-19",
+          "piece": "",
+          "comment": "prévoir clapet anti-retour lavage caméra contrôle capteur séparation",
+          "technician": ""
+        },
+        {
+          "date": "2025-10-13",
+          "piece": "",
+          "comment": "remplacement collier tuyau prepa",
+          "technician": ""
+        },
+        {
+          "date": "2025-12-17",
+          "piece": "capteur vache",
+          "comment": "changement capteur vache box1",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-01-01",
+          "piece": "verrin de doigts",
+          "comment": "changement des deux verrin de doigts",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-02-03",
+          "piece": "Contacteur de puissance pompe hydraulique",
+          "comment": "Remplacement contacteur de puissance pompe hydraulique",
+          "technician": "Alex"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2025-05-08",
+          "kit": "1"
+        },
+        {
+          "date": "2025-09-08",
+          "kit": "2"
+        },
+        {
+          "date": "2026-01-06",
+          "kit": "3"
+        },
+        {
+          "date": "2026-05-08",
+          "kit": "4"
+        },
+        {
+          "date": "2026-09-08",
+          "kit": "5"
+        },
+        {
+          "date": "2027-01-06",
+          "kit": "6"
+        },
+        {
+          "date": "2027-05-08",
+          "kit": "7"
+        },
+        {
+          "date": "2027-09-08",
+          "kit": "8"
+        }
+      ],
+      "todos": [
+        "garisseur bras"
+      ]
+    },
+    {
+      "name": "BOIS BERNARD",
+      "responsible": "alexandre",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2025-05-14",
+          "piece": "encodeur auge box 1",
+          "comment": "encodeur hs",
+          "technician": ""
+        },
+        {
+          "date": "2025-10-31",
+          "piece": "capteur de presence vache box1",
+          "comment": "hs",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-11-26",
+          "piece": "changent cable de camera jusqua l'armoir",
+          "comment": "",
+          "technician": "adrien"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2025-02-01",
+          "kit": "1"
+        },
+        {
+          "date": "2025-06-01",
+          "kit": "2"
+        },
+        {
+          "date": "2025-09-29",
+          "kit": "3"
+        },
+        {
+          "date": "2026-01-27",
+          "kit": "4"
+        },
+        {
+          "date": "2026-05-27",
+          "kit": "5"
+        },
+        {
+          "date": "2026-09-24",
+          "kit": "6"
+        },
+        {
+          "date": "2027-01-22",
+          "kit": "7"
+        },
+        {
+          "date": "2027-05-22",
+          "kit": "8"
+        },
+        {
+          "date": "2027-09-19",
+          "kit": "1"
+        },
+        {
+          "date": "2028-01-17",
+          "kit": "2"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "AS DE TREFLE",
+      "responsible": "benjamin",
+      "commissioning_date": "2025-07-22",
+      "attention": "",
+      "history": [
+        {
+          "date": "2025-08-04",
+          "piece": "graissage tiroire et réglage dessente gobelet",
+          "comment": "gobelet problème dessente",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-25",
+          "piece": "ajout 25l huile hydrobot",
+          "comment": "fuite verrin y",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-27",
+          "piece": "",
+          "comment": "reglage prise gobelet AV box 1 suite au probleme de prise des gobelets",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-26",
+          "piece": "changement verrin y",
+          "comment": "fuite huile",
+          "technician": ""
+        },
+        {
+          "date": "2025-09-25",
+          "piece": "garniture pompe à lait boxe 1 et 2",
+          "comment": "",
+          "technician": "remie"
+        },
+        {
+          "date": "2025-10-01",
+          "piece": "disjoncteur chauffage installé pompe revitalob",
+          "comment": "problème box 1 pompe a lait en attente voir si ça recommence",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-10-14",
+          "piece": "explication teach",
+          "comment": "",
+          "technician": "faye"
+        },
+        {
+          "date": "2025-10-14",
+          "piece": "tuyau jetters prépa",
+          "comment": "percé",
+          "technician": ""
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2025-10-23",
+          "kit": "1"
+        },
+        {
+          "date": "2026-01-22",
+          "kit": "2"
+        },
+        {
+          "date": "2026-04-23",
+          "kit": "3"
+        },
+        {
+          "date": "2026-07-23",
+          "kit": "4"
+        },
+        {
+          "date": "2026-10-22",
+          "kit": "5"
+        },
+        {
+          "date": "2027-01-21",
+          "kit": "6"
+        },
+        {
+          "date": "2027-04-22",
+          "kit": "7"
+        },
+        {
+          "date": "2027-07-22",
+          "kit": "8"
+        },
+        {
+          "date": "2027-10-21",
+          "kit": "1"
+        },
+        {
+          "date": "2028-01-20",
+          "kit": "2"
+        },
+        {
+          "date": "2028-04-20",
+          "kit": "3"
+        },
+        {
+          "date": "2028-07-20",
+          "kit": "4"
+        }
+      ],
+      "todos": [
+        "toit"
+      ]
+    },
+    {
+      "name": "ROCHE VIVE",
+      "responsible": "benjamin",
+      "commissioning_date": "2025-03-20",
+      "attention": "",
+      "history": [
+        {
+          "date": "2025-08-21",
+          "piece": "mise en place carte sim",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-08-27",
+          "piece": "probleme colza qui coule tout seul",
+          "comment": "mise en place de lair en continue dans le trape",
+          "technician": ""
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2025-08-28",
+          "kit": "0"
+        },
+        {
+          "date": "2025-12-28",
+          "kit": "1"
+        },
+        {
+          "date": "2026-04-30",
+          "kit": "2"
+        },
+        {
+          "date": "2026-08-28",
+          "kit": "3"
+        },
+        {
+          "date": "2025-12-28",
+          "kit": "4"
+        },
+        {
+          "date": "2026-09-24",
+          "kit": "5"
+        },
+        {
+          "date": "2027-08-28",
+          "kit": "6"
+        },
+        {
+          "date": "2027-12-28",
+          "kit": "1"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "LUCINGE",
+      "responsible": "alexandre",
+      "commissioning_date": null,
+      "gps_lat": 46.2970235,
+      "gps_lng": 5.3376311,
+      "attention": "",
+      "history": [
+        {
+          "date": "2025-07-07",
+          "piece": "pompe a vide changé",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-09-04",
+          "piece": "alim et donnée camera",
+          "comment": "ne pas remplacer cable camera robot de droite au kit 3",
+          "technician": ""
+        },
+        {
+          "date": "2025-11-14",
+          "piece": "camera robot 1",
+          "comment": "",
+          "technician": "adrein"
+        },
+        {
+          "date": "2025-12-01",
+          "piece": "ordi robot 2",
+          "comment": "",
+          "technician": "benjamin"
+        },
+        {
+          "date": "2026-01-21",
+          "piece": "ordi robit 1",
+          "comment": "",
+          "technician": "adrien"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2025-02-01",
+          "kit": "1"
+        },
+        {
+          "date": "2025-05-18",
+          "kit": "2"
+        },
+        {
+          "date": "2025-09-01",
+          "kit": "3"
+        },
+        {
+          "date": "2025-12-16",
+          "kit": "4"
+        },
+        {
+          "date": "2026-04-01",
+          "kit": "5"
+        },
+        {
+          "date": "2026-07-16",
+          "kit": "6"
+        },
+        {
+          "date": "2026-10-30",
+          "kit": "7"
+        },
+        {
+          "date": "2027-02-13",
+          "kit": "8"
+        },
+        {
+          "date": "2027-05-30",
+          "kit": "1"
+        },
+        {
+          "date": "2027-09-13",
+          "kit": "2"
+        },
+        {
+          "date": "2027-12-28",
+          "kit": "3"
+        }
+      ],
+      "todos": [
+        "flasque pompe à lait"
+      ]
+    },
+    {
+      "name": "ROCHEBELLE",
+      "responsible": "benjamin",
+      "commissioning_date": "2025-09-29",
+      "attention": "",
+      "history": [
+        {
+          "date": "2025-10-28",
+          "piece": "",
+          "comment": "réglage jetters et peson chambre de réception",
+          "technician": ""
+        },
+        {
+          "date": "2024-12-08",
+          "piece": "verrin x",
+          "comment": "fuite huile",
+          "technician": "faye"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2026-01-29",
+          "kit": "1"
+        },
+        {
+          "date": "2026-05-29",
+          "kit": "2"
+        },
+        {
+          "date": "2026-09-29",
+          "kit": "3"
+        },
+        {
+          "date": "2027-01-29",
+          "kit": "4"
+        },
+        {
+          "date": "2027-05-29",
+          "kit": "5"
+        },
+        {
+          "date": "2027-09-29",
+          "kit": "6"
+        },
+        {
+          "date": "2028-01-29",
+          "kit": "1"
+        },
+        {
+          "date": "2028-05-29",
+          "kit": "2"
+        },
+        {
+          "date": "2028-09-29",
+          "kit": "3"
+        }
+      ],
+      "todos": [
+        "changer l'ecran d'ordinateur du bureau car location sodiaal"
+      ]
+    },
+    {
+      "name": "COLLIERE",
+      "responsible": "adrien",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2025-10-02",
+          "piece": "",
+          "comment": "mise en dac",
+          "technician": "faye"
+        },
+        {
+          "date": "2025-10-06",
+          "piece": "mise en place propylene",
+          "comment": "",
+          "technician": "faye"
+        },
+        {
+          "date": "2025-10-06",
+          "piece": "soja déboucher",
+          "comment": "morceaux aliment",
+          "technician": "faye"
+        },
+        {
+          "date": "2025-10-15",
+          "piece": "vis soja défaite au moteur",
+          "comment": "pas de corp étranger pas d'explication",
+          "technician": "faye"
+        },
+        {
+          "date": "2025-10-29",
+          "piece": "mise en route vanne colostrum",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-11-17",
+          "piece": "changement pc",
+          "comment": "carte réseau hs",
+          "technician": "faye"
+        },
+        {
+          "date": "2025-11-22",
+          "piece": "problème lavage",
+          "comment": "encrassement fluxmetre",
+          "technician": "faye"
+        },
+        {
+          "date": "2026-01-23",
+          "piece": "spray perce",
+          "comment": "",
+          "technician": "adrien"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2026-02-27",
+          "kit": "1"
+        },
+        {
+          "date": "2026-06-27",
+          "kit": "2"
+        },
+        {
+          "date": "2026-10-27",
+          "kit": "3"
+        },
+        {
+          "date": "2027-02-27",
+          "kit": "4"
+        },
+        {
+          "date": "2027-06-27",
+          "kit": "5"
+        },
+        {
+          "date": "2027-10-27",
+          "kit": "6"
+        },
+        {
+          "date": "2028-02-27",
+          "kit": "1"
+        },
+        {
+          "date": "2028-06-27",
+          "kit": "2"
+        },
+        {
+          "date": "2028-10-27",
+          "kit": "3"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "CHANT DU BOIS",
+      "responsible": "benjamin",
+      "commissioning_date": null,
+      "gps_lat": 45.115076,
+      "gps_lng": 4.0632043,
+      "attention": "",
+      "history": [],
+      "maintenance_kits": [],
+      "todos": [
+        "plaque plexi"
+      ]
+    },
+    {
+      "name": "COTE DE MOULIS",
+      "responsible": "benjamin",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [],
+      "maintenance_kits": [],
+      "todos": []
+    },
+    {
+      "name": "ESCOFFIER",
+      "responsible": "adrien",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [],
+      "maintenance_kits": [],
+      "todos": []
+    },
+    {
+      "name": "GUERET",
+      "responsible": "adrien",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-03-11",
+          "piece": "câble anti crash",
+          "comment": "robot crash tout les 3j",
+          "technician": ""
+        },
+        {
+          "date": "2024-05-26",
+          "piece": "contacte marche arrêt compresseur",
+          "comment": "contacteur hs",
+          "technician": ""
+        },
+        {
+          "date": "2025-06-07",
+          "piece": "vanne coupe vide",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-07-01",
+          "piece": "remplacement bague pivot et rondelle du cardan qui était cassé",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2025-07-09",
+          "piece": "bobine electrovanne hydraulique",
+          "comment": "hs",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-10-23",
+          "piece": "16 membrane\n2 garniture \n4 tuyau de produit\n2 kit purge \n2kit compteur\nvérification chaudière \nrecharge azote\ncontrôle courroie\nhuile pompe a vide\nmachon 8x4 carre\n2 gobelet d'avance\n9 jetter\n2 kit filtre a lait\nkit lavage prepa",
+          "comment": "Entretien",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-02-12",
+          "piece": "electrovanne peroxyde gobelet de prépa",
+          "comment": "hs",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-02-12",
+          "piece": "verrin de doigt gauche",
+          "comment": "hs",
+          "technician": "adrien"
+        },
+        {
+          "date": "2026-03-17",
+          "piece": "joint vanne coupe vide box2",
+          "comment": "hs probleme echantillon de lait",
+          "technician": "corentin adrien"
+        }
+      ],
+      "maintenance_kits": [
+        {
+          "date": "2024-02-17",
+          "kit": "3"
+        },
+        {
+          "date": "2024-06-22",
+          "kit": "4"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "name": "PILAT 2",
+      "responsible": "adrien",
+      "commissioning_date": null,
+      "attention": "",
+      "history": [
+        {
+          "date": "2024-04-22",
+          "piece": "vidange hydraulique",
+          "comment": "",
+          "technician": ""
+        },
+        {
+          "date": "2024-04-26",
+          "piece": "changement cable com plc",
+          "comment": "perte com plc",
+          "technician": ""
+        },
+        {
+          "date": "2024-08-15",
+          "piece": "changement couroie enco y",
+          "comment": "manque dent",
+          "technician": ""
+        },
+        {
+          "date": "2025-05-26",
+          "piece": "",
+          "comment": "verrin cow track sortie de son axe circlips cassé",
+          "technician": ""
+        },
+        {
+          "date": "2025-06-26",
+          "piece": "changement verrin axe z",
+          "comment": "fuite huile",
+          "technician": "benjamin"
+        },
+        {
+          "date": "2025-07-30",
+          "piece": "changement garniture et manchon de 40",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-07-30",
+          "piece": "membrane x16",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-10-01",
+          "piece": "batterie recharge azote",
+          "comment": "",
+          "technician": "adrien"
+        },
+        {
+          "date": "2025-10-19",
+          "piece": "distributeur pneumatiques de la pince batman au dessus de la pompe a lait box2",
+          "comment": "",
+          "technician": "Adrien"
+        }
+      ],
+      "maintenance_kits": [],
+      "todos": []
+    }
+  ]
+}
