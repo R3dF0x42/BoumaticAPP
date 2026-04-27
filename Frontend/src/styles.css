@@ -568,6 +568,213 @@ textarea {
   font-weight: 700;
 }
 
+.mobile-agenda-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: visible;
+}
+
+.mobile-agenda-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 0;
+}
+
+.mobile-agenda-header h2 {
+  margin: 3px 0 0;
+  font-size: 22px;
+  line-height: 1.15;
+  text-transform: capitalize;
+}
+
+.mobile-agenda-count {
+  min-width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(44, 125, 255, 0.18);
+  border: 1px solid rgba(93, 139, 231, 0.42);
+  color: #fff;
+  font-weight: 800;
+}
+
+.mobile-agenda-nav {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+.mobile-agenda-nav-btn,
+.mobile-agenda-today,
+.mobile-day-pill,
+.mobile-agenda-card {
+  border: 1px solid rgba(116, 136, 179, 0.2);
+  color: var(--text);
+  background: rgba(9, 14, 25, 0.72);
+}
+
+.mobile-agenda-nav-btn,
+.mobile-agenda-today {
+  min-height: 42px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.mobile-agenda-today {
+  background: rgba(29, 111, 255, 0.16);
+}
+
+.mobile-agenda-week {
+  margin: -2px 16px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mobile-day-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.mobile-day-pill {
+  position: relative;
+  min-width: 0;
+  min-height: 72px;
+  border-radius: 16px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.mobile-day-pill span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobile-day-pill strong {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mobile-day-pill em {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--warn);
+  color: #170f03;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.mobile-day-pill--active {
+  border-color: rgba(73, 120, 220, 0.85);
+  background: linear-gradient(180deg, rgba(44, 125, 255, 0.32), rgba(14, 31, 62, 0.92));
+  box-shadow: 0 14px 30px rgba(29, 111, 255, 0.18);
+}
+
+.mobile-day-pill--active span {
+  color: #cfe0ff;
+}
+
+.mobile-agenda-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 18px;
+}
+
+.mobile-agenda-card {
+  width: 100%;
+  min-height: 92px;
+  border-radius: 18px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  text-align: left;
+  border-left: 5px solid var(--event-color, var(--accent));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
+}
+
+.mobile-agenda-time {
+  color: #dce8ff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.mobile-agenda-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-agenda-body strong {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.mobile-agenda-body span,
+.mobile-agenda-body small {
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.mobile-agenda-body small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.mobile-agenda-status {
+  grid-column: 2;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #dce8ff;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobile-agenda-empty {
+  min-height: 170px;
+  border: 1px dashed rgba(116, 136, 179, 0.32);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  color: var(--muted);
+  background: rgba(7, 12, 23, 0.5);
+}
+
+.mobile-agenda-empty strong {
+  color: var(--text);
+}
+
 /* -------- Detail panel -------- */
 
 .detail-panel {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -41,21 +41,45 @@ function getWeekRange(date) {
   return { start: fmt(monday), end: fmt(sunday) };
 }
 
+function formatDateKey(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).toLocaleDateString(
+    "fr-CA"
+  );
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getWeekDays(date) {
+  const { start } = getWeekRange(date);
+  const first = new Date(`${start}T00:00:00`);
+  return Array.from({ length: 7 }, (_, index) => addDays(first, index));
+}
+
+function formatEventTime(date) {
+  return new Date(date).toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 export default function GoogleCalendarFull({
   onSelectEvent,
   onInterventionsLoaded
 }) {
   const [events, setEvents] = useState([]);
   const [currentStart, setCurrentStart] = useState(null);
-  const calendarWrapperRef = useRef(null);
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.innerWidth <= 768;
   });
-  const [mobileViewportHeight, setMobileViewportHeight] = useState("100%");
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   // ---- charge la semaine ----
-  const loadWeek = (dateObj) => {
+  const loadWeek = useCallback((dateObj) => {
     if (!dateObj) return;
 
     setCurrentStart(dateObj);
@@ -80,6 +104,8 @@ export default function GoogleCalendarFull({
             extendedProps: {
               technician_name: inter.technician_name,
               description: inter.description,
+              status: inter.status,
+              priority: inter.priority,
               technician_id: inter.technician_id,
               duration_minutes: inter.duration_minutes
             }
@@ -90,17 +116,17 @@ export default function GoogleCalendarFull({
         onInterventionsLoaded && onInterventionsLoaded(data);
       })
       .catch((err) => console.error("Erreur chargement interventions :", err));
-  };
+  }, [onInterventionsLoaded]);
 
   // ---- refresh du calendrier externe (nouvelle intervention) ----
   useEffect(() => {
     const handler = () => {
-      if (currentStart) loadWeek(currentStart);
+      loadWeek(currentStart || selectedDate);
     };
 
     window.addEventListener("refreshCalendar", handler);
     return () => window.removeEventListener("refreshCalendar", handler);
-  }, [currentStart]);
+  }, [currentStart, loadWeek, selectedDate]);
 
   // ---- mode mobile ----
   useEffect(() => {
@@ -110,38 +136,9 @@ export default function GoogleCalendarFull({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ---- hauteur viewport mobile (gère la barre d'adresse) ----
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const setViewportVar = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty("--vh", `${vh}px`);
-    };
-    setViewportVar();
-    window.addEventListener("resize", setViewportVar);
-    return () => window.removeEventListener("resize", setViewportVar);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const updateCalendarHeight = () => {
-      if (!isMobile || !calendarWrapperRef.current) {
-        setMobileViewportHeight("100%");
-        return;
-      }
-
-      const top = calendarWrapperRef.current.getBoundingClientRect().top;
-      const availableHeight = Math.max(320, Math.floor(window.innerHeight - top - 12));
-      setMobileViewportHeight(`${availableHeight}px`);
-    };
-
-    const scheduleUpdate = () => window.requestAnimationFrame(updateCalendarHeight);
-
-    scheduleUpdate();
-    window.addEventListener("resize", scheduleUpdate);
-    return () => window.removeEventListener("resize", scheduleUpdate);
-  }, [isMobile]);
+    if (isMobile) loadWeek(selectedDate);
+  }, [isMobile, loadWeek, selectedDate]);
 
   const headerToolbar = useMemo(
     () => ({
@@ -152,11 +149,134 @@ export default function GoogleCalendarFull({
     [isMobile]
   );
 
-  const calendarKey = isMobile ? "calendar-mobile" : "calendar-desktop";
-  const calendarHeight = isMobile ? mobileViewportHeight : "85vh";
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
+  const selectedDateKey = formatDateKey(selectedDate);
+  const selectedDayEvents = useMemo(
+    () =>
+      events
+        .filter((event) => formatDateKey(event.start) === selectedDateKey)
+        .sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [events, selectedDateKey]
+  );
+
+  const selectedDateLabel = selectedDate.toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long"
+  });
+
+  const weekLabel = `${weekDays[0].toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short"
+  })} - ${weekDays[6].toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short"
+  })}`;
+
+  if (isMobile) {
+    return (
+      <div className="page calendar-shell calendar-shell--mobile mobile-agenda-shell">
+        <div className="mobile-agenda-header">
+          <div>
+            <p className="muted-small">Planning interventions</p>
+            <h2>{selectedDateLabel}</h2>
+          </div>
+          <span className="mobile-agenda-count">
+            {selectedDayEvents.length}
+          </span>
+        </div>
+
+        <div className="mobile-agenda-nav">
+          <button
+            type="button"
+            className="mobile-agenda-nav-btn"
+            onClick={() => setSelectedDate((date) => addDays(date, -7))}
+            aria-label="Semaine precedente"
+          >
+            {"<"}
+          </button>
+          <button
+            type="button"
+            className="mobile-agenda-today"
+            onClick={() => setSelectedDate(new Date())}
+          >
+            Aujourd'hui
+          </button>
+          <button
+            type="button"
+            className="mobile-agenda-nav-btn"
+            onClick={() => setSelectedDate((date) => addDays(date, 7))}
+            aria-label="Semaine suivante"
+          >
+            {">"}
+          </button>
+        </div>
+
+        <p className="mobile-agenda-week">{weekLabel}</p>
+
+        <div className="mobile-day-strip" aria-label="Jours de la semaine">
+          {weekDays.map((day) => {
+            const dayKey = formatDateKey(day);
+            const count = events.filter((event) => formatDateKey(event.start) === dayKey).length;
+            return (
+              <button
+                key={dayKey}
+                type="button"
+                className={`mobile-day-pill ${
+                  dayKey === selectedDateKey ? "mobile-day-pill--active" : ""
+                }`}
+                onClick={() => setSelectedDate(day)}
+              >
+                <span>
+                  {day.toLocaleDateString("fr-FR", { weekday: "short" })}
+                </span>
+                <strong>{day.getDate()}</strong>
+                {count > 0 && <em>{count}</em>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mobile-agenda-list">
+          {selectedDayEvents.map((event) => (
+            <button
+              key={event.id}
+              type="button"
+              className="mobile-agenda-card"
+              onClick={() => onSelectEvent && onSelectEvent(event)}
+              style={{ "--event-color": event.backgroundColor }}
+            >
+              <span className="mobile-agenda-time">
+                {formatEventTime(event.start)}
+              </span>
+              <span className="mobile-agenda-body">
+                <strong>{event.title}</strong>
+                <span>
+                  {event.extendedProps.technician_name || "Technicien non assigne"}
+                </span>
+                {event.extendedProps.description && (
+                  <small>{event.extendedProps.description}</small>
+                )}
+              </span>
+              <span className="mobile-agenda-status">
+                {event.extendedProps.priority || "Normale"}
+              </span>
+            </button>
+          ))}
+
+          {!selectedDayEvents.length && (
+            <div className="mobile-agenda-empty">
+              <strong>Aucune intervention</strong>
+              <span>Choisis un autre jour ou ajoute une intervention.</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={`page calendar-shell ${isMobile ? "calendar-shell--mobile" : ""}`}>
+    <div className="page calendar-shell">
       <div className="page-header">
         <div>
           <h2>Planning interventions</h2>
@@ -164,37 +284,27 @@ export default function GoogleCalendarFull({
         </div>
       </div>
 
-      <div
-        ref={calendarWrapperRef}
-        className="calendar-zoom-wrapper"
-        style={{
-          width: "100%",
-          height: isMobile ? mobileViewportHeight : "100%",
-          maxHeight: isMobile ? mobileViewportHeight : "100%",
-          minHeight: isMobile ? mobileViewportHeight : "100%"
-        }}
-      >
+      <div className="calendar-zoom-wrapper">
         <FullCalendar
-          key={calendarKey}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
           allDaySlot={false}
-          slotDuration={isMobile ? "01:00:00" : "00:30:00"}
-          slotMinTime={isMobile ? "06:00:00" : "00:00:00"}
-          slotMaxTime={isMobile ? "20:00:00" : "24:00:00"}
+          slotDuration="00:30:00"
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
           nowIndicator
           events={events}
           firstDay={1}
           locale="fr"
-          height={calendarHeight}
-          contentHeight={isMobile ? "100%" : "100%"}
+          height="85vh"
+          contentHeight="100%"
           handleWindowResize={false}
           dayHeaderFormat={{ weekday: "short", day: "numeric", month: "short" }}
           slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
           eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
           headerToolbar={headerToolbar}
           stickyHeaderDates
-          dayMaxEventRows={isMobile ? 3 : 4}
+          dayMaxEventRows={4}
           expandRows
           editable
           datesSet={(arg) => {
