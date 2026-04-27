@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: boumatic
+      POSTGRES_USER: boumatic
+      POSTGRES_PASSWORD: MotDePasseFort123
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DB_SSL: "false"
+      PORT: 4000
+      DATABASE_URL: postgres://boumatic:MotDePasseFort123@db:5432/boumatic
+    depends_on:
+      - db
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./Frontend
+      args:
+        VITE_API_URL: "http://135.125.199.51:4000/api"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:8080"

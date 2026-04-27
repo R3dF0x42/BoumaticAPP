@@ -1,0 +1,20 @@
+# Node
+node_modules/
+npm-debug.log
+
+# Build frontend
+Frontend/dist/
+
+# Docker volumes
+data/
+*.sql
+
+# Logs
+logs/
+*.log
+
+# Env
+.env
+
+# OS
+.DS_Store
