@@ -329,7 +329,6 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     start_at,
     end_at,
     frequency_months,
-    duration_minutes,
     priority,
     description
   } = req.body;
@@ -337,7 +336,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
   const startDate = parseLocalDateTime(start_at);
   const endDate = parseLocalDateTime(end_at);
   const safeFrequency = Number(frequency_months);
-  const safeDuration = Math.min(Math.max(Number(duration_minutes || 60), 15), 480);
+  const fullDayDurationMinutes = 1440;
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
     return res.status(400).json({ error: "Identifiant client invalide." });
@@ -380,7 +379,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
         formatDbDateTime(endDate),
         safeFrequency,
         dates.length,
-        safeDuration,
+        fullDayDurationMinutes,
         priority || "Normale",
         description || "Maintenance contrat"
       ]
@@ -407,7 +406,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
           "A FAIRE",
           priority || "Normale",
           baseDescription,
-          safeDuration,
+          fullDayDurationMinutes,
           planId,
           kitLabel
         ]

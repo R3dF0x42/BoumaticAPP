@@ -2544,8 +2544,7 @@ textarea {
     width: 100%;
   }
 
-  .maintenance-grid,
-  .maintenance-plan-item {
+  .maintenance-grid {
     grid-template-columns: 1fr;
   }
 

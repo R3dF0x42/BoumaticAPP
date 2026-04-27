@@ -226,7 +226,11 @@ export default function DetailPanel({
             <p className="muted-small">
               {new Date(intervention.scheduled_at).toLocaleString("fr-FR")}
               {intervention.duration_minutes
-                ? ` - ${intervention.duration_minutes} min`
+                ? ` - ${
+                    intervention.duration_minutes >= 1440
+                      ? "journee entiere"
+                      : `${intervention.duration_minutes} min`
+                  }`
                 : ""}
             </p>
             <p>{intervention.description}</p>

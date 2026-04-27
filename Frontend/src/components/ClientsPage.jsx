@@ -55,7 +55,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
-    duration_minutes: 90,
     priority: "Normale",
     description: "Maintenance contrat"
   });
@@ -415,7 +414,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             ? Number(maintenanceForm.technician_id)
             : null,
           frequency_months: Number(maintenanceForm.frequency_months),
-          duration_minutes: Number(maintenanceForm.duration_minutes)
         })
       });
 
@@ -472,7 +470,11 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               <span>{inter.technician_name || "Technicien inconnu"}</span>
               {inter.priority && <span>Priorite : {inter.priority}</span>}
               {inter.duration_minutes && (
-                <span>Duree : {inter.duration_minutes} min</span>
+                <span>
+                  Duree : {inter.duration_minutes >= 1440
+                    ? "journee entiere"
+                    : `${inter.duration_minutes} min`}
+                </span>
               )}
             </div>
             {inter.description && (
@@ -527,7 +529,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   : ""}
               </p>
               <p className="muted-small">
-                Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - {plan.duration_minutes} min chacune
+                Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - journee entiere
               </p>
             </div>
             <span className="pill pill-muted">
@@ -740,21 +742,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   required
                 />
               </div>
-              <div>
-                <label>Duree de chaque intervention (minutes)</label>
-                <input
-                  type="number"
-                  min="15"
-                  max="480"
-                  step="15"
-                  inputMode="numeric"
-                  value={maintenanceForm.duration_minutes}
-                  onChange={(e) =>
-                    setMaintenanceValue("duration_minutes", Number(e.target.value))
-                  }
-                  required
-                />
-              </div>
             </div>
 
             <label>Priorite</label>
@@ -774,7 +761,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             />
             <p className="muted-small">
               Le commentaire de chaque intervention indiquera automatiquement :
-              Maintenance Kit N°1 a N°6, puis retour au N°1.
+              Maintenance Kit N°1 a N°6, puis retour au N°1. Les interventions creees
+              sont prevues sur la journee entiere.
             </p>
 
             <button className="btn small" type="submit" disabled={creatingMaintenance}>
