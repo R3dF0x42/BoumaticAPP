@@ -75,6 +75,7 @@ async function initDB() {
         priority TEXT DEFAULT 'normal' NOT NULL,
         description TEXT,
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
+        maintenance_kit_label TEXT,
         google_event_id TEXT
       );
     `);
@@ -132,6 +133,7 @@ async function initDB() {
     await client.query(`
       ALTER TABLE interventions
         ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
+        ADD COLUMN IF NOT EXISTS maintenance_kit_label TEXT,
         ADD COLUMN IF NOT EXISTS google_event_id TEXT,
         ADD COLUMN IF NOT EXISTS maintenance_plan_id INTEGER,
         ALTER COLUMN status SET DEFAULT 'pending',

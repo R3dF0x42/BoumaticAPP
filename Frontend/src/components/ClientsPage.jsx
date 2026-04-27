@@ -768,7 +768,7 @@ export default function ClientsPage({ apiUrl }) {
               required
             />
             <p className="muted-small">
-              Une note sera ajoutee automatiquement dans chaque intervention :
+              Le commentaire de chaque intervention indiquera automatiquement :
               Maintenance Kit N°1 a N°6, puis retour au N°1.
             </p>
 

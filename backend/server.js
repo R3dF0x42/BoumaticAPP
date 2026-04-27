@@ -390,11 +390,14 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     const createdIds = [];
 
     for (const [index, date] of dates.entries()) {
+      const kitLabel = getMaintenanceKitLabel(index);
+      const baseDescription = description || "Maintenance contrat";
+
       const interventionResult = await pool.query(
         `
         INSERT INTO interventions
-          (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id, maintenance_kit_label)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
         RETURNING id
         `,
         [
@@ -403,21 +406,14 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
           formatDbDateTime(date),
           "A FAIRE",
           priority || "Normale",
-          description || "Maintenance contrat",
+          baseDescription,
           safeDuration,
-          planId
+          planId,
+          kitLabel
         ]
       );
       const interventionId = interventionResult.rows[0].id;
       createdIds.push(interventionId);
-
-      await pool.query(
-        `
-        INSERT INTO notes (intervention_id, author, content)
-        VALUES ($1,$2,$3)
-        `,
-        [interventionId, "Maintenance automatique", getMaintenanceKitLabel(index)]
-      );
     }
 
     for (const interventionId of createdIds) {
@@ -686,6 +682,7 @@ app.get("/api/interventions/:id", async (req, res) => {
         i.priority,
         i.description,
         i.duration_minutes,
+        i.maintenance_kit_label,
         c.name AS client_name,
         c.address,
         c.gps_lat,

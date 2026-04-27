@@ -109,7 +109,8 @@ export default function GoogleCalendarFull({
               status: inter.status,
               priority: inter.priority,
               technician_id: inter.technician_id,
-              duration_minutes: inter.duration_minutes
+              duration_minutes: inter.duration_minutes,
+              maintenance_kit_label: inter.maintenance_kit_label
             }
           };
         });
@@ -310,6 +311,11 @@ export default function GoogleCalendarFull({
                 {event.extendedProps.description && (
                   <small>{event.extendedProps.description}</small>
                 )}
+                {event.extendedProps.maintenance_kit_label && (
+                  <em className="mobile-agenda-kit">
+                    {event.extendedProps.maintenance_kit_label}
+                  </em>
+                )}
               </span>
               <span className="mobile-agenda-status">
                 {event.extendedProps.status || "A FAIRE"} · {event.extendedProps.priority || "Normale"}
@@ -355,6 +361,18 @@ export default function GoogleCalendarFull({
           dayHeaderFormat={{ weekday: "short", day: "numeric", month: "short" }}
           slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
           eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+          eventContent={(info) => (
+            <div className="fc-event-inner-custom">
+              <strong>
+                {info.timeText} {info.event.title}
+              </strong>
+              {info.event.extendedProps.maintenance_kit_label && (
+                <span className="fc-maintenance-tag">
+                  {info.event.extendedProps.maintenance_kit_label}
+                </span>
+              )}
+            </div>
+          )}
           headerToolbar={headerToolbar}
           stickyHeaderDates
           dayMaxEventRows={4}

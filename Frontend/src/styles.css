@@ -807,6 +807,41 @@ textarea {
   -webkit-box-orient: vertical;
 }
 
+.mobile-agenda-kit,
+.fc-maintenance-tag {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 196, 107, 0.55);
+  background: linear-gradient(135deg, rgba(255, 196, 107, 0.24), rgba(243, 139, 26, 0.34));
+  color: #ffe4b5;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 5px 8px;
+}
+
+.fc-event-inner-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.fc-event-inner-custom strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-maintenance-tag {
+  color: #1b1305;
+  background: linear-gradient(135deg, #ffd37a, #f38b1a);
+  border-color: rgba(255, 218, 145, 0.8);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
 .mobile-agenda-status {
   grid-column: 2;
   width: fit-content;
