@@ -87,16 +87,6 @@ export default function NewIntervention({ onClose, onCreated }) {
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="mobile-detail-nav mobile-detail-nav--modal">
-          <button
-            className="btn small ghost"
-            onClick={onClose}
-            type="button"
-          >
-            {"<- Retour planning"}
-          </button>
-        </div>
-
         <div className="modal-header">
           <div className="modal-title-block">
             <h2>Nouvelle intervention</h2>
@@ -104,6 +94,14 @@ export default function NewIntervention({ onClose, onCreated }) {
               Planifier une visite en quelques champs.
             </p>
           </div>
+          <button
+            className="modal-close modal-close--inline"
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+          >
+            X
+          </button>
         </div>
 
         <form className="modal-form" onSubmit={submit}>
