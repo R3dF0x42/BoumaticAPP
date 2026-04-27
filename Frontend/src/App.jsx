@@ -369,13 +369,20 @@ export default function App() {
       {isMobile && showDetailModal && selectedDetails && (
         <div className="modal detail-modal">
           <div className="modal-box modal-box--large">
-            <div className="mobile-detail-nav">
+            <div className="modal-header intervention-modal-header">
+              <div className="modal-title-block">
+                <h2>Intervention</h2>
+                <p className="muted-small">
+                  Consulter, modifier ou supprimer cette intervention.
+                </p>
+              </div>
               <button
-                className="btn small ghost"
+                className="modal-close modal-close--inline"
                 onClick={() => setShowDetailModal(false)}
                 type="button"
+                aria-label="Fermer"
               >
-                {"<- Retour planning"}
+                X
               </button>
             </div>
             <DetailPanel

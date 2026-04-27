@@ -61,7 +61,7 @@ export default function NewIntervention({ onClose, onCreated }) {
 
     const payload = {
       client_id: Number(form.client_id),
-      technician_id: Number(form.technician_id),
+      technician_id: form.technician_id ? Number(form.technician_id) : null,
       scheduled_at: `${form.scheduled_date} ${startTime}:00`,
       priority: form.priority,
       status: form.status,
@@ -87,6 +87,16 @@ export default function NewIntervention({ onClose, onCreated }) {
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="mobile-detail-nav mobile-detail-nav--modal">
+          <button
+            className="btn small ghost"
+            onClick={onClose}
+            type="button"
+          >
+            {"<- Retour planning"}
+          </button>
+        </div>
+
         <div className="modal-header">
           <div className="modal-title-block">
             <h2>Nouvelle intervention</h2>
@@ -94,14 +104,6 @@ export default function NewIntervention({ onClose, onCreated }) {
               Planifier une visite en quelques champs.
             </p>
           </div>
-          <button
-            className="modal-close modal-close--inline"
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer"
-          >
-            X
-          </button>
         </div>
 
         <form className="modal-form" onSubmit={submit}>
@@ -123,9 +125,8 @@ export default function NewIntervention({ onClose, onCreated }) {
           <select
             value={form.technician_id}
             onChange={(e) => setValue("technician_id", e.target.value)}
-            required
           >
-            <option value="">Selectionner</option>
+            <option value="">Affecter plus tard</option>
             {techs.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}

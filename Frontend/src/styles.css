@@ -2497,7 +2497,11 @@ textarea {
     background: transparent;
     border: none;
     box-shadow: none;
-    padding: 2px 2px 104px;
+    padding: 0 2px 104px;
+  }
+
+  .intervention-modal-header {
+    margin-bottom: 12px;
   }
 
   .detail-modal .modal-close {
@@ -2518,6 +2522,10 @@ textarea {
   .mobile-detail-nav .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .mobile-detail-nav--modal {
+    margin: -4px 0 12px;
   }
 
   .modal {
