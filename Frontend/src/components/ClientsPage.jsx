@@ -46,6 +46,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [editingMaintenance, setEditingMaintenance] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
+  const [deletingClient, setDeletingClient] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [techFilter, setTechFilter] = useState("all");
@@ -257,7 +258,12 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   };
 
   useEffect(() => {
-    if (clients.length && !selectedClientId) {
+    if (!clients.length) {
+      setSelectedClientId(null);
+      return;
+    }
+
+    if (!selectedClientId || !clients.some((client) => client.id === selectedClientId)) {
       setSelectedClientId(clients[0].id);
     }
   }, [clients, selectedClientId]);
@@ -335,6 +341,72 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     });
   };
 
+  const formatDateOnly = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("fr-FR");
+  };
+
+  const hasExactGps = (client) =>
+    client?.gps_lat !== null &&
+    client?.gps_lat !== undefined &&
+    client?.gps_lng !== null &&
+    client?.gps_lng !== undefined;
+
+  const getClientInterventionCount = (clientId) =>
+    interventions.filter((intervention) => intervention.client_id === clientId).length;
+
+  const renderClientBadges = (client, { showMissingRobot = false } = {}) => {
+    const badges = [];
+
+    if (client.robot_model) {
+      badges.push(
+        <span key="robot" className="client-badge client-badge--robot">
+          Robot {client.robot_model}
+        </span>
+      );
+    } else if (showMissingRobot) {
+      badges.push(
+        <span key="robot" className="client-badge client-badge--muted">
+          Robot non renseigne
+        </span>
+      );
+    }
+
+    if (client.commissioning_date) {
+      badges.push(
+        <span key="commissioning" className="client-badge client-badge--date">
+          Mise en service {formatDateOnly(client.commissioning_date)}
+        </span>
+      );
+    }
+
+    if (hasExactGps(client)) {
+      badges.push(
+        <span key="gps" className="client-badge client-badge--gps">
+          GPS exact
+        </span>
+      );
+    } else if (client.address) {
+      badges.push(
+        <span key="address" className="client-badge client-badge--muted">
+          Adresse
+        </span>
+      );
+    }
+
+    if (client.phone) {
+      badges.push(
+        <span key="phone" className="client-badge client-badge--phone">
+          Tel {client.phone}
+        </span>
+      );
+    }
+
+    return badges;
+  };
+
   const getInitials = (name) => {
     if (!name) return "?";
     return name
@@ -378,6 +450,45 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     setIsEditingClient(false);
     setClientError("");
     setClientInfo("");
+  };
+
+  const handleDeleteClient = async () => {
+    if (!selectedClient?.id || deletingClient) return;
+
+    const confirmed = window.confirm(
+      `Supprimer le client "${selectedClient.name}" et toutes ses interventions, contrats et photos ?`
+    );
+    if (!confirmed) return;
+
+    setClientError("");
+    setClientInfo("");
+    setDeletingClient(true);
+
+    try {
+      const res = await fetch(`${apiUrl}/clients/${selectedClient.id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setClientError(data.error || "Impossible de supprimer le client.");
+        return;
+      }
+
+      setClientInfo("Client supprime.");
+      setMode("list");
+      setIsEditingClient(false);
+      setClientPhotos([]);
+      setMaintenancePlans([]);
+      setSelectedClientId(null);
+      await loadClients();
+      await loadInterventions();
+      window.dispatchEvent(new Event("refreshCalendar"));
+    } catch {
+      setClientError("Impossible de supprimer le client.");
+    } finally {
+      setDeletingClient(false);
+    }
   };
 
   const handleUploadClientPhoto = async (file) => {
@@ -783,6 +894,12 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     const mapTarget = getClientMapTarget(selectedClient);
     const hasMapTarget = Boolean(mapTarget);
     const initials = getInitials(selectedClient.name);
+    const nextMaintenanceDate = maintenancePlans
+      .map((plan) => plan.next_scheduled_at)
+      .filter(Boolean)
+      .map((date) => new Date(date))
+      .filter((date) => !Number.isNaN(date.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
 
     return (
       <>
@@ -804,6 +921,14 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             >
               {isEditingClient ? "Annuler edition" : "Modifier client"}
             </button>
+            <button
+              className="btn small danger"
+              onClick={handleDeleteClient}
+              type="button"
+              disabled={deletingClient}
+            >
+              {deletingClient ? "Suppression..." : "Supprimer client"}
+            </button>
             <button className="btn small ghost" onClick={() => setMode("list")} type="button">
               {"<- Retour liste"}
             </button>
@@ -821,18 +946,10 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                 <strong>{selectedClient.name}</strong>
               </div>
               <div className="client-tags">
-                {selectedClient.robot_model && (
-                  <span className="pill">Robot : {selectedClient.robot_model}</span>
-                )}
-                {selectedClient.commissioning_date && (
-                  <span className="pill pill-muted">
-                    Mise en service : {new Date(selectedClient.commissioning_date).toLocaleDateString("fr-FR")}
-                  </span>
-                )}
-                {selectedClient.phone && (
-                  <span className="pill pill-muted">{selectedClient.phone}</span>
-                )}
-                {hasMapTarget && <span className="pill pill-muted">GPS ok</span>}
+                {renderClientBadges(selectedClient, { showMissingRobot: true })}
+                <span className="client-badge client-badge--maintenance">
+                  {maintenancePlans.length} contrat(s)
+                </span>
               </div>
             </div>
             <div className="client-actions">
@@ -850,6 +967,21 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   Ouvrir carte
                 </button>
               )}
+            </div>
+          </div>
+
+          <div className="client-kpi-grid">
+            <div className="client-kpi">
+              <span>Interventions</span>
+              <strong>{historyForClient.length}</strong>
+            </div>
+            <div className="client-kpi">
+              <span>Contrats</span>
+              <strong>{maintenancePlans.length}</strong>
+            </div>
+            <div className="client-kpi">
+              <span>Prochaine maintenance</span>
+              <strong>{nextMaintenanceDate ? formatDate(nextMaintenanceDate) : "Aucune"}</strong>
             </div>
           </div>
 
@@ -1174,27 +1306,34 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
           <div className="table">
             {filteredClients.map((c) => {
               const mapTarget = getClientMapTarget(c);
+              const badges = renderClientBadges(c);
+              const interventionCount = getClientInterventionCount(c.id);
               return (
               <div
                 key={c.id}
-                className={`table-row table-row--clickable ${
+                className={`table-row table-row--clickable client-list-row ${
                   selectedClientId === c.id ? "table-row--active" : ""
                 }`}
                 onClick={() => handleSelectClient(c.id)}
               >
-                <div className="table-main">
-                  <strong>{c.name}</strong>
-                  <div className="muted-small">{c.address}</div>
-                  <div className="muted-small">
-                    {c.robot_model && `Robot : ${c.robot_model}`}
+                <div className="client-list-avatar">{getInitials(c.name)}</div>
+                <div className="table-main client-list-main">
+                  <div className="client-list-title">
+                    <strong>{c.name}</strong>
+                    <span>{interventionCount} inter.</span>
                   </div>
-                  {c.commissioning_date && (
-                    <div className="muted-small">
-                      Mise en service : {new Date(c.commissioning_date).toLocaleDateString("fr-FR")}
-                    </div>
-                  )}
+                  {c.address && <div className="muted-small">{c.address}</div>}
+                  <div className="client-tags client-tags--compact">
+                    {badges.length ? (
+                      badges
+                    ) : (
+                      <span className="client-badge client-badge--muted">
+                        Infos a completer
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="table-side">
+                <div className="table-side client-list-actions">
                   {mapTarget ? (
                     <button
                       className="btn small ghost"
@@ -1210,8 +1349,12 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                     <div className="muted-small">GPS ?</div>
                   )}
                   {c.phone && (
-                    <a className="muted-small" href={`tel:${c.phone}`}>
-                      {c.phone}
+                    <a
+                      className="btn small ghost"
+                      href={`tel:${c.phone}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Appeler
                     </a>
                   )}
                 </div>

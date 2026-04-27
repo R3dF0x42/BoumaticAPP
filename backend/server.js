@@ -53,6 +53,20 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 app.use("/uploads", express.static(uploadsDir));
 
+async function deleteUploadedFiles(filenames = []) {
+  const uniqueNames = [...new Set(filenames.filter(Boolean).map((name) => path.basename(name)))];
+
+  for (const filename of uniqueNames) {
+    try {
+      await fs.promises.unlink(path.join(uploadsDir, filename));
+    } catch (err) {
+      if (err.code !== "ENOENT") {
+        console.error("Impossible de supprimer le fichier upload:", err.message);
+      }
+    }
+  }
+}
+
 /* ----------------------- CLIENTS ----------------------- */
 
 app.get("/api/clients", async (req, res) => {
@@ -124,6 +138,56 @@ app.put("/api/clients/:id", async (req, res) => {
     res.json({ client: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/clients/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  const dbClient = await pool.connect();
+
+  try {
+    await dbClient.query("BEGIN");
+
+    const existing = await dbClient.query(
+      "SELECT id FROM clients WHERE id = $1",
+      [id]
+    );
+
+    if (!existing.rows.length) {
+      await dbClient.query("ROLLBACK");
+      return res.status(404).json({ error: "Client introuvable." });
+    }
+
+    const files = await dbClient.query(
+      `
+      SELECT filename
+      FROM client_photos
+      WHERE client_id = $1
+      UNION
+      SELECT p.filename
+      FROM photos p
+      INNER JOIN interventions i ON p.intervention_id = i.id
+      WHERE i.client_id = $1
+      `,
+      [id]
+    );
+
+    await dbClient.query("DELETE FROM clients WHERE id = $1", [id]);
+    await dbClient.query("COMMIT");
+
+    await deleteUploadedFiles(files.rows.map((row) => row.filename));
+
+    res.json({ deleted: true });
+  } catch (err) {
+    await dbClient.query("ROLLBACK");
+    res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
