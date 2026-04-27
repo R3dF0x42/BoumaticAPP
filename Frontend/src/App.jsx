@@ -210,9 +210,9 @@ export default function App() {
   }
 
   const mobilePages = [
-    { value: "planning", label: "Planning" },
-    { value: "clients", label: "Clients" },
-    ...(isAdmin ? [{ value: "admin", label: "Admin" }] : [])
+    { value: "planning", label: "Planning", short: "Plan" },
+    { value: "clients", label: "Clients", short: "Clients" },
+    ...(isAdmin ? [{ value: "admin", label: "Admin", short: "Admin" }] : [])
   ];
 
   const renderTopNavMobile = () => (
@@ -236,21 +236,24 @@ export default function App() {
         </div>
       </div>
 
-      <nav className="mobile-page-tabs" aria-label="Navigation mobile">
-        {mobilePages.map((page) => (
-          <button
-            key={page.value}
-            className={`mobile-page-tab ${
-              currentPage === page.value ? "mobile-page-tab--active" : ""
-            }`}
-            type="button"
-            onClick={() => setCurrentPage(page.value)}
-          >
-            {page.label}
-          </button>
-        ))}
-      </nav>
     </div>
+  );
+
+  const renderBottomNavMobile = () => (
+    <nav className="mobile-bottom-nav" aria-label="Navigation principale">
+      {mobilePages.map((page) => (
+        <button
+          key={page.value}
+          className={`mobile-bottom-tab ${
+            currentPage === page.value ? "mobile-bottom-tab--active" : ""
+          }`}
+          type="button"
+          onClick={() => setCurrentPage(page.value)}
+        >
+          <span>{page.short}</span>
+        </button>
+      ))}
+    </nav>
   );
 
   return (
@@ -317,6 +320,8 @@ export default function App() {
           + Intervention
         </button>
       )}
+
+      {isMobile && renderBottomNavMobile()}
 
       {showNewIntervention && (
         <NewIntervention

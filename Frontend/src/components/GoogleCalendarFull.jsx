@@ -72,6 +72,7 @@ export default function GoogleCalendarFull({
 }) {
   const [events, setEvents] = useState([]);
   const [currentStart, setCurrentStart] = useState(null);
+  const [mobileFilter, setMobileFilter] = useState("all");
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.innerWidth <= 768;
@@ -158,6 +159,24 @@ export default function GoogleCalendarFull({
         .sort((a, b) => a.start.getTime() - b.start.getTime()),
     [events, selectedDateKey]
   );
+  const visibleDayEvents = useMemo(() => {
+    if (mobileFilter === "all") return selectedDayEvents;
+    return selectedDayEvents.filter((event) => {
+      const status = String(event.extendedProps.status || "").toLowerCase();
+      const priority = String(event.extendedProps.priority || "").toLowerCase();
+      if (mobileFilter === "urgent") return priority.includes("urgent");
+      if (mobileFilter === "done") return status.includes("termine");
+      if (mobileFilter === "open") return !status.includes("termine");
+      return true;
+    });
+  }, [mobileFilter, selectedDayEvents]);
+
+  const openCount = selectedDayEvents.filter(
+    (event) => !String(event.extendedProps.status || "").toLowerCase().includes("termine")
+  ).length;
+  const urgentCount = selectedDayEvents.filter((event) =>
+    String(event.extendedProps.priority || "").toLowerCase().includes("urgent")
+  ).length;
 
   const selectedDateLabel = selectedDate.toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -183,6 +202,21 @@ export default function GoogleCalendarFull({
           </div>
           <span className="mobile-agenda-count">
             {selectedDayEvents.length}
+          </span>
+        </div>
+
+        <div className="mobile-agenda-summary">
+          <span>
+            <strong>{openCount}</strong>
+            a faire
+          </span>
+          <span>
+            <strong>{urgentCount}</strong>
+            urgent
+          </span>
+          <span>
+            <strong>{selectedDayEvents.length}</strong>
+            total
           </span>
         </div>
 
@@ -237,8 +271,26 @@ export default function GoogleCalendarFull({
           })}
         </div>
 
+        <div className="mobile-agenda-filters" aria-label="Filtres planning">
+          {[
+            ["all", "Tout"],
+            ["open", "A faire"],
+            ["urgent", "Urgent"],
+            ["done", "Termine"]
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={mobileFilter === value ? "mobile-filter--active" : ""}
+              onClick={() => setMobileFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="mobile-agenda-list">
-          {selectedDayEvents.map((event) => (
+          {visibleDayEvents.map((event) => (
             <button
               key={event.id}
               type="button"
@@ -259,15 +311,15 @@ export default function GoogleCalendarFull({
                 )}
               </span>
               <span className="mobile-agenda-status">
-                {event.extendedProps.priority || "Normale"}
+                {event.extendedProps.status || "A FAIRE"} · {event.extendedProps.priority || "Normale"}
               </span>
             </button>
           ))}
 
-          {!selectedDayEvents.length && (
+          {!visibleDayEvents.length && (
             <div className="mobile-agenda-empty">
               <strong>Aucune intervention</strong>
-              <span>Choisis un autre jour ou ajoute une intervention.</span>
+              <span>Change de jour, retire le filtre ou ajoute une intervention.</span>
             </div>
           )}
         </div>

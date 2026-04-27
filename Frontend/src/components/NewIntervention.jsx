@@ -3,13 +3,20 @@ import { API_URL } from "../config/api.js";
 
 const API = API_URL;
 
+function getDefaultDateTime() {
+  const date = new Date();
+  date.setMinutes(Math.ceil(date.getMinutes() / 15) * 15, 0, 0);
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 export default function NewIntervention({ onClose, onCreated }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
   const [form, setForm] = useState({
     client_id: "",
     technician_id: "",
-    scheduled_at: "",
+    scheduled_at: getDefaultDateTime(),
     priority: "Normale",
     status: "A FAIRE",
     description: "",
@@ -115,6 +122,18 @@ export default function NewIntervention({ onClose, onCreated }) {
           />
 
           <label>Duree (minutes)</label>
+          <div className="duration-presets" aria-label="Durees rapides">
+            {[30, 60, 90, 120].map((duration) => (
+              <button
+                key={duration}
+                type="button"
+                className={form.duration_minutes === duration ? "duration-preset--active" : ""}
+                onClick={() => setValue("duration_minutes", duration)}
+              >
+                {duration} min
+              </button>
+            ))}
+          </div>
           <input
             type="number"
             value={form.duration_minutes}

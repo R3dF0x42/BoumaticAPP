@@ -12,6 +12,7 @@ export default function ClientsPage({ apiUrl }) {
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
+  const [clientSearch, setClientSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [techFilter, setTechFilter] = useState("all");
   const [mode, setMode] = useState("list"); // list | detail
@@ -166,6 +167,18 @@ export default function ClientsPage({ apiUrl }) {
     () => clients.find((c) => c.id === selectedClientId),
     [clients, selectedClientId]
   );
+
+  const filteredClients = useMemo(() => {
+    const term = clientSearch.trim().toLowerCase();
+    if (!term) return clients;
+    return clients.filter((client) =>
+      `${client.name || ""} ${client.address || ""} ${client.phone || ""} ${
+        client.robot_model || ""
+      }`
+        .toLowerCase()
+        .includes(term)
+    );
+  }, [clientSearch, clients]);
 
   useEffect(() => {
     if (!selectedClient) return;
@@ -611,9 +624,9 @@ export default function ClientsPage({ apiUrl }) {
     <>
     <section className="page">
       <div className="page-header">
-        <div>
-          <h2>Clients</h2>
-          <p className="muted-small">Liste cliquable + fiche detail</p>
+          <div>
+            <h2>Clients</h2>
+          <p className="muted-small">{clients.length} clients enregistres</p>
         </div>
         <button
           className="btn small"
@@ -667,8 +680,16 @@ export default function ClientsPage({ apiUrl }) {
 
         <div className="card">
           <h3>Liste des clients</h3>
+          <div className="mobile-search-row">
+            <input
+              type="search"
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              placeholder="Rechercher ferme, ville, robot, telephone"
+            />
+          </div>
           <div className="table">
-            {clients.map((c) => {
+            {filteredClients.map((c) => {
               const mapTarget = getClientMapTarget(c);
               return (
               <div
@@ -709,7 +730,7 @@ export default function ClientsPage({ apiUrl }) {
               </div>
               );
             })}
-            {!clients.length && (
+            {!filteredClients.length && (
               <div className="muted-small">Aucun client enregistre</div>
             )}
           </div>
