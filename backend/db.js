@@ -99,6 +99,21 @@ async function initDB() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS client_maintenance_plans (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        technician_id INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
+        start_at TIMESTAMP NOT NULL,
+        frequency_months INTEGER NOT NULL,
+        occurrences INTEGER NOT NULL,
+        duration_minutes INTEGER DEFAULT 60 NOT NULL,
+        priority TEXT DEFAULT 'Normale' NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS client_photos (
         id SERIAL PRIMARY KEY,
         client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
@@ -117,6 +132,7 @@ async function initDB() {
       ALTER TABLE interventions
         ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
         ADD COLUMN IF NOT EXISTS google_event_id TEXT,
+        ADD COLUMN IF NOT EXISTS maintenance_plan_id INTEGER,
         ALTER COLUMN status SET DEFAULT 'pending',
         ALTER COLUMN priority SET DEFAULT 'normal';
       UPDATE interventions SET duration_minutes = 60 WHERE duration_minutes IS NULL;
@@ -130,6 +146,21 @@ async function initDB() {
     `);
 
     await client.query(`
+      ALTER TABLE client_maintenance_plans
+        ADD COLUMN IF NOT EXISTS technician_id INTEGER,
+        ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
+        ADD COLUMN IF NOT EXISTS priority TEXT,
+        ADD COLUMN IF NOT EXISTS description TEXT;
+      UPDATE client_maintenance_plans SET duration_minutes = 60 WHERE duration_minutes IS NULL;
+      UPDATE client_maintenance_plans SET priority = 'Normale' WHERE priority IS NULL;
+      ALTER TABLE client_maintenance_plans
+        ALTER COLUMN duration_minutes SET DEFAULT 60,
+        ALTER COLUMN duration_minutes SET NOT NULL,
+        ALTER COLUMN priority SET DEFAULT 'Normale',
+        ALTER COLUMN priority SET NOT NULL;
+    `);
+
+    await client.query(`
       DO $$
       BEGIN
         ALTER TABLE interventions DROP CONSTRAINT IF EXISTS interventions_client_id_fkey;
@@ -137,6 +168,9 @@ async function initDB() {
 
         ALTER TABLE interventions DROP CONSTRAINT IF EXISTS interventions_technician_id_fkey;
         ALTER TABLE interventions ADD CONSTRAINT interventions_technician_id_fkey FOREIGN KEY (technician_id) REFERENCES technicians(id) ON DELETE SET NULL;
+
+        ALTER TABLE interventions DROP CONSTRAINT IF EXISTS interventions_maintenance_plan_id_fkey;
+        ALTER TABLE interventions ADD CONSTRAINT interventions_maintenance_plan_id_fkey FOREIGN KEY (maintenance_plan_id) REFERENCES client_maintenance_plans(id) ON DELETE SET NULL;
 
         ALTER TABLE notes DROP CONSTRAINT IF EXISTS notes_intervention_id_fkey;
         ALTER TABLE notes ADD CONSTRAINT notes_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES interventions(id) ON DELETE CASCADE;
@@ -146,6 +180,12 @@ async function initDB() {
 
         ALTER TABLE client_photos DROP CONSTRAINT IF EXISTS client_photos_client_id_fkey;
         ALTER TABLE client_photos ADD CONSTRAINT client_photos_client_id_fkey FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE;
+
+        ALTER TABLE client_maintenance_plans DROP CONSTRAINT IF EXISTS client_maintenance_plans_client_id_fkey;
+        ALTER TABLE client_maintenance_plans ADD CONSTRAINT client_maintenance_plans_client_id_fkey FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE;
+
+        ALTER TABLE client_maintenance_plans DROP CONSTRAINT IF EXISTS client_maintenance_plans_technician_id_fkey;
+        ALTER TABLE client_maintenance_plans ADD CONSTRAINT client_maintenance_plans_technician_id_fkey FOREIGN KEY (technician_id) REFERENCES technicians(id) ON DELETE SET NULL;
       END
       $$;
     `);
@@ -175,6 +215,8 @@ async function initDB() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_interventions_client_id ON interventions(client_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_technician_id ON interventions(technician_id);
+      CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_plan_id ON interventions(maintenance_plan_id);
+      CREATE INDEX IF NOT EXISTS idx_client_maintenance_plans_client_id ON client_maintenance_plans(client_id);
       CREATE INDEX IF NOT EXISTS idx_notes_intervention_id ON notes(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_photos_intervention_id ON photos(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_client_photos_client_id ON client_photos(client_id);

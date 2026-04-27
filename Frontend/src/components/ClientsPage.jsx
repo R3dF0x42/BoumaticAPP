@@ -2,14 +2,25 @@ import React, { useEffect, useMemo, useState } from "react";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 
+function getDefaultMaintenanceDateTime() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 export default function ClientsPage({ apiUrl }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [clientPhotos, setClientPhotos] = useState([]);
+  const [maintenancePlans, setMaintenancePlans] = useState([]);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+  const [creatingMaintenance, setCreatingMaintenance] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
@@ -32,6 +43,15 @@ export default function ClientsPage({ apiUrl }) {
     address: "",
     phone: "",
     robot_model: ""
+  });
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    technician_id: "",
+    start_at: getDefaultMaintenanceDateTime(),
+    frequency_months: 6,
+    occurrences: 4,
+    duration_minutes: 90,
+    priority: "Normale",
+    description: "Maintenance contrat"
   });
   const apiOrigin = apiUrl.replace(/\/api$/, "");
 
@@ -113,6 +133,32 @@ export default function ClientsPage({ apiUrl }) {
     }
   };
 
+  const loadMaintenancePlans = async (clientId) => {
+    if (!clientId) {
+      setMaintenancePlans([]);
+      return;
+    }
+
+    setLoadingMaintenance(true);
+    try {
+      const res = await fetch(`${apiUrl}/clients/${clientId}/maintenance-plans`);
+      const data = await res.json().catch(() => []);
+
+      if (!res.ok) {
+        setMaintenancePlans([]);
+        setClientError(data.error || "Impossible de charger les maintenances.");
+        return;
+      }
+
+      setMaintenancePlans(Array.isArray(data) ? data : []);
+    } catch {
+      setMaintenancePlans([]);
+      setClientError("Impossible de charger les maintenances.");
+    } finally {
+      setLoadingMaintenance(false);
+    }
+  };
+
   useEffect(() => {
     loadClients();
     loadInterventions();
@@ -125,6 +171,10 @@ export default function ClientsPage({ apiUrl }) {
 
   const setEditValue = (field, value) => {
     setEditForm((f) => ({ ...f, [field]: value }));
+  };
+
+  const setMaintenanceValue = (field, value) => {
+    setMaintenanceForm((f) => ({ ...f, [field]: value }));
   };
 
   const submit = async (e) => {
@@ -193,6 +243,7 @@ export default function ClientsPage({ apiUrl }) {
   useEffect(() => {
     if (!selectedClientId) return;
     loadClientPhotos(selectedClientId);
+    loadMaintenancePlans(selectedClientId);
   }, [selectedClientId]);
 
   const historyForClient = useMemo(() => {
@@ -340,6 +391,47 @@ export default function ClientsPage({ apiUrl }) {
     }
   };
 
+  const submitMaintenancePlan = async (e) => {
+    e.preventDefault();
+    if (!selectedClient?.id) return;
+
+    setClientError("");
+    setClientInfo("");
+    setCreatingMaintenance(true);
+
+    try {
+      const res = await fetch(`${apiUrl}/clients/${selectedClient.id}/maintenance-plans`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...maintenanceForm,
+          technician_id: maintenanceForm.technician_id
+            ? Number(maintenanceForm.technician_id)
+            : null,
+          frequency_months: Number(maintenanceForm.frequency_months),
+          occurrences: Number(maintenanceForm.occurrences),
+          duration_minutes: Number(maintenanceForm.duration_minutes)
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setClientError(data.error || "Impossible de programmer la maintenance.");
+        return;
+      }
+
+      setClientInfo(`${data.count || 0} intervention(s) de maintenance creee(s).`);
+      await loadMaintenancePlans(selectedClient.id);
+      await loadInterventions();
+      window.dispatchEvent(new Event("refreshCalendar"));
+    } catch {
+      setClientError("Impossible de programmer la maintenance.");
+    } finally {
+      setCreatingMaintenance(false);
+    }
+  };
+
   const renderHistory = () => {
     if (!selectedClientId) {
       return <div className="muted-small">Selectionnez un client.</div>;
@@ -402,6 +494,37 @@ export default function ClientsPage({ apiUrl }) {
       </select>
     </div>
   );
+
+  const renderMaintenancePlans = () => {
+    if (loadingMaintenance) {
+      return <p className="muted-small">Chargement des contrats...</p>;
+    }
+
+    if (!maintenancePlans.length) {
+      return <p className="muted-small">Aucun contrat de maintenance programme.</p>;
+    }
+
+    return (
+      <div className="maintenance-plan-list">
+        {maintenancePlans.map((plan) => (
+          <div key={plan.id} className="maintenance-plan-item">
+            <div>
+              <strong>Tous les {plan.frequency_months} mois</strong>
+              <p className="muted-small">
+                {plan.generated_count} intervention(s) creee(s)
+                {plan.next_scheduled_at
+                  ? ` - Prochaine: ${formatDate(plan.next_scheduled_at)}`
+                  : ""}
+              </p>
+            </div>
+            <span className="pill pill-muted">
+              {plan.technician_name || "Technicien libre"}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   if (mode === "detail" && selectedClient) {
     const mapTarget = getClientMapTarget(selectedClient);
@@ -554,6 +677,99 @@ export default function ClientsPage({ apiUrl }) {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="card">
+          <h3>Contrat de maintenance</h3>
+          <form className="maintenance-form" onSubmit={submitMaintenancePlan}>
+            <label>Technicien</label>
+            <select
+              value={maintenanceForm.technician_id}
+              onChange={(e) => setMaintenanceValue("technician_id", e.target.value)}
+            >
+              <option value="">Affecter plus tard</option>
+              {technicians.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+
+            <label>Premier passage</label>
+            <input
+              type="datetime-local"
+              value={maintenanceForm.start_at}
+              onChange={(e) => setMaintenanceValue("start_at", e.target.value)}
+              required
+            />
+
+            <label>Frequence</label>
+            <select
+              value={maintenanceForm.frequency_months}
+              onChange={(e) =>
+                setMaintenanceValue("frequency_months", Number(e.target.value))
+              }
+            >
+              <option value={1}>Tous les mois</option>
+              <option value={3}>Tous les 3 mois</option>
+              <option value={6}>Tous les 6 mois</option>
+              <option value={12}>Tous les ans</option>
+            </select>
+
+            <div className="maintenance-grid">
+              <div>
+                <label>Nombre de passages</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="36"
+                  inputMode="numeric"
+                  value={maintenanceForm.occurrences}
+                  onChange={(e) =>
+                    setMaintenanceValue("occurrences", Number(e.target.value))
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label>Duree</label>
+                <input
+                  type="number"
+                  min="15"
+                  max="480"
+                  step="15"
+                  inputMode="numeric"
+                  value={maintenanceForm.duration_minutes}
+                  onChange={(e) =>
+                    setMaintenanceValue("duration_minutes", Number(e.target.value))
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <label>Priorite</label>
+            <select
+              value={maintenanceForm.priority}
+              onChange={(e) => setMaintenanceValue("priority", e.target.value)}
+            >
+              <option>Normale</option>
+              <option>Urgente</option>
+            </select>
+
+            <label>Description</label>
+            <textarea
+              value={maintenanceForm.description}
+              onChange={(e) => setMaintenanceValue("description", e.target.value)}
+              required
+            />
+
+            <button className="btn small" type="submit" disabled={creatingMaintenance}>
+              {creatingMaintenance ? "Creation..." : "Programmer les maintenances"}
+            </button>
+          </form>
+
+          {renderMaintenancePlans()}
         </div>
 
         <div className="card">

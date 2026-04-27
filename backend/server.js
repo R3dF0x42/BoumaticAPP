@@ -223,6 +223,184 @@ app.delete("/api/clients/:clientId/photos/:photoId", async (req, res) => {
   }
 });
 
+/* ----------------------- MAINTENANCE PLANS ----------------------- */
+
+function parseLocalDateTime(value) {
+  if (!value) return null;
+  const date = new Date(String(value).replace(" ", "T"));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function addMonthsClamped(date, monthsToAdd) {
+  const next = new Date(date);
+  const originalDay = next.getDate();
+  next.setDate(1);
+  next.setMonth(next.getMonth() + monthsToAdd);
+  const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+  next.setDate(Math.min(originalDay, lastDay));
+  return next;
+}
+
+function formatDbDateTime(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function buildMaintenanceDates(startAt, frequencyMonths, occurrences) {
+  return Array.from({ length: occurrences }, (_, index) =>
+    index === 0 ? startAt : addMonthsClamped(startAt, frequencyMonths * index)
+  );
+}
+
+async function attachGoogleEvent(interventionId) {
+  const detail = await pool.query(
+    `
+    SELECT i.*, c.name AS client_name
+    FROM interventions i
+    LEFT JOIN clients c ON i.client_id = c.id
+    WHERE i.id = $1
+    `,
+    [interventionId]
+  );
+
+  const intervention = detail.rows[0];
+  if (!intervention) return;
+
+  try {
+    const googleEventId = await createGoogleEvent(intervention);
+    if (googleEventId) {
+      await pool.query(
+        `UPDATE interventions
+         SET google_event_id = $1
+         WHERE id = $2`,
+        [googleEventId, interventionId]
+      );
+    }
+  } catch (e) {
+    console.error("Erreur création event Google:", e.message);
+  }
+}
+
+app.get("/api/clients/:id/maintenance-plans", async (req, res) => {
+  const clientId = Number(req.params.id);
+
+  if (!Number.isInteger(clientId) || clientId <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT mp.*,
+             t.name AS technician_name,
+             COUNT(i.id)::int AS generated_count,
+             MIN(i.scheduled_at) FILTER (WHERE i.scheduled_at >= NOW()) AS next_scheduled_at
+      FROM client_maintenance_plans mp
+      LEFT JOIN technicians t ON mp.technician_id = t.id
+      LEFT JOIN interventions i ON i.maintenance_plan_id = mp.id
+      WHERE mp.client_id = $1
+      GROUP BY mp.id, t.name
+      ORDER BY mp.created_at DESC
+      `,
+      [clientId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
+  const clientId = Number(req.params.id);
+  const {
+    technician_id,
+    start_at,
+    frequency_months,
+    occurrences,
+    duration_minutes,
+    priority,
+    description
+  } = req.body;
+
+  const startDate = parseLocalDateTime(start_at);
+  const safeFrequency = Number(frequency_months);
+  const safeOccurrences = Math.min(Math.max(Number(occurrences || 1), 1), 36);
+  const safeDuration = Math.min(Math.max(Number(duration_minutes || 60), 15), 480);
+
+  if (!Number.isInteger(clientId) || clientId <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  if (!startDate) {
+    return res.status(400).json({ error: "Date de début invalide." });
+  }
+
+  if (![1, 3, 6, 12].includes(safeFrequency)) {
+    return res.status(400).json({ error: "Fréquence de maintenance invalide." });
+  }
+
+  try {
+    const planResult = await pool.query(
+      `
+      INSERT INTO client_maintenance_plans
+        (client_id, technician_id, start_at, frequency_months, occurrences, duration_minutes, priority, description)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING id
+      `,
+      [
+        clientId,
+        technician_id || null,
+        formatDbDateTime(startDate),
+        safeFrequency,
+        safeOccurrences,
+        safeDuration,
+        priority || "Normale",
+        description || "Maintenance contrat"
+      ]
+    );
+
+    const planId = planResult.rows[0].id;
+    const dates = buildMaintenanceDates(startDate, safeFrequency, safeOccurrences);
+    const createdIds = [];
+
+    for (const date of dates) {
+      const interventionResult = await pool.query(
+        `
+        INSERT INTO interventions
+          (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        RETURNING id
+        `,
+        [
+          clientId,
+          technician_id || null,
+          formatDbDateTime(date),
+          "A FAIRE",
+          priority || "Normale",
+          description || "Maintenance contrat",
+          safeDuration,
+          planId
+        ]
+      );
+      createdIds.push(interventionResult.rows[0].id);
+    }
+
+    for (const interventionId of createdIds) {
+      await attachGoogleEvent(interventionId);
+    }
+
+    res.status(201).json({
+      id: planId,
+      intervention_ids: createdIds,
+      count: createdIds.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ----------------------- TECHNICIANS ----------------------- */
 
 app.get("/api/technicians", async (req, res) => {
