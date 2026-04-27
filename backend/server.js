@@ -254,6 +254,10 @@ function buildMaintenanceDates(startAt, frequencyMonths, occurrences) {
   );
 }
 
+function getMaintenanceKitLabel(index) {
+  return `Maintenance Kit N°${(index % 6) + 1}`;
+}
+
 async function attachGoogleEvent(interventionId) {
   const detail = await pool.query(
     `
@@ -365,7 +369,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     const dates = buildMaintenanceDates(startDate, safeFrequency, safeOccurrences);
     const createdIds = [];
 
-    for (const date of dates) {
+    for (const [index, date] of dates.entries()) {
       const interventionResult = await pool.query(
         `
         INSERT INTO interventions
@@ -384,7 +388,16 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
           planId
         ]
       );
-      createdIds.push(interventionResult.rows[0].id);
+      const interventionId = interventionResult.rows[0].id;
+      createdIds.push(interventionId);
+
+      await pool.query(
+        `
+        INSERT INTO notes (intervention_id, author, content)
+        VALUES ($1,$2,$3)
+        `,
+        [interventionId, "Maintenance automatique", getMaintenanceKitLabel(index)]
+      );
     }
 
     for (const interventionId of createdIds) {

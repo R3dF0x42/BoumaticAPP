@@ -516,6 +516,9 @@ export default function ClientsPage({ apiUrl }) {
                   ? ` - Prochaine: ${formatDate(plan.next_scheduled_at)}`
                   : ""}
               </p>
+              <p className="muted-small">
+                {plan.occurrences} maintenance(s) prevue(s) - {plan.duration_minutes} min chacune
+              </p>
             </div>
             <span className="pill pill-muted">
               {plan.technician_name || "Technicien libre"}
@@ -718,7 +721,7 @@ export default function ClientsPage({ apiUrl }) {
 
             <div className="maintenance-grid">
               <div>
-                <label>Nombre de passages</label>
+                <label>Nombre de maintenances a creer</label>
                 <input
                   type="number"
                   min="1"
@@ -732,7 +735,7 @@ export default function ClientsPage({ apiUrl }) {
                 />
               </div>
               <div>
-                <label>Duree</label>
+                <label>Duree de chaque intervention (minutes)</label>
                 <input
                   type="number"
                   min="15"
@@ -763,6 +766,10 @@ export default function ClientsPage({ apiUrl }) {
               onChange={(e) => setMaintenanceValue("description", e.target.value)}
               required
             />
+            <p className="muted-small">
+              Une note sera ajoutee automatiquement dans chaque intervention :
+              Maintenance Kit N°1 a N°6, puis retour au N°1.
+            </p>
 
             <button className="btn small" type="submit" disabled={creatingMaintenance}>
               {creatingMaintenance ? "Creation..." : "Programmer les maintenances"}
