@@ -850,6 +850,29 @@ app.put("/api/interventions/:id", async (req, res) => {
   }
 });
 
+app.delete("/api/interventions/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant intervention invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM interventions WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Intervention introuvable." });
+    }
+
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 /* ----------------------- NOTES & PHOTOS ----------------------- */
 

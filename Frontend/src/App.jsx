@@ -183,6 +183,31 @@ export default function App() {
     }
   };
 
+  const handleDeleteIntervention = async () => {
+    if (!selectedId) return;
+
+    const confirmed = window.confirm("Supprimer definitivement cette intervention ?");
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API_URL}/interventions/${selectedId}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur suppression intervention");
+      }
+
+      setSelectedId(null);
+      setSelectedDetails(null);
+      setShowDetailModal(false);
+      window.dispatchEvent(new Event("refreshCalendar"));
+    } catch (e) {
+      console.error("Erreur suppression intervention :", e);
+      alert("Impossible de supprimer l'intervention pour le moment.");
+    }
+  };
+
   const handleSelectEvent = (ev) => {
     setSelectedId(Number(ev.id));
     if (isMobile) setShowDetailModal(true);
@@ -303,6 +328,7 @@ export default function App() {
                 onUploadPhoto={handleUploadPhoto}
                 onDeletePhoto={handleDeletePhoto}
                 onUpdateIntervention={handleUpdateIntervention}
+                onDeleteIntervention={handleDeleteIntervention}
                 updatingStatus={updatingStatus}
               />
             )}
@@ -353,6 +379,7 @@ export default function App() {
               onUploadPhoto={handleUploadPhoto}
               onDeletePhoto={handleDeletePhoto}
               onUpdateIntervention={handleUpdateIntervention}
+              onDeleteIntervention={handleDeleteIntervention}
               updatingStatus={updatingStatus}
             />
           </div>

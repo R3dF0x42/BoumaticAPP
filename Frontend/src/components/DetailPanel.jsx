@@ -10,6 +10,7 @@ export default function DetailPanel({
   onUploadPhoto,
   onDeletePhoto,
   onUpdateIntervention,
+  onDeleteIntervention,
   updatingStatus
 }) {
   const [note, setNote] = useState("");
@@ -249,6 +250,15 @@ export default function DetailPanel({
                   disabled={updatingStatus}
                 >
                   {updatingStatus ? "Mise a jour..." : "Marquer comme termine"}
+                </button>
+              )}
+              {onDeleteIntervention && (
+                <button
+                  className="btn small danger"
+                  type="button"
+                  onClick={onDeleteIntervention}
+                >
+                  Supprimer
                 </button>
               )}
             </div>
