@@ -65,12 +65,12 @@ app.get("/api/clients", async (req, res) => {
 });
 
 app.post("/api/clients", async (req, res) => {
-  const { name, address, gps_lat, gps_lng, phone, robot_model } = req.body;
+  const { name, address, gps_lat, gps_lng, phone, robot_model, commissioning_date } = req.body;
   try {
     const result = await pool.query(
-      `INSERT INTO clients (name, address, gps_lat, gps_lng, phone, robot_model)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-      [name, address, gps_lat, gps_lng, phone, robot_model]
+      `INSERT INTO clients (name, address, gps_lat, gps_lng, phone, robot_model, commissioning_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [name, address, gps_lat, gps_lng, phone, robot_model, commissioning_date || null]
     );
     res.status(201).json({ id: result.rows[0].id });
   } catch (err) {
@@ -80,7 +80,7 @@ app.post("/api/clients", async (req, res) => {
 
 app.put("/api/clients/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const { name, address, gps_lat, gps_lng, phone, robot_model } = req.body;
+  const { name, address, gps_lat, gps_lng, phone, robot_model, commissioning_date } = req.body;
   const safeName = name?.trim();
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -100,9 +100,10 @@ app.put("/api/clients/:id", async (req, res) => {
           gps_lat = COALESCE($3, gps_lat),
           gps_lng = COALESCE($4, gps_lng),
           phone = $5,
-          robot_model = $6
-      WHERE id = $7
-      RETURNING id, name, address, gps_lat, gps_lng, phone, robot_model
+          robot_model = $6,
+          commissioning_date = $7
+      WHERE id = $8
+      RETURNING id, name, address, gps_lat, gps_lng, phone, robot_model, commissioning_date
       `,
       [
         safeName,
@@ -111,6 +112,7 @@ app.put("/api/clients/:id", async (req, res) => {
         gps_lng ?? null,
         phone || null,
         robot_model || null,
+        commissioning_date || null,
         id
       ]
     );
@@ -227,7 +229,11 @@ app.delete("/api/clients/:clientId/photos/:photoId", async (req, res) => {
 
 function parseLocalDateTime(value) {
   if (!value) return null;
-  const date = new Date(String(value).replace(" ", "T"));
+  const raw = String(value);
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? `${raw}T23:59:59`
+    : raw.replace(" ", "T");
+  const date = new Date(normalized);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -262,6 +268,48 @@ function buildMaintenanceDatesUntil(startAt, frequencyMonths, endAt) {
 
 function getMaintenanceKitLabel(index) {
   return `Maintenance Kit N°${(index % 6) + 1}`;
+}
+
+async function createMaintenanceInterventions({
+  planId,
+  clientId,
+  technicianId,
+  dates,
+  priority,
+  description,
+  durationMinutes
+}) {
+  const createdIds = [];
+  const baseDescription = description || "Maintenance contrat";
+
+  for (const [index, date] of dates.entries()) {
+    const interventionResult = await pool.query(
+      `
+      INSERT INTO interventions
+        (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id, maintenance_kit_label)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING id
+      `,
+      [
+        clientId,
+        technicianId || null,
+        formatDbDateTime(date),
+        "A FAIRE",
+        priority || "Normale",
+        baseDescription,
+        durationMinutes,
+        planId,
+        getMaintenanceKitLabel(index)
+      ]
+    );
+    createdIds.push(interventionResult.rows[0].id);
+  }
+
+  for (const interventionId of createdIds) {
+    await attachGoogleEvent(interventionId);
+  }
+
+  return createdIds;
 }
 
 async function attachGoogleEvent(interventionId) {
@@ -386,44 +434,152 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     );
 
     const planId = planResult.rows[0].id;
-    const createdIds = [];
-
-    for (const [index, date] of dates.entries()) {
-      const kitLabel = getMaintenanceKitLabel(index);
-      const baseDescription = description || "Maintenance contrat";
-
-      const interventionResult = await pool.query(
-        `
-        INSERT INTO interventions
-          (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id, maintenance_kit_label)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-        RETURNING id
-        `,
-        [
-          clientId,
-          technician_id || null,
-          formatDbDateTime(date),
-          "A FAIRE",
-          priority || "Normale",
-          baseDescription,
-          fullDayDurationMinutes,
-          planId,
-          kitLabel
-        ]
-      );
-      const interventionId = interventionResult.rows[0].id;
-      createdIds.push(interventionId);
-    }
-
-    for (const interventionId of createdIds) {
-      await attachGoogleEvent(interventionId);
-    }
+    const createdIds = await createMaintenanceInterventions({
+      planId,
+      clientId,
+      technicianId: technician_id,
+      dates,
+      priority,
+      description,
+      durationMinutes: fullDayDurationMinutes
+    });
 
     res.status(201).json({
       id: planId,
       intervention_ids: createdIds,
       count: createdIds.length
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => {
+  const clientId = Number(req.params.clientId);
+  const planId = Number(req.params.planId);
+  const {
+    technician_id,
+    start_at,
+    end_at,
+    frequency_months,
+    priority,
+    description
+  } = req.body;
+
+  const startDate = parseLocalDateTime(start_at);
+  const endDate = parseLocalDateTime(end_at);
+  const safeFrequency = Number(frequency_months);
+  const fullDayDurationMinutes = 1440;
+
+  if (!Number.isInteger(clientId) || clientId <= 0 || !Number.isInteger(planId) || planId <= 0) {
+    return res.status(400).json({ error: "Identifiant contrat invalide." });
+  }
+
+  if (!startDate || !endDate || endDate < startDate) {
+    return res.status(400).json({ error: "Dates du contrat invalides." });
+  }
+
+  if (![3, 4, 6].includes(safeFrequency)) {
+    return res.status(400).json({ error: "Fréquence de maintenance invalide." });
+  }
+
+  const dates = buildMaintenanceDatesUntil(startDate, safeFrequency, endDate);
+
+  try {
+    const plan = await pool.query(
+      "SELECT id FROM client_maintenance_plans WHERE id = $1 AND client_id = $2",
+      [planId, clientId]
+    );
+
+    if (!plan.rows.length) {
+      return res.status(404).json({ error: "Contrat de maintenance introuvable." });
+    }
+
+    await pool.query(
+      `
+      UPDATE client_maintenance_plans
+      SET technician_id=$1,
+          start_at=$2,
+          end_at=$3,
+          frequency_months=$4,
+          occurrences=$5,
+          duration_minutes=$6,
+          priority=$7,
+          description=$8
+      WHERE id=$9 AND client_id=$10
+      `,
+      [
+        technician_id || null,
+        formatDbDateTime(startDate),
+        formatDbDateTime(endDate),
+        safeFrequency,
+        dates.length,
+        fullDayDurationMinutes,
+        priority || "Normale",
+        description || "Maintenance contrat",
+        planId,
+        clientId
+      ]
+    );
+
+    await pool.query(
+      `
+      DELETE FROM interventions
+      WHERE maintenance_plan_id = $1
+        AND status <> 'TERMINE'
+      `,
+      [planId]
+    );
+
+    const createdIds = await createMaintenanceInterventions({
+      planId,
+      clientId,
+      technicianId: technician_id,
+      dates,
+      priority,
+      description,
+      durationMinutes: fullDayDurationMinutes
+    });
+
+    res.json({ updated: true, intervention_ids: createdIds, count: createdIds.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => {
+  const clientId = Number(req.params.clientId);
+  const planId = Number(req.params.planId);
+
+  if (!Number.isInteger(clientId) || clientId <= 0 || !Number.isInteger(planId) || planId <= 0) {
+    return res.status(400).json({ error: "Identifiant contrat invalide." });
+  }
+
+  try {
+    const plan = await pool.query(
+      "SELECT id FROM client_maintenance_plans WHERE id = $1 AND client_id = $2",
+      [planId, clientId]
+    );
+
+    if (!plan.rows.length) {
+      return res.status(404).json({ error: "Contrat de maintenance introuvable." });
+    }
+
+    await pool.query(
+      `
+      DELETE FROM interventions
+      WHERE maintenance_plan_id = $1
+        AND status <> 'TERMINE'
+      `,
+      [planId]
+    );
+
+    await pool.query("DELETE FROM client_maintenance_plans WHERE id = $1 AND client_id = $2", [
+      planId,
+      clientId
+    ]);
+
+    res.json({ deleted: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

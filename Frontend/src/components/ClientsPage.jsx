@@ -16,6 +16,21 @@ function getDefaultContractEndDate() {
   return date.toISOString().slice(0, 10);
 }
 
+function toDateTimeInput(value) {
+  if (!value) return getDefaultMaintenanceDateTime();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return getDefaultMaintenanceDateTime();
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function toDateInput(value) {
+  if (!value) return getDefaultContractEndDate();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return getDefaultContractEndDate();
+  return date.toISOString().slice(0, 10);
+}
+
 export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
@@ -27,6 +42,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [loadingMaintenance, setLoadingMaintenance] = useState(false);
   const [creatingMaintenance, setCreatingMaintenance] = useState(false);
+  const [editingMaintenanceId, setEditingMaintenanceId] = useState(null);
+  const [editingMaintenance, setEditingMaintenance] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
@@ -42,15 +59,25 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     name: "",
     address: "",
     phone: "",
-    robot_model: ""
+    robot_model: "",
+    commissioning_date: ""
   });
   const [editForm, setEditForm] = useState({
     name: "",
     address: "",
     phone: "",
-    robot_model: ""
+    robot_model: "",
+    commissioning_date: ""
   });
   const [maintenanceForm, setMaintenanceForm] = useState({
+    technician_id: "",
+    start_at: getDefaultMaintenanceDateTime(),
+    frequency_months: 6,
+    end_at: getDefaultContractEndDate(),
+    priority: "Normale",
+    description: "Maintenance contrat"
+  });
+  const [maintenanceEditForm, setMaintenanceEditForm] = useState({
     technician_id: "",
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
@@ -194,6 +221,10 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     setMaintenanceForm((f) => ({ ...f, [field]: value }));
   };
 
+  const setMaintenanceEditValue = (field, value) => {
+    setMaintenanceEditForm((f) => ({ ...f, [field]: value }));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setClientError("");
@@ -217,7 +248,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       name: "",
       address: "",
       phone: "",
-      robot_model: ""
+      robot_model: "",
+      commissioning_date: ""
     });
     setClientInfo("Client cree.");
     loadClients();
@@ -241,6 +273,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     return clients.filter((client) =>
       `${client.name || ""} ${client.address || ""} ${client.phone || ""} ${
         client.robot_model || ""
+      } ${client.commissioning_date || ""
       }`
         .toLowerCase()
         .includes(term)
@@ -253,7 +286,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       name: selectedClient.name || "",
       address: selectedClient.address || "",
       phone: selectedClient.phone || "",
-      robot_model: selectedClient.robot_model || ""
+      robot_model: selectedClient.robot_model || "",
+      commissioning_date: selectedClient.commissioning_date?.slice(0, 10) || ""
     });
   }, [selectedClient]);
 
@@ -447,6 +481,100 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     }
   };
 
+  const startEditMaintenance = (plan) => {
+    setClientError("");
+    setClientInfo("");
+    setEditingMaintenanceId(plan.id);
+    setMaintenanceEditForm({
+      technician_id: plan.technician_id || "",
+      start_at: toDateTimeInput(plan.start_at),
+      frequency_months: plan.frequency_months || 6,
+      end_at: toDateInput(plan.end_at),
+      priority: plan.priority || "Normale",
+      description: plan.description || "Maintenance contrat"
+    });
+  };
+
+  const cancelEditMaintenance = () => {
+    setEditingMaintenanceId(null);
+    setEditingMaintenance(false);
+  };
+
+  const submitMaintenanceUpdate = async (e, planId) => {
+    e.preventDefault();
+    if (!selectedClient?.id) return;
+
+    setClientError("");
+    setClientInfo("");
+    setEditingMaintenance(true);
+
+    try {
+      const res = await fetch(
+        `${apiUrl}/clients/${selectedClient.id}/maintenance-plans/${planId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...maintenanceEditForm,
+            technician_id: maintenanceEditForm.technician_id
+              ? Number(maintenanceEditForm.technician_id)
+              : null,
+            frequency_months: Number(maintenanceEditForm.frequency_months)
+          })
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setClientError(data.error || "Impossible de modifier le contrat.");
+        return;
+      }
+
+      setClientInfo(`${data.count || 0} intervention(s) de maintenance mise(s) a jour.`);
+      cancelEditMaintenance();
+      await loadMaintenancePlans(selectedClient.id);
+      await loadInterventions();
+      window.dispatchEvent(new Event("refreshCalendar"));
+    } catch {
+      setClientError("Impossible de modifier le contrat.");
+    } finally {
+      setEditingMaintenance(false);
+    }
+  };
+
+  const deleteMaintenancePlan = async (planId) => {
+    if (!selectedClient?.id) return;
+
+    const confirmed = window.confirm(
+      "Supprimer ce contrat et ses interventions non terminees ?"
+    );
+    if (!confirmed) return;
+
+    setClientError("");
+    setClientInfo("");
+
+    try {
+      const res = await fetch(
+        `${apiUrl}/clients/${selectedClient.id}/maintenance-plans/${planId}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setClientError(data.error || "Impossible de supprimer le contrat.");
+        return;
+      }
+
+      setClientInfo("Contrat de maintenance supprime.");
+      await loadMaintenancePlans(selectedClient.id);
+      await loadInterventions();
+      window.dispatchEvent(new Event("refreshCalendar"));
+    } catch {
+      setClientError("Impossible de supprimer le contrat.");
+    }
+  };
+
   const renderHistory = () => {
     if (!selectedClientId) {
       return <div className="muted-small">Selectionnez un client.</div>;
@@ -532,21 +660,119 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       <div className="maintenance-plan-list">
         {maintenancePlans.map((plan) => (
           <div key={plan.id} className="maintenance-plan-item">
-            <div>
-              <strong>Tous les {plan.frequency_months} mois</strong>
-              <p className="muted-small">
-                {plan.generated_count} intervention(s) creee(s)
-                {plan.next_scheduled_at
-                  ? ` - Prochaine: ${formatDate(plan.next_scheduled_at)}`
-                  : ""}
-              </p>
-              <p className="muted-small">
-                Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - journee entiere
-              </p>
-            </div>
-            <span className="pill pill-muted">
-              {plan.technician_name || "Technicien libre"}
-            </span>
+            {editingMaintenanceId === plan.id ? (
+              <form
+                className="maintenance-form maintenance-form--edit"
+                onSubmit={(e) => submitMaintenanceUpdate(e, plan.id)}
+              >
+                <label>Technicien</label>
+                <select
+                  value={maintenanceEditForm.technician_id}
+                  onChange={(e) => setMaintenanceEditValue("technician_id", e.target.value)}
+                >
+                  <option value="">Affecter plus tard</option>
+                  {technicians.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+
+                <label>Premier passage</label>
+                <input
+                  type="datetime-local"
+                  value={maintenanceEditForm.start_at}
+                  onChange={(e) => setMaintenanceEditValue("start_at", e.target.value)}
+                  required
+                />
+
+                <label>Frequence</label>
+                <select
+                  value={maintenanceEditForm.frequency_months}
+                  onChange={(e) =>
+                    setMaintenanceEditValue("frequency_months", Number(e.target.value))
+                  }
+                >
+                  <option value={3}>Tous les 3 mois</option>
+                  <option value={4}>Tous les 4 mois</option>
+                  <option value={6}>Tous les 6 mois</option>
+                </select>
+
+                <label>Date de fin du contrat</label>
+                <input
+                  type="date"
+                  value={maintenanceEditForm.end_at}
+                  onChange={(e) => setMaintenanceEditValue("end_at", e.target.value)}
+                  required
+                />
+
+                <label>Priorite</label>
+                <select
+                  value={maintenanceEditForm.priority}
+                  onChange={(e) => setMaintenanceEditValue("priority", e.target.value)}
+                >
+                  <option>Normale</option>
+                  <option>Urgente</option>
+                </select>
+
+                <label>Description</label>
+                <textarea
+                  value={maintenanceEditForm.description}
+                  onChange={(e) => setMaintenanceEditValue("description", e.target.value)}
+                  required
+                />
+
+                <div className="maintenance-actions">
+                  <button className="btn small" type="submit" disabled={editingMaintenance}>
+                    {editingMaintenance ? "Sauvegarde..." : "Sauvegarder"}
+                  </button>
+                  <button
+                    className="btn small ghost"
+                    type="button"
+                    onClick={cancelEditMaintenance}
+                    disabled={editingMaintenance}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div>
+                  <strong>Tous les {plan.frequency_months} mois</strong>
+                  <p className="muted-small">
+                    {plan.generated_count} intervention(s) creee(s)
+                    {plan.next_scheduled_at
+                      ? ` - Prochaine: ${formatDate(plan.next_scheduled_at)}`
+                      : ""}
+                  </p>
+                  <p className="muted-small">
+                    Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - journee entiere
+                  </p>
+                </div>
+                <div className="maintenance-plan-side">
+                  <span className="pill pill-muted">
+                    {plan.technician_name || "Technicien libre"}
+                  </span>
+                  <div className="maintenance-actions">
+                    <button
+                      className="btn small ghost"
+                      type="button"
+                      onClick={() => startEditMaintenance(plan)}
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      className="btn small danger"
+                      type="button"
+                      onClick={() => deleteMaintenancePlan(plan.id)}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -597,6 +823,11 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               <div className="client-tags">
                 {selectedClient.robot_model && (
                   <span className="pill">Robot : {selectedClient.robot_model}</span>
+                )}
+                {selectedClient.commissioning_date && (
+                  <span className="pill pill-muted">
+                    Mise en service : {new Date(selectedClient.commissioning_date).toLocaleDateString("fr-FR")}
+                  </span>
                 )}
                 {selectedClient.phone && (
                   <span className="pill pill-muted">{selectedClient.phone}</span>
@@ -653,6 +884,14 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   onChange={(e) => setEditValue("robot_model", e.target.value)}
                 />
               </div>
+              <div className="client-field">
+                <label>Date de mise en service</label>
+                <input
+                  type="date"
+                  value={editForm.commissioning_date}
+                  onChange={(e) => setEditValue("commissioning_date", e.target.value)}
+                />
+              </div>
               <div className="client-edit-actions">
                 <button className="btn small" type="submit">
                   Enregistrer modifications
@@ -685,6 +924,14 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               <div className="client-field">
                 <label>Robot de traite</label>
                 <p className="muted-small">{selectedClient.robot_model || "Non renseigne"}</p>
+              </div>
+              <div className="client-field">
+                <label>Date de mise en service</label>
+                <p className="muted-small">
+                  {selectedClient.commissioning_date
+                    ? new Date(selectedClient.commissioning_date).toLocaleDateString("fr-FR")
+                    : "Non renseignee"}
+                </p>
               </div>
               <div className="client-field">
                 <label>Navigation GPS</label>
@@ -900,6 +1147,13 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                 placeholder="BouMatic, Lely, GEA..."
               />
 
+              <label>Date de mise en service</label>
+              <input
+                type="date"
+                value={form.commissioning_date}
+                onChange={(e) => setValue("commissioning_date", e.target.value)}
+              />
+
               <button className="btn small" type="submit">
                 Enregistrer
               </button>
@@ -934,6 +1188,11 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   <div className="muted-small">
                     {c.robot_model && `Robot : ${c.robot_model}`}
                   </div>
+                  {c.commissioning_date && (
+                    <div className="muted-small">
+                      Mise en service : {new Date(c.commissioning_date).toLocaleDateString("fr-FR")}
+                    </div>
+                  )}
                 </div>
                 <div className="table-side">
                   {mapTarget ? (

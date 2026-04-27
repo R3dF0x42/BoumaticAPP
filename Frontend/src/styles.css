@@ -1578,6 +1578,11 @@ textarea {
   resize: vertical;
 }
 
+.maintenance-form--edit {
+  width: 100%;
+  margin-bottom: 0;
+}
+
 .maintenance-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1603,6 +1608,23 @@ textarea {
 
 .maintenance-plan-item p {
   margin: 4px 0 0;
+}
+
+.maintenance-plan-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.maintenance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.maintenance-actions .btn {
+  min-width: 120px;
 }
 
 .client-detail-grid {
@@ -2596,6 +2618,16 @@ textarea {
 
   .maintenance-plan-item {
     flex-direction: column;
+  }
+
+  .maintenance-plan-side {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .maintenance-actions .btn {
+    flex: 1;
+    min-width: 0;
   }
 
   .photo-item img {

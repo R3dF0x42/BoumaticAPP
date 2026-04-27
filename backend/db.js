@@ -44,7 +44,8 @@ async function initDB() {
         gps_lat DOUBLE PRECISION,
         gps_lng DOUBLE PRECISION,
         phone TEXT,
-        robot_model TEXT
+        robot_model TEXT,
+        commissioning_date DATE
       );
     `);
 
@@ -126,6 +127,7 @@ async function initDB() {
 
     await client.query(`
       ALTER TABLE clients
+        ADD COLUMN IF NOT EXISTS commissioning_date DATE,
         ALTER COLUMN gps_lat TYPE DOUBLE PRECISION,
         ALTER COLUMN gps_lng TYPE DOUBLE PRECISION;
     `);
