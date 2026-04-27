@@ -16,7 +16,7 @@ function getDefaultContractEndDate() {
   return date.toISOString().slice(0, 10);
 }
 
-export default function ClientsPage({ apiUrl }) {
+export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -454,7 +454,12 @@ export default function ClientsPage({ apiUrl }) {
     return (
       <div className="history-list">
         {filteredHistory.map((inter) => (
-          <div key={inter.id} className="history-item">
+          <button
+            key={inter.id}
+            className="history-item history-item--clickable"
+            type="button"
+            onClick={() => onSelectIntervention?.({ id: inter.id })}
+          >
             <div className="history-title">
               <strong>{formatDate(inter.scheduled_at)}</strong>
               <span
@@ -475,7 +480,7 @@ export default function ClientsPage({ apiUrl }) {
                 {inter.description}
               </div>
             )}
-          </div>
+          </button>
         ))}
       </div>
     );

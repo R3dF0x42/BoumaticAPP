@@ -239,7 +239,7 @@ export default function App() {
   }
 
   const mobilePages = [
-    { value: "planning", label: "Planning", short: "Plan" },
+    { value: "planning", label: "Planning", short: "Planning" },
     { value: "clients", label: "Clients", short: "Clients" },
     ...(isAdmin ? [{ value: "admin", label: "Admin", short: "Admin" }] : [])
   ];
@@ -315,7 +315,9 @@ export default function App() {
 
         {!isMobile && (
           <>
-            {currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
+            {currentPage === "clients" && (
+              <ClientsPage apiUrl={API_URL} onSelectIntervention={handleSelectEvent} />
+            )}
             {currentPage === "admin" && isAdmin && (
               <TechniciansPage apiUrl={API_URL} canManage />
             )}
@@ -335,7 +337,9 @@ export default function App() {
           </>
         )}
 
-        {isMobile && currentPage === "clients" && <ClientsPage apiUrl={API_URL} />}
+        {isMobile && currentPage === "clients" && (
+          <ClientsPage apiUrl={API_URL} onSelectIntervention={handleSelectEvent} />
+        )}
         {isMobile && currentPage === "admin" && isAdmin && (
           <TechniciansPage apiUrl={API_URL} canManage />
         )}
@@ -365,13 +369,15 @@ export default function App() {
       {isMobile && showDetailModal && selectedDetails && (
         <div className="modal detail-modal">
           <div className="modal-box modal-box--large">
-            <button
-              className="modal-close"
-              onClick={() => setShowDetailModal(false)}
-              aria-label="Fermer"
-            >
-              X
-            </button>
+            <div className="mobile-detail-nav">
+              <button
+                className="btn small ghost"
+                onClick={() => setShowDetailModal(false)}
+                type="button"
+              >
+                {"<- Retour planning"}
+              </button>
+            </div>
             <DetailPanel
               apiUrl={API_URL}
               data={selectedDetails}

@@ -1464,6 +1464,17 @@ textarea {
   background: #0d1120;
 }
 
+.history-item--clickable {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-item--clickable:hover {
+  border-color: rgba(78, 122, 212, 0.62);
+}
+
 .history-title {
   display: flex;
   align-items: center;
@@ -2308,6 +2319,7 @@ textarea {
   background: transparent;
   color: var(--muted);
   font-weight: 900;
+  font-size: 13px;
 }
 
 .mobile-bottom-tab--active {
@@ -2460,6 +2472,19 @@ textarea {
     top: 0;
     z-index: 2;
     margin-bottom: 8px;
+  }
+
+  .mobile-detail-nav {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    padding-bottom: 10px;
+    background: linear-gradient(180deg, rgba(20, 29, 49, 0.98), rgba(20, 29, 49, 0.82));
+  }
+
+  .mobile-detail-nav .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .modal {
