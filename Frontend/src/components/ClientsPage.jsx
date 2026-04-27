@@ -170,6 +170,18 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     loadTechnicians();
   }, []);
 
+  useEffect(() => {
+    const refresh = () => {
+      loadInterventions();
+      if (selectedClientId) {
+        loadMaintenancePlans(selectedClientId);
+      }
+    };
+
+    window.addEventListener("refreshCalendar", refresh);
+    return () => window.removeEventListener("refreshCalendar", refresh);
+  }, [selectedClientId]);
+
   const setValue = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
   };

@@ -10,13 +10,30 @@ function getDefaultDateTime() {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+function getDefaultDate() {
+  return getDefaultDateTime().slice(0, 10);
+}
+
+function getDefaultTime() {
+  return getDefaultDateTime().slice(11, 16);
+}
+
+const TIME_MODES = {
+  full_day: { label: "Journee entiere", start: "08:00", duration: 1440 },
+  morning: { label: "Matin", start: "08:00", duration: 240 },
+  afternoon: { label: "Apres-midi", start: "13:30", duration: 240 },
+  custom: { label: "Heure precise", start: getDefaultTime(), duration: 60 }
+};
+
 export default function NewIntervention({ onClose, onCreated }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
   const [form, setForm] = useState({
     client_id: "",
     technician_id: "",
-    scheduled_at: getDefaultDateTime(),
+    scheduled_date: getDefaultDate(),
+    time_mode: "morning",
+    scheduled_time: "08:00",
     priority: "Normale",
     status: "A FAIRE",
     description: "",
@@ -38,15 +55,18 @@ export default function NewIntervention({ onClose, onCreated }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    const mode = TIME_MODES[form.time_mode] || TIME_MODES.custom;
+    const startTime = form.time_mode === "custom" ? form.scheduled_time : mode.start;
+    const duration = form.time_mode === "custom" ? form.duration_minutes || 60 : mode.duration;
 
     const payload = {
       client_id: Number(form.client_id),
       technician_id: Number(form.technician_id),
-      scheduled_at: form.scheduled_at.replace("T", " ") + ":00",
+      scheduled_at: `${form.scheduled_date} ${startTime}:00`,
       priority: form.priority,
       status: form.status,
       description: form.description,
-      duration_minutes: form.duration_minutes || 60
+      duration_minutes: duration
     };
 
     const res = await fetch(API + "/interventions", {
@@ -113,36 +133,62 @@ export default function NewIntervention({ onClose, onCreated }) {
             ))}
           </select>
 
-          <label>Date & Heure</label>
+          <label>Date</label>
           <input
-            type="datetime-local"
-            value={form.scheduled_at}
-            onChange={(e) => setValue("scheduled_at", e.target.value)}
+            type="date"
+            value={form.scheduled_date}
+            onChange={(e) => setValue("scheduled_date", e.target.value)}
             required
           />
 
-          <label>Duree (minutes)</label>
-          <div className="duration-presets" aria-label="Durees rapides">
-            {[30, 60, 90, 120].map((duration) => (
+          <label>Creneau</label>
+          <div className="time-mode-grid" aria-label="Choix du creneau">
+            {Object.entries(TIME_MODES).map(([value, mode]) => (
               <button
-                key={duration}
+                key={value}
                 type="button"
-                className={form.duration_minutes === duration ? "duration-preset--active" : ""}
-                onClick={() => setValue("duration_minutes", duration)}
+                className={form.time_mode === value ? "time-mode--active" : ""}
+                onClick={() => setValue("time_mode", value)}
               >
-                {duration} min
+                {mode.label}
               </button>
             ))}
           </div>
-          <input
-            type="number"
-            value={form.duration_minutes}
-            onChange={(e) => setValue("duration_minutes", Number(e.target.value))}
-            min="15"
-            step="15"
-            inputMode="numeric"
-            required
-          />
+
+          {form.time_mode === "custom" && (
+            <>
+              <label>Heure souhaitee</label>
+              <input
+                type="time"
+                value={form.scheduled_time}
+                onChange={(e) => setValue("scheduled_time", e.target.value)}
+                required
+              />
+
+              <label>Duree (minutes)</label>
+              <div className="duration-presets" aria-label="Durees rapides">
+                {[30, 60, 90, 120].map((duration) => (
+                  <button
+                    key={duration}
+                    type="button"
+                    className={form.duration_minutes === duration ? "duration-preset--active" : ""}
+                    onClick={() => setValue("duration_minutes", duration)}
+                  >
+                    {duration} min
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                value={form.duration_minutes}
+                onChange={(e) => setValue("duration_minutes", Number(e.target.value))}
+                min="15"
+                step="15"
+                inputMode="numeric"
+                required
+              />
+            </>
+          )}
 
           <label>Priorite</label>
           <select

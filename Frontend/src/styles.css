@@ -682,7 +682,8 @@ textarea {
 }
 
 .mobile-agenda-filters button,
-.duration-presets button {
+.duration-presets button,
+.time-mode-grid button {
   min-width: 0;
   min-height: 40px;
   border: 1px solid rgba(116, 136, 179, 0.2);
@@ -694,7 +695,8 @@ textarea {
 }
 
 .mobile-agenda-filters .mobile-filter--active,
-.duration-presets .duration-preset--active {
+.duration-presets .duration-preset--active,
+.time-mode-grid .time-mode--active {
   background: rgba(44, 125, 255, 0.22);
   border-color: rgba(73, 120, 220, 0.85);
   color: #fff;
@@ -892,6 +894,12 @@ textarea {
   gap: 6px;
 }
 
+.time-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 /* -------- Detail panel -------- */
 
 .detail-panel {
@@ -1016,6 +1024,31 @@ textarea {
 .intervention-edit-actions .btn {
   flex: 1;
   min-width: 150px;
+}
+
+.quick-tech-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.quick-tech-row label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.quick-tech-row select {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(112, 135, 182, 0.24);
+  background: rgba(5, 10, 20, 0.84);
+  color: var(--text);
+  padding: 8px;
 }
 
 .notes-list {

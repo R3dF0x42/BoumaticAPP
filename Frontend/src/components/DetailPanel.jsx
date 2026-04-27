@@ -115,6 +115,12 @@ export default function DetailPanel({
     setIsEditing(false);
   };
 
+  const handleQuickTechnicianChange = (value) => {
+    onUpdateIntervention?.({
+      technician_id: value ? Number(value) : null
+    });
+  };
+
   return (
     <>
     <aside className="detail-panel">
@@ -237,6 +243,21 @@ export default function DetailPanel({
             <div className="badge-row">
               <span className="badge badge-status">{intervention.status}</span>
               <span className="badge badge-priority">{intervention.priority}</span>
+            </div>
+            <div className="quick-tech-row">
+              <label>Affectation rapide</label>
+              <select
+                value={intervention.technician_id || ""}
+                onChange={(e) => handleQuickTechnicianChange(e.target.value)}
+                disabled={updatingStatus}
+              >
+                <option value="">Non assigne</option>
+                {technicians.map((tech) => (
+                  <option key={tech.id} value={tech.id}>
+                    {tech.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="intervention-edit-actions">
               <button
