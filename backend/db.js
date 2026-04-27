@@ -104,6 +104,7 @@ async function initDB() {
         client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
         technician_id INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         start_at TIMESTAMP NOT NULL,
+        end_at TIMESTAMP,
         frequency_months INTEGER NOT NULL,
         occurrences INTEGER NOT NULL,
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
@@ -148,6 +149,7 @@ async function initDB() {
     await client.query(`
       ALTER TABLE client_maintenance_plans
         ADD COLUMN IF NOT EXISTS technician_id INTEGER,
+        ADD COLUMN IF NOT EXISTS end_at TIMESTAMP,
         ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
         ADD COLUMN IF NOT EXISTS priority TEXT,
         ADD COLUMN IF NOT EXISTS description TEXT;

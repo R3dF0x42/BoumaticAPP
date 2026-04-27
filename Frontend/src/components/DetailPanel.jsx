@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { getApiOrigin } from "../config/api.js";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
@@ -9,12 +9,50 @@ export default function DetailPanel({
   onAddNote,
   onUploadPhoto,
   onDeletePhoto,
-  onUpdateStatus,
+  onUpdateIntervention,
   updatingStatus
 }) {
   const [note, setNote] = useState("");
   const [mapChooser, setMapChooser] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    client_id: "",
+    technician_id: "",
+    scheduled_at: "",
+    duration_minutes: 60,
+    status: "A FAIRE",
+    priority: "Normale",
+    description: ""
+  });
   const apiOrigin = (apiUrl || getApiOrigin()).replace(/\/api$/, "");
+
+  useEffect(() => {
+    if (!apiUrl) return;
+    fetch(`${apiUrl}/clients`)
+      .then((r) => r.json())
+      .then((data) => setClients(Array.isArray(data) ? data : []))
+      .catch(() => setClients([]));
+    fetch(`${apiUrl}/technicians`)
+      .then((r) => r.json())
+      .then((data) => setTechnicians(Array.isArray(data) ? data : []))
+      .catch(() => setTechnicians([]));
+  }, [apiUrl]);
+
+  useEffect(() => {
+    const intervention = data?.intervention;
+    if (!intervention) return;
+    setEditForm({
+      client_id: intervention.client_id || "",
+      technician_id: intervention.technician_id || "",
+      scheduled_at: intervention.scheduled_at?.slice(0, 16) || "",
+      duration_minutes: intervention.duration_minutes || 60,
+      status: intervention.status || "A FAIRE",
+      priority: intervention.priority || "Normale",
+      description: intervention.description || ""
+    });
+  }, [data?.intervention]);
 
   if (!data) {
     return (
@@ -58,6 +96,24 @@ export default function DetailPanel({
     e.target.value = "";
   };
 
+  const setEditValue = (field, value) => {
+    setEditForm((form) => ({ ...form, [field]: value }));
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    await onUpdateIntervention?.({
+      client_id: Number(editForm.client_id),
+      technician_id: editForm.technician_id ? Number(editForm.technician_id) : null,
+      scheduled_at: editForm.scheduled_at.replace("T", " ") + ":00",
+      duration_minutes: Number(editForm.duration_minutes) || 60,
+      status: editForm.status,
+      priority: editForm.priority,
+      description: editForm.description
+    });
+    setIsEditing(false);
+  };
+
   return (
     <>
     <aside className="detail-panel">
@@ -75,23 +131,128 @@ export default function DetailPanel({
 
       <div className="detail-section">
         <h4>Intervention</h4>
-        <p className="muted-small">
-          {new Date(intervention.scheduled_at).toLocaleString("fr-FR")}
-        </p>
-        <p>{intervention.description}</p>
-        <div className="badge-row">
-          <span className="badge badge-status">{intervention.status}</span>
-          <span className="badge badge-priority">{intervention.priority}</span>
-        </div>
-        {intervention.status !== "TERMINE" && onUpdateStatus && (
-          <button
-            className="btn small"
-            type="button"
-            onClick={() => onUpdateStatus("TERMINE")}
-            disabled={updatingStatus}
-          >
-            {updatingStatus ? "Mise a jour..." : "Marquer comme termine"}
-          </button>
+        {isEditing ? (
+          <form className="intervention-edit-form" onSubmit={handleSaveEdit}>
+            <label>Client</label>
+            <select
+              value={editForm.client_id}
+              onChange={(e) => setEditValue("client_id", e.target.value)}
+              required
+            >
+              <option value="">Selectionner</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+
+            <label>Technicien</label>
+            <select
+              value={editForm.technician_id}
+              onChange={(e) => setEditValue("technician_id", e.target.value)}
+            >
+              <option value="">Non assigne</option>
+              {technicians.map((tech) => (
+                <option key={tech.id} value={tech.id}>
+                  {tech.name}
+                </option>
+              ))}
+            </select>
+
+            <label>Date et heure</label>
+            <input
+              type="datetime-local"
+              value={editForm.scheduled_at}
+              onChange={(e) => setEditValue("scheduled_at", e.target.value)}
+              required
+            />
+
+            <label>Duree de l'intervention (minutes)</label>
+            <input
+              type="number"
+              min="15"
+              max="480"
+              step="15"
+              inputMode="numeric"
+              value={editForm.duration_minutes}
+              onChange={(e) => setEditValue("duration_minutes", Number(e.target.value))}
+              required
+            />
+
+            <label>Statut</label>
+            <select
+              value={editForm.status}
+              onChange={(e) => setEditValue("status", e.target.value)}
+            >
+              <option>A FAIRE</option>
+              <option>EN COURS</option>
+              <option>TERMINE</option>
+            </select>
+
+            <label>Priorite</label>
+            <select
+              value={editForm.priority}
+              onChange={(e) => setEditValue("priority", e.target.value)}
+            >
+              <option>Normale</option>
+              <option>Urgente</option>
+            </select>
+
+            <label>Description</label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) => setEditValue("description", e.target.value)}
+              required
+            />
+
+            <div className="intervention-edit-actions">
+              <button className="btn small" type="submit" disabled={updatingStatus}>
+                {updatingStatus ? "Sauvegarde..." : "Sauvegarder"}
+              </button>
+              <button
+                className="btn small ghost"
+                type="button"
+                onClick={() => setIsEditing(false)}
+                disabled={updatingStatus}
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <p className="muted-small">
+              {new Date(intervention.scheduled_at).toLocaleString("fr-FR")}
+              {intervention.duration_minutes
+                ? ` - ${intervention.duration_minutes} min`
+                : ""}
+            </p>
+            <p>{intervention.description}</p>
+            <div className="badge-row">
+              <span className="badge badge-status">{intervention.status}</span>
+              <span className="badge badge-priority">{intervention.priority}</span>
+            </div>
+            <div className="intervention-edit-actions">
+              <button
+                className="btn small ghost"
+                type="button"
+                onClick={() => setIsEditing(true)}
+              >
+                Modifier intervention
+              </button>
+              {intervention.status !== "TERMINE" && onUpdateIntervention && (
+                <button
+                  className="btn small"
+                  type="button"
+                  onClick={() => onUpdateIntervention({ status: "TERMINE" })}
+                  disabled={updatingStatus}
+                >
+                  {updatingStatus ? "Mise a jour..." : "Marquer comme termine"}
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
 

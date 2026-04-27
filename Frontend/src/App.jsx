@@ -70,16 +70,20 @@ export default function App() {
     }
   }, [isAdmin, currentPage]);
 
-  const handleUpdateStatus = async (newStatus) => {
+  const handleUpdateIntervention = async (updates) => {
     if (!selectedId || !selectedDetails?.intervention) return;
     const { intervention } = selectedDetails;
     setUpdatingStatus(true);
     try {
       const payload = {
-        status: newStatus,
+        client_id: intervention.client_id,
+        technician_id: intervention.technician_id,
+        status: intervention.status,
         priority: intervention.priority,
         description: intervention.description,
-        scheduled_at: intervention.scheduled_at?.replace("T", " ")
+        scheduled_at: intervention.scheduled_at?.replace("T", " "),
+        duration_minutes: intervention.duration_minutes || 60,
+        ...updates
       };
       await fetch(`${API_URL}/interventions/${selectedId}`, {
         method: "PUT",
@@ -298,7 +302,7 @@ export default function App() {
                 onAddNote={handleAddNote}
                 onUploadPhoto={handleUploadPhoto}
                 onDeletePhoto={handleDeletePhoto}
-                onUpdateStatus={handleUpdateStatus}
+                onUpdateIntervention={handleUpdateIntervention}
                 updatingStatus={updatingStatus}
               />
             )}
@@ -348,7 +352,7 @@ export default function App() {
               onAddNote={handleAddNote}
               onUploadPhoto={handleUploadPhoto}
               onDeletePhoto={handleDeletePhoto}
-              onUpdateStatus={handleUpdateStatus}
+              onUpdateIntervention={handleUpdateIntervention}
               updatingStatus={updatingStatus}
             />
           </div>

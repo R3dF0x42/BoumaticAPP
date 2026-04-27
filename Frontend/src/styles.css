@@ -940,6 +940,49 @@ textarea {
   margin-bottom: 6px;
 }
 
+.intervention-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.intervention-edit-form label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.intervention-edit-form input,
+.intervention-edit-form select,
+.intervention-edit-form textarea {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(112, 135, 182, 0.24);
+  background: rgba(5, 10, 20, 0.84);
+  color: var(--text);
+  padding: 8px;
+}
+
+.intervention-edit-form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.intervention-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.intervention-edit-actions .btn {
+  flex: 1;
+  min-width: 150px;
+}
+
 .notes-list {
   list-style: none;
   padding: 0;

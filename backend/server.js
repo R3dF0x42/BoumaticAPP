@@ -248,10 +248,16 @@ function formatDbDateTime(date) {
   )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-function buildMaintenanceDates(startAt, frequencyMonths, occurrences) {
-  return Array.from({ length: occurrences }, (_, index) =>
-    index === 0 ? startAt : addMonthsClamped(startAt, frequencyMonths * index)
-  );
+function buildMaintenanceDatesUntil(startAt, frequencyMonths, endAt) {
+  const dates = [];
+  let current = new Date(startAt);
+
+  while (current <= endAt && dates.length < 60) {
+    dates.push(new Date(current));
+    current = addMonthsClamped(current, frequencyMonths);
+  }
+
+  return dates;
 }
 
 function getMaintenanceKitLabel(index) {
@@ -321,16 +327,16 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
   const {
     technician_id,
     start_at,
+    end_at,
     frequency_months,
-    occurrences,
     duration_minutes,
     priority,
     description
   } = req.body;
 
   const startDate = parseLocalDateTime(start_at);
+  const endDate = parseLocalDateTime(end_at);
   const safeFrequency = Number(frequency_months);
-  const safeOccurrences = Math.min(Math.max(Number(occurrences || 1), 1), 36);
   const safeDuration = Math.min(Math.max(Number(duration_minutes || 60), 15), 480);
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
@@ -341,24 +347,39 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     return res.status(400).json({ error: "Date de début invalide." });
   }
 
-  if (![1, 3, 6, 12].includes(safeFrequency)) {
+  if (!endDate) {
+    return res.status(400).json({ error: "Date de fin de contrat invalide." });
+  }
+
+  if (endDate < startDate) {
+    return res.status(400).json({ error: "La date de fin doit être après le premier passage." });
+  }
+
+  if (![3, 4, 6].includes(safeFrequency)) {
     return res.status(400).json({ error: "Fréquence de maintenance invalide." });
+  }
+
+  const dates = buildMaintenanceDatesUntil(startDate, safeFrequency, endDate);
+
+  if (!dates.length) {
+    return res.status(400).json({ error: "Aucune maintenance à créer sur cette période." });
   }
 
   try {
     const planResult = await pool.query(
       `
       INSERT INTO client_maintenance_plans
-        (client_id, technician_id, start_at, frequency_months, occurrences, duration_minutes, priority, description)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, priority, description)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
       RETURNING id
       `,
       [
         clientId,
         technician_id || null,
         formatDbDateTime(startDate),
+        formatDbDateTime(endDate),
         safeFrequency,
-        safeOccurrences,
+        dates.length,
         safeDuration,
         priority || "Normale",
         description || "Maintenance contrat"
@@ -366,7 +387,6 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     );
 
     const planId = planResult.rows[0].id;
-    const dates = buildMaintenanceDates(startDate, safeFrequency, safeOccurrences);
     const createdIds = [];
 
     for (const [index, date] of dates.entries()) {
@@ -665,6 +685,7 @@ app.get("/api/interventions/:id", async (req, res) => {
         i.status,
         i.priority,
         i.description,
+        i.duration_minutes,
         c.name AS client_name,
         c.address,
         c.gps_lat,
@@ -777,7 +798,15 @@ app.post("/api/interventions", async (req, res) => {
 
 app.put("/api/interventions/:id", async (req, res) => {
   const id = req.params.id;
-  const { status, priority, description, scheduled_at } = req.body;
+  const {
+    client_id,
+    technician_id,
+    status,
+    priority,
+    description,
+    scheduled_at,
+    duration_minutes
+  } = req.body;
 
   try {
     // récupérer l'intervention avant modif pour avoir google_event_id
@@ -791,9 +820,24 @@ app.put("/api/interventions/:id", async (req, res) => {
     // mise à jour en base
     await pool.query(
       `UPDATE interventions
-       SET status=$1, priority=$2, description=$3, scheduled_at=$4
-       WHERE id=$5`,
-      [status, priority, description, scheduled_at, id]
+       SET client_id=$1,
+           technician_id=$2,
+           status=$3,
+           priority=$4,
+           description=$5,
+           scheduled_at=$6,
+           duration_minutes=$7
+       WHERE id=$8`,
+      [
+        client_id,
+        technician_id || null,
+        status,
+        priority,
+        description,
+        scheduled_at,
+        duration_minutes || 60,
+        id
+      ]
     );
 
     // mise à jour Google

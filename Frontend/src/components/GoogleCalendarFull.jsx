@@ -103,6 +103,7 @@ export default function GoogleCalendarFull({
             backgroundColor: getTechColor(inter.technician_id),
             borderColor: getTechColor(inter.technician_id),
             extendedProps: {
+              client_id: inter.client_id,
               technician_name: inter.technician_name,
               description: inter.description,
               status: inter.status,
@@ -377,8 +378,11 @@ export default function GoogleCalendarFull({
                 body: JSON.stringify({
                   status: "A FAIRE",
                   priority: "Normale",
+                  client_id: info.event.extendedProps.client_id,
+                  technician_id: info.event.extendedProps.technician_id || null,
                   description: info.event.extendedProps.description || "",
-                  scheduled_at: iso
+                  scheduled_at: iso,
+                  duration_minutes: info.event.extendedProps.duration_minutes || 60
                 })
               });
             } catch (e) {

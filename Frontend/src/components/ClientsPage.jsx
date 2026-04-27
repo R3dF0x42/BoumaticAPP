@@ -10,6 +10,12 @@ function getDefaultMaintenanceDateTime() {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+function getDefaultContractEndDate() {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 2);
+  return date.toISOString().slice(0, 10);
+}
+
 export default function ClientsPage({ apiUrl }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
@@ -48,7 +54,7 @@ export default function ClientsPage({ apiUrl }) {
     technician_id: "",
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
-    occurrences: 4,
+    end_at: getDefaultContractEndDate(),
     duration_minutes: 90,
     priority: "Normale",
     description: "Maintenance contrat"
@@ -409,7 +415,6 @@ export default function ClientsPage({ apiUrl }) {
             ? Number(maintenanceForm.technician_id)
             : null,
           frequency_months: Number(maintenanceForm.frequency_months),
-          occurrences: Number(maintenanceForm.occurrences),
           duration_minutes: Number(maintenanceForm.duration_minutes)
         })
       });
@@ -517,7 +522,7 @@ export default function ClientsPage({ apiUrl }) {
                   : ""}
               </p>
               <p className="muted-small">
-                {plan.occurrences} maintenance(s) prevue(s) - {plan.duration_minutes} min chacune
+                Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - {plan.duration_minutes} min chacune
               </p>
             </div>
             <span className="pill pill-muted">
@@ -713,23 +718,19 @@ export default function ClientsPage({ apiUrl }) {
                 setMaintenanceValue("frequency_months", Number(e.target.value))
               }
             >
-              <option value={1}>Tous les mois</option>
               <option value={3}>Tous les 3 mois</option>
+              <option value={4}>Tous les 4 mois</option>
               <option value={6}>Tous les 6 mois</option>
-              <option value={12}>Tous les ans</option>
             </select>
 
             <div className="maintenance-grid">
               <div>
-                <label>Nombre de maintenances a creer</label>
+                <label>Date de fin du contrat</label>
                 <input
-                  type="number"
-                  min="1"
-                  max="36"
-                  inputMode="numeric"
-                  value={maintenanceForm.occurrences}
+                  type="date"
+                  value={maintenanceForm.end_at}
                   onChange={(e) =>
-                    setMaintenanceValue("occurrences", Number(e.target.value))
+                    setMaintenanceValue("end_at", e.target.value)
                   }
                   required
                 />
