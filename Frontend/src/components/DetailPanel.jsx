@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getApiOrigin } from "../config/api.js";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
+import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 
 export default function DetailPanel({
@@ -15,6 +16,7 @@ export default function DetailPanel({
 }) {
   const [note, setNote] = useState("");
   const [mapChooser, setMapChooser] = useState(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [clients, setClients] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -334,12 +336,21 @@ export default function DetailPanel({
         </label>
 
         <div className="photo-grid">
-          {photos.map((p) => (
+          {photos.map((p) => {
+            const photoSrc = `${apiOrigin}/uploads/${p.filename}`;
+            return (
             <div key={p.id} className="photo-item">
-              <img
-                src={`${apiOrigin}/uploads/${p.filename}`}
-                alt="intervention"
-              />
+              <button
+                className="photo-preview-btn"
+                type="button"
+                onClick={() => setSelectedPhoto({ src: photoSrc, alt: "Photo intervention" })}
+                aria-label="Agrandir la photo"
+              >
+                <img
+                  src={photoSrc}
+                  alt="intervention"
+                />
+              </button>
               <button
                 className="photo-delete-btn"
                 type="button"
@@ -348,7 +359,8 @@ export default function DetailPanel({
                 Supprimer
               </button>
             </div>
-          ))}
+            );
+          })}
           {!photos.length && (
             <p className="muted-small">Aucune photo pour l’instant</p>
           )}
@@ -361,6 +373,7 @@ export default function DetailPanel({
       links={mapChooser?.links}
       onClose={() => setMapChooser(null)}
     />
+    <PhotoLightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
     </>
   );
 }

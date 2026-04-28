@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
+import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 
 function getDefaultMaintenanceDateTime() {
@@ -56,6 +57,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [clientInfo, setClientInfo] = useState("");
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [mapChooser, setMapChooser] = useState(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -1191,16 +1193,23 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             <p className="muted-small">Chargement des photos...</p>
           ) : (
             <div className="photo-grid">
-              {clientPhotos.map((p) => (
+              {clientPhotos.map((p) => {
+                const photoSrc = p.url
+                  ? `${apiOrigin}${p.url}`
+                  : `${apiOrigin}/uploads/${p.filename}`;
+                return (
                 <div key={p.id} className="photo-item">
-                  <img
-                    src={
-                      p.url
-                        ? `${apiOrigin}${p.url}`
-                        : `${apiOrigin}/uploads/${p.filename}`
-                    }
-                    alt="client"
-                  />
+                  <button
+                    className="photo-preview-btn"
+                    type="button"
+                    onClick={() => setSelectedPhoto({ src: photoSrc, alt: "Photo client" })}
+                    aria-label="Agrandir la photo"
+                  >
+                    <img
+                      src={photoSrc}
+                      alt="client"
+                    />
+                  </button>
                   <button
                     className="photo-delete-btn"
                     type="button"
@@ -1210,7 +1219,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                     {deletingPhotoId === p.id ? "..." : "Supprimer"}
                   </button>
                 </div>
-              ))}
+                );
+              })}
               {!clientPhotos.length && (
                 <p className="muted-small">Aucune photo pour ce client.</p>
               )}
@@ -1224,6 +1234,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
         links={mapChooser?.links}
         onClose={() => setMapChooser(null)}
       />
+      <PhotoLightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
       </>
     );
   }
@@ -1374,6 +1385,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       links={mapChooser?.links}
       onClose={() => setMapChooser(null)}
     />
+    <PhotoLightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
     </>
   );
 }
