@@ -142,7 +142,8 @@ export default function App() {
       });
 
       if (!res.ok) {
-        throw new Error("Erreur upload photo");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Erreur upload photo");
       }
 
       const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
@@ -151,7 +152,7 @@ export default function App() {
       setSelectedDetails(refreshed);
     } catch (e) {
       console.error("Erreur upload photo intervention :", e);
-      alert("Impossible d'ajouter la photo pour le moment.");
+      alert(`Impossible d'ajouter la photo pour le moment.\n${e.message || ""}`);
     }
   };
 

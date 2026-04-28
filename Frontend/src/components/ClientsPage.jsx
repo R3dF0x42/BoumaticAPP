@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
@@ -58,6 +58,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [mapChooser, setMapChooser] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const clientPhotoInputId = useId();
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -517,6 +518,10 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
 
       setClientInfo("Photo client ajoutee.");
       await loadClientPhotos(selectedClient.id);
+    } catch (err) {
+      setClientError(
+        `Impossible d'ajouter la photo client.${err?.message ? ` ${err.message}` : ""}`
+      );
     } finally {
       setUploadingPhoto(false);
     }
@@ -1174,11 +1179,12 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
 
         <div className="card">
           <h3>Photos du client</h3>
-          <label className="btn small">
+          <label className="btn small" htmlFor={clientPhotoInputId}>
             {uploadingPhoto ? "Upload en cours..." : "+ Ajouter une photo"}
             <input
+              id={clientPhotoInputId}
               type="file"
-              style={{ display: "none" }}
+              className="file-input-hidden"
               accept="image/*"
               disabled={uploadingPhoto}
               onChange={(e) => {

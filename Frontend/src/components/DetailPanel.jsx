@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { getApiOrigin } from "../config/api.js";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
@@ -17,6 +17,7 @@ export default function DetailPanel({
   const [note, setNote] = useState("");
   const [mapChooser, setMapChooser] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const photoInputId = useId();
   const [clients, setClients] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -325,11 +326,12 @@ export default function DetailPanel({
 
       <div className="detail-section">
         <h4>Photos</h4>
-        <label className="btn small">
+        <label className="btn small" htmlFor={photoInputId}>
           + Ajouter une photo
           <input
+            id={photoInputId}
             type="file"
-            style={{ display: "none" }}
+            className="file-input-hidden"
             accept="image/*"
             onChange={handleFileChange}
           />
