@@ -183,15 +183,18 @@ export default function GoogleCalendarFull({
   const selectedDateLabel = selectedDate.toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
-    month: "long"
+    month: "long",
+    year: "numeric"
   });
 
   const weekLabel = `${weekDays[0].toLocaleDateString("fr-FR", {
     day: "numeric",
-    month: "short"
+    month: "short",
+    year: "numeric"
   })} - ${weekDays[6].toLocaleDateString("fr-FR", {
     day: "numeric",
-    month: "short"
+    month: "short",
+    year: "numeric"
   })}`;
 
   if (isMobile) {

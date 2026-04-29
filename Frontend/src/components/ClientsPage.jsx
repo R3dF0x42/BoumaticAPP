@@ -358,6 +358,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       weekday: "short",
       day: "2-digit",
       month: "short",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit"
     });
@@ -1042,17 +1043,19 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             </div>
             <div className="client-actions">
               {selectedClient.phone && (
-                <a className="btn small" href={`tel:${selectedClient.phone}`}>
-                  Appeler
+                <a className="btn small client-action-btn client-action-btn--phone" href={`tel:${selectedClient.phone}`}>
+                  <span aria-hidden="true">📞</span>
+                  <span>Appeler</span>
                 </a>
               )}
               {hasMapTarget && (
                 <button
-                  className="btn small ghost"
+                  className="btn small client-action-btn client-action-btn--map"
                   type="button"
                   onClick={() => handleOpenMap(mapTarget, selectedClient.name)}
                 >
-                  Ouvrir carte
+                  <span aria-hidden="true">📍</span>
+                  <span>Ouvrir carte</span>
                 </button>
               )}
             </div>
@@ -1445,25 +1448,27 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                 <div className="table-side client-list-actions">
                   {mapTarget ? (
                     <button
-                      className="btn small ghost"
+                      className="btn small client-action-btn client-action-btn--map"
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleOpenMap(mapTarget, c.name);
                       }}
                     >
-                      GPS
+                      <span aria-hidden="true">📍</span>
+                      <span>GPS</span>
                     </button>
                   ) : (
                     <div className="muted-small">GPS ?</div>
                   )}
                   {c.phone && (
                     <a
-                      className="btn small ghost"
+                      className="btn small client-action-btn client-action-btn--phone"
                       href={`tel:${c.phone}`}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      Appeler
+                      <span aria-hidden="true">📞</span>
+                      <span>Appeler</span>
                     </a>
                   )}
                 </div>

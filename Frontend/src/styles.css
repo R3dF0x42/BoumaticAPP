@@ -1976,6 +1976,32 @@ textarea {
   justify-content: flex-end;
 }
 
+.client-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(124, 146, 193, 0.26);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.client-action-btn--phone {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.24), rgba(14, 116, 144, 0.22));
+  border-color: rgba(34, 197, 94, 0.42);
+  color: #e8fff0;
+}
+
+.client-action-btn--map {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.26), rgba(245, 158, 11, 0.2));
+  border-color: rgba(96, 165, 250, 0.42);
+  color: #edf6ff;
+}
+
+.client-action-btn span[aria-hidden="true"] {
+  font-size: 15px;
+  line-height: 1;
+}
+
 /* Small screens tweaks */
 
 @media (max-width: 900px) {
