@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
@@ -59,6 +59,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [mapChooser, setMapChooser] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const clientPhotoInputId = useId();
+  const clientPhotoInputRef = useRef(null);
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -1179,21 +1180,27 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
 
         <div className="card">
           <h3>Photos du client</h3>
-          <label className="btn small" htmlFor={clientPhotoInputId}>
+          <button
+            className="btn small"
+            type="button"
+            onClick={() => clientPhotoInputRef.current?.click()}
+            disabled={uploadingPhoto}
+          >
             {uploadingPhoto ? "Upload en cours..." : "+ Ajouter une photo"}
-            <input
-              id={clientPhotoInputId}
-              type="file"
-              className="file-input-hidden"
-              accept="image/*"
-              disabled={uploadingPhoto}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                handleUploadClientPhoto(file);
-                e.target.value = "";
-              }}
-            />
-          </label>
+          </button>
+          <input
+            ref={clientPhotoInputRef}
+            id={clientPhotoInputId}
+            type="file"
+            className="file-input-hidden"
+            accept="image/*"
+            disabled={uploadingPhoto}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              handleUploadClientPhoto(file);
+              e.target.value = "";
+            }}
+          />
 
           {loadingPhotos ? (
             <p className="muted-small">Chargement des photos...</p>

@@ -20,6 +20,8 @@ services:
       DATABASE_URL: postgres://boumatic:MotDePasseFort123@db:5432/boumatic
     depends_on:
       - db
+    volumes:
+      - ./backend/uploads:/app/uploads
     ports:
       - "4000:4000"
 
