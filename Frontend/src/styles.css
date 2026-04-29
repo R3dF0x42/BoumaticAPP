@@ -1631,6 +1631,10 @@ textarea {
   min-width: 220px;
 }
 
+.history-sort-btn {
+  min-width: 190px;
+}
+
 .maintenance-form {
   display: flex;
   flex-direction: column;

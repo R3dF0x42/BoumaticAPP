@@ -68,6 +68,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [clientSearch, setClientSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [techFilter, setTechFilter] = useState("all");
+  const [historySortOrder, setHistorySortOrder] = useState("desc");
   const [mode, setMode] = useState("list"); // list | detail
   const [showNewForm, setShowNewForm] = useState(false);
   const [clientError, setClientError] = useState("");
@@ -327,29 +328,30 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
 
   const historyForClient = useMemo(() => {
     if (!selectedClientId) return [];
-    return [...interventions]
-      .filter((i) => i.client_id === selectedClientId)
-      .sort(
-        (a, b) =>
-          new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
-      );
+    return interventions.filter((i) => i.client_id === selectedClientId);
   }, [interventions, selectedClientId]);
 
   const filteredHistory = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return historyForClient.filter((h) => {
-      const matchTech =
-        techFilter === "all" || Number(techFilter) === h.technician_id;
-      const matchTerm =
-        !term ||
-        `${h.description || ""} ${h.status || ""} ${h.priority || ""} ${
-          h.technician_name || ""
-        }`
-          .toLowerCase()
-          .includes(term);
-      return matchTech && matchTerm;
-    });
-  }, [historyForClient, searchTerm, techFilter]);
+    return historyForClient
+      .filter((h) => {
+        const matchTech =
+          techFilter === "all" || Number(techFilter) === h.technician_id;
+        const matchTerm =
+          !term ||
+          `${h.description || ""} ${h.status || ""} ${h.priority || ""} ${
+            h.technician_name || ""
+          }`
+            .toLowerCase()
+            .includes(term);
+        return matchTech && matchTerm;
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.scheduled_at).getTime();
+        const bTime = new Date(b.scheduled_at).getTime();
+        return historySortOrder === "asc" ? aTime - bTime : bTime - aTime;
+      });
+  }, [historyForClient, historySortOrder, searchTerm, techFilter]);
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -830,6 +832,13 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
           </option>
         ))}
       </select>
+      <button
+        className="btn small history-sort-btn"
+        type="button"
+        onClick={() => setHistorySortOrder((order) => (order === "asc" ? "desc" : "asc"))}
+      >
+        {historySortOrder === "asc" ? "↑ Plus ancien d'abord" : "↓ Plus recent d'abord"}
+      </button>
     </div>
   );
 
