@@ -379,8 +379,43 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const getClientInterventionCount = (clientId) =>
     interventions.filter((intervention) => intervention.client_id === clientId).length;
 
+  const getWarrantyBadge = (commissioningDate) => {
+    if (!commissioningDate) return null;
+
+    const startDate = new Date(commissioningDate);
+    if (Number.isNaN(startDate.getTime())) return null;
+
+    const oneYearDate = new Date(startDate);
+    oneYearDate.setFullYear(oneYearDate.getFullYear() + 1);
+
+    const twoYearDate = new Date(startDate);
+    twoYearDate.setFullYear(twoYearDate.getFullYear() + 2);
+
+    const today = new Date();
+
+    if (today < oneYearDate) {
+      return {
+        label: "Garantie Boumatic",
+        className: "client-badge--warranty-full"
+      };
+    }
+
+    if (today < twoYearDate) {
+      return {
+        label: "Garantie pieces",
+        className: "client-badge--warranty-parts"
+      };
+    }
+
+    return {
+      label: "Aucune garantie",
+      className: "client-badge--warranty-none"
+    };
+  };
+
   const renderClientBadges = (client, { showMissingRobot = false } = {}) => {
     const badges = [];
+    const warrantyBadge = getWarrantyBadge(client.commissioning_date);
 
     if (client.robot_model) {
       badges.push(
@@ -400,6 +435,17 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       badges.push(
         <span key="commissioning" className="client-badge client-badge--date">
           Mise en service {formatDateOnly(client.commissioning_date)}
+        </span>
+      );
+    }
+
+    if (warrantyBadge) {
+      badges.push(
+        <span
+          key="warranty"
+          className={`client-badge ${warrantyBadge.className}`}
+        >
+          {warrantyBadge.label}
         </span>
       );
     }
