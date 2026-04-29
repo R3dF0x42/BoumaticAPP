@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { getApiOrigin } from "../config/api.js";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
@@ -18,7 +18,6 @@ export default function DetailPanel({
   const [mapChooser, setMapChooser] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const photoInputId = useId();
-  const photoInputRef = useRef(null);
   const [clients, setClients] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -327,21 +326,16 @@ export default function DetailPanel({
 
       <div className="detail-section">
         <h4>Photos</h4>
-        <button
-          className="btn small"
-          type="button"
-          onClick={() => photoInputRef.current?.click()}
-        >
-          + Ajouter une photo
-        </button>
-        <input
-          ref={photoInputRef}
-          id={photoInputId}
-          type="file"
-          className="file-input-hidden"
-          accept="image/*"
-          onChange={handleFileChange}
-        />
+        <label className="btn small file-picker-btn" htmlFor={photoInputId}>
+          <span>+ Ajouter une photo</span>
+          <input
+            id={photoInputId}
+            type="file"
+            className="file-input-overlay"
+            accept="image/*"
+            onChange={handleFileChange}
+          />
+        </label>
 
         <div className="photo-grid">
           {photos.map((p) => {
