@@ -12,10 +12,24 @@ function getDefaultMaintenanceDateTime() {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+function toDateTimeInputValue(date) {
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 function getDefaultContractEndDate() {
   const date = new Date();
   date.setFullYear(date.getFullYear() + 2);
   return date.toISOString().slice(0, 10);
+}
+
+function getCompressorStartDateTime(commissioningDate) {
+  if (!commissioningDate) return getDefaultMaintenanceDateTime();
+  const date = new Date(commissioningDate);
+  if (Number.isNaN(date.getTime())) return getDefaultMaintenanceDateTime();
+  date.setMonth(date.getMonth() + 6);
+  date.setHours(9, 0, 0, 0);
+  return toDateTimeInputValue(date);
 }
 
 function toDateTimeInput(value) {
@@ -47,6 +61,10 @@ const MAINTENANCE_KIT_MODELS = {
 function getMaintenanceKitModelLabel(value) {
   const model = MAINTENANCE_KIT_MODELS[value] || MAINTENANCE_KIT_MODELS.gemini_up;
   return `${model.label} - ${model.count} kits`;
+}
+
+function getMaintenanceTypeLabel(value) {
+  return value === "compressor" ? "Compresseur" : "Robot de traite";
 }
 
 export default function ClientsPage({ apiUrl, onSelectIntervention }) {
@@ -93,6 +111,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   });
   const [maintenanceForm, setMaintenanceForm] = useState({
     technician_id: "",
+    maintenance_type: "robot",
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
@@ -102,6 +121,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   });
   const [maintenanceEditForm, setMaintenanceEditForm] = useState({
     technician_id: "",
+    maintenance_type: "robot",
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
@@ -249,6 +269,28 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     setMaintenanceEditForm((f) => ({ ...f, [field]: value }));
   };
 
+  const setMaintenanceType = (value) => {
+    setMaintenanceForm((f) => ({
+      ...f,
+      maintenance_type: value,
+      start_at:
+        value === "compressor"
+          ? getCompressorStartDateTime(selectedClient?.commissioning_date)
+          : f.start_at,
+      frequency_months: value === "compressor" ? 6 : f.frequency_months === 12 ? 6 : f.frequency_months,
+      description: value === "compressor" ? "Maintenance compresseur" : "Maintenance contrat"
+    }));
+  };
+
+  const setMaintenanceEditType = (value) => {
+    setMaintenanceEditForm((f) => ({
+      ...f,
+      maintenance_type: value,
+      frequency_months: value === "compressor" ? 6 : f.frequency_months === 12 ? 6 : f.frequency_months,
+      description: value === "compressor" ? "Maintenance compresseur" : "Maintenance contrat"
+    }));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setClientError("");
@@ -319,6 +361,14 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       commissioning_date: selectedClient.commissioning_date?.slice(0, 10) || ""
     });
   }, [selectedClient]);
+
+  useEffect(() => {
+    if (!selectedClient || maintenanceForm.maintenance_type !== "compressor") return;
+    setMaintenanceForm((f) => ({
+      ...f,
+      start_at: getCompressorStartDateTime(selectedClient.commissioning_date)
+    }));
+  }, [selectedClient, maintenanceForm.maintenance_type]);
 
   useEffect(() => {
     if (!selectedClientId) return;
@@ -674,6 +724,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     setEditingMaintenanceId(plan.id);
     setMaintenanceEditForm({
       technician_id: plan.technician_id || "",
+      maintenance_type: plan.maintenance_type || "robot",
       start_at: toDateTimeInput(plan.start_at),
       frequency_months: plan.frequency_months || 6,
       end_at: toDateInput(plan.end_at),
@@ -873,6 +924,15 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   ))}
                 </select>
 
+                <label>Type de contrat</label>
+                <select
+                  value={maintenanceEditForm.maintenance_type}
+                  onChange={(e) => setMaintenanceEditType(e.target.value)}
+                >
+                  <option value="robot">Robot de traite</option>
+                  <option value="compressor">Compresseur</option>
+                </select>
+
                 <label>Premier passage</label>
                 <input
                   type="datetime-local"
@@ -888,21 +948,32 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                     setMaintenanceEditValue("frequency_months", Number(e.target.value))
                   }
                 >
-                  <option value={3}>Tous les 3 mois</option>
-                  <option value={4}>Tous les 4 mois</option>
+                  {maintenanceEditForm.maintenance_type === "robot" && (
+                    <>
+                      <option value={3}>Tous les 3 mois</option>
+                      <option value={4}>Tous les 4 mois</option>
+                    </>
+                  )}
                   <option value={6}>Tous les 6 mois</option>
+                  {maintenanceEditForm.maintenance_type === "compressor" && (
+                    <option value={12}>Tous les 12 mois</option>
+                  )}
                 </select>
 
-                <label>Modele de kit</label>
-                <select
-                  value={maintenanceEditForm.maintenance_kit_model}
-                  onChange={(e) =>
-                    setMaintenanceEditValue("maintenance_kit_model", e.target.value)
-                  }
-                >
-                  <option value="gemini">Gemini - 8 kits</option>
-                  <option value="gemini_up">Gemini UP - 6 kits</option>
-                </select>
+                {maintenanceEditForm.maintenance_type === "robot" && (
+                  <>
+                    <label>Modele de kit</label>
+                    <select
+                      value={maintenanceEditForm.maintenance_kit_model}
+                      onChange={(e) =>
+                        setMaintenanceEditValue("maintenance_kit_model", e.target.value)
+                      }
+                    >
+                      <option value="gemini">Gemini - 8 kits</option>
+                      <option value="gemini_up">Gemini UP - 6 kits</option>
+                    </select>
+                  </>
+                )}
 
                 <label>Date de fin du contrat</label>
                 <input
@@ -945,7 +1016,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             ) : (
               <>
                 <div>
-                  <strong>Tous les {plan.frequency_months} mois</strong>
+                  <strong>{getMaintenanceTypeLabel(plan.maintenance_type)} - tous les {plan.frequency_months} mois</strong>
                   <p className="muted-small">
                     {plan.generated_count} intervention(s) creee(s)
                     {plan.next_scheduled_at
@@ -955,9 +1026,11 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   <p className="muted-small">
                     Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - journee entiere
                   </p>
-                  <p className="muted-small">
-                    {getMaintenanceKitModelLabel(plan.maintenance_kit_model)}
-                  </p>
+                  {plan.maintenance_type !== "compressor" && (
+                    <p className="muted-small">
+                      {getMaintenanceKitModelLabel(plan.maintenance_kit_model)}
+                    </p>
+                  )}
                 </div>
                 <div className="maintenance-plan-side">
                   <span className="pill pill-muted">
@@ -1201,6 +1274,15 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               ))}
             </select>
 
+            <label>Type de contrat</label>
+            <select
+              value={maintenanceForm.maintenance_type}
+              onChange={(e) => setMaintenanceType(e.target.value)}
+            >
+              <option value="robot">Robot de traite</option>
+              <option value="compressor">Compresseur</option>
+            </select>
+
             <label>Premier passage</label>
             <input
               type="datetime-local"
@@ -1216,9 +1298,16 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                 setMaintenanceValue("frequency_months", Number(e.target.value))
               }
             >
-              <option value={3}>Tous les 3 mois</option>
-              <option value={4}>Tous les 4 mois</option>
+              {maintenanceForm.maintenance_type === "robot" && (
+                <>
+                  <option value={3}>Tous les 3 mois</option>
+                  <option value={4}>Tous les 4 mois</option>
+                </>
+              )}
               <option value={6}>Tous les 6 mois</option>
+              {maintenanceForm.maintenance_type === "compressor" && (
+                <option value={12}>Tous les 12 mois</option>
+              )}
             </select>
 
             <div className="maintenance-grid">
@@ -1235,14 +1324,18 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               </div>
             </div>
 
-            <label>Modele de kit</label>
-            <select
-              value={maintenanceForm.maintenance_kit_model}
-              onChange={(e) => setMaintenanceValue("maintenance_kit_model", e.target.value)}
-            >
-              <option value="gemini">Gemini - 8 kits</option>
-              <option value="gemini_up">Gemini UP - 6 kits</option>
-            </select>
+            {maintenanceForm.maintenance_type === "robot" && (
+              <>
+                <label>Modele de kit</label>
+                <select
+                  value={maintenanceForm.maintenance_kit_model}
+                  onChange={(e) => setMaintenanceValue("maintenance_kit_model", e.target.value)}
+                >
+                  <option value="gemini">Gemini - 8 kits</option>
+                  <option value="gemini_up">Gemini UP - 6 kits</option>
+                </select>
+              </>
+            )}
 
             <label>Priorite</label>
             <select
@@ -1260,9 +1353,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               required
             />
             <p className="muted-small">
-              Le commentaire de chaque intervention indiquera automatiquement :
-              Gemini Kit N°1 a N°8 ou Gemini UP Kit N°1 a N°6, puis retour au N°1.
-              Les interventions creees sont prevues sur la journee entiere.
+              {maintenanceForm.maintenance_type === "compressor"
+                ? "Pour un compresseur, le premier passage est propose 6 mois apres la mise en service. Les interventions sont prevues sur la journee entiere."
+                : "Le commentaire de chaque intervention indiquera automatiquement : Gemini Kit N°1 a N°8 ou Gemini UP Kit N°1 a N°6, puis retour au N°1. Les interventions creees sont prevues sur la journee entiere."}
             </p>
 
             <button className="btn small" type="submit" disabled={creatingMaintenance}>
