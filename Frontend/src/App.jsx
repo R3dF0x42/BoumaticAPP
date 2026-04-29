@@ -7,6 +7,7 @@ import TechniciansPage from "./components/TechniciansPage.jsx";
 import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
 import { API_URL } from "./config/api.js";
+import { preparePhotoForUpload } from "./utils/images.js";
 
 const SESSION_KEY = "boumatic-user-session";
 
@@ -132,10 +133,11 @@ export default function App() {
   const handleUploadPhoto = async (file) => {
     if (!selectedId || !file) return;
 
-    const formData = new FormData();
-    formData.append("photo", file);
-
     try {
+      const uploadFile = await preparePhotoForUpload(file);
+      const formData = new FormData();
+      formData.append("photo", uploadFile);
+
       const res = await fetch(`${API_URL}/interventions/${selectedId}/photos`, {
         method: "POST",
         body: formData

@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useState } from "react";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
+import { preparePhotoForUpload } from "../utils/images.js";
 
 function getDefaultMaintenanceDateTime() {
   const date = new Date();
@@ -502,8 +503,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     setUploadingPhoto(true);
 
     try {
+      const uploadFile = await preparePhotoForUpload(file);
       const formData = new FormData();
-      formData.append("photo", file);
+      formData.append("photo", uploadFile);
 
       const res = await fetch(`${apiUrl}/clients/${selectedClient.id}/photos`, {
         method: "POST",
@@ -1186,6 +1188,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             <span>{uploadingPhoto ? "Upload en cours..." : "+ Ajouter une photo"}</span>
             <input
               id={clientPhotoInputId}
+              name="photo"
               type="file"
               className="file-input-overlay"
               accept="image/*"

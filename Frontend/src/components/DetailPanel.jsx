@@ -330,6 +330,7 @@ export default function DetailPanel({
           <span>+ Ajouter une photo</span>
           <input
             id={photoInputId}
+            name="photo"
             type="file"
             className="file-input-overlay"
             accept="image/*"
