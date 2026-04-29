@@ -3,6 +3,7 @@ import { getApiOrigin } from "../config/api.js";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
+import { buildUploadUrl } from "../utils/images.js";
 
 export default function DetailPanel({
   apiUrl,
@@ -340,7 +341,7 @@ export default function DetailPanel({
 
         <div className="photo-grid">
           {photos.map((p) => {
-            const photoSrc = `${apiOrigin}/uploads/${p.filename}`;
+            const photoSrc = buildUploadUrl(apiOrigin, p.url || p.filename);
             return (
             <div key={p.id} className="photo-item">
               <button

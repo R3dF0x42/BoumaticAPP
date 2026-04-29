@@ -3,13 +3,20 @@ export async function preparePhotoForUpload(file) {
     return file;
   }
 
-  const maxSize = 1600;
-  const quality = 0.82;
+  const maxSize = 1280;
+  const maxBytes = 1200 * 1024;
+  const qualities = [0.78, 0.68, 0.58];
 
-  const image = await loadImage(file);
+  let image;
+  try {
+    image = await loadImage(file);
+  } catch {
+    return file;
+  }
+
   const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
 
-  if (scale === 1 && file.size <= 900 * 1024) {
+  if (scale === 1 && file.size <= maxBytes && file.type === "image/jpeg") {
     return file;
   }
 
@@ -20,17 +27,49 @@ export async function preparePhotoForUpload(file) {
   const context = canvas.getContext("2d");
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-  const blob = await new Promise((resolve) => {
-    canvas.toBlob(resolve, "image/jpeg", quality);
-  });
+  let blob = null;
+  for (const quality of qualities) {
+    blob = await canvasToBlob(canvas, quality);
+    if (blob && blob.size <= maxBytes) break;
+  }
 
   if (!blob) return file;
 
-  const baseName = file.name.replace(/\.[^.]+$/, "") || "photo";
+  const baseName = sanitizePhotoBaseName(file.name.replace(/\.[^.]+$/, "") || "photo");
   return new File([blob], `${baseName}.jpg`, {
     type: "image/jpeg",
     lastModified: Date.now()
   });
+}
+
+export function buildUploadUrl(apiOrigin, filenameOrPath) {
+  if (!filenameOrPath) return "";
+
+  const cleanOrigin = String(apiOrigin || "").replace(/\/+$/, "");
+  const rawPath = String(filenameOrPath).startsWith("/uploads/")
+    ? String(filenameOrPath)
+    : `/uploads/${filenameOrPath}`;
+  const encodedPath = rawPath
+    .split("/")
+    .map((part) => (part ? encodeURIComponent(part) : part))
+    .join("/");
+
+  return `${cleanOrigin}${encodedPath}`;
+}
+
+function canvasToBlob(canvas, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", quality);
+  });
+}
+
+function sanitizePhotoBaseName(value) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "photo";
 }
 
 function loadImage(file) {

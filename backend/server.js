@@ -43,15 +43,59 @@ const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
+
+function sanitizeUploadFilename(originalName = "photo") {
+  const parsed = path.parse(originalName);
+  const ext = (parsed.ext || ".jpg").toLowerCase().replace(/[^a-z0-9.]/g, "");
+  const base = (parsed.name || "photo")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 70) || "photo";
+
+  return `${base}${ext || ".jpg"}`;
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => {
     const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + "-" + file.originalname);
+    cb(null, `${unique}-${sanitizeUploadFilename(file.originalname)}`);
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 8 * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype?.startsWith("image/")) {
+      cb(new Error("Seules les images sont acceptees."));
+      return;
+    }
+    cb(null, true);
+  }
+});
 app.use("/uploads", express.static(uploadsDir));
+
+function uploadPhoto(req, res, next) {
+  upload.single("photo")(req, res, (err) => {
+    if (!err) {
+      next();
+      return;
+    }
+
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({
+        error: "Photo trop lourde. Choisissez une image plus legere ou reprenez une photo."
+      });
+      return;
+    }
+
+    res.status(400).json({ error: err.message || "Upload photo invalide." });
+  });
+}
 
 async function deleteUploadedFiles(filenames = []) {
   const uniqueNames = [...new Set(filenames.filter(Boolean).map((name) => path.basename(name)))];
@@ -214,7 +258,7 @@ app.get("/api/clients/:id/photos", async (req, res) => {
   }
 });
 
-app.post("/api/clients/:id/photos", upload.single("photo"), async (req, res) => {
+app.post("/api/clients/:id/photos", uploadPhoto, async (req, res) => {
   const id = Number(req.params.id);
   const filename = req.file?.filename;
 
@@ -1112,7 +1156,7 @@ app.post("/api/interventions/:id/notes", async (req, res) => {
   }
 });
 
-app.post("/api/interventions/:id/photos", upload.single("photo"), async (req, res) => {
+app.post("/api/interventions/:id/photos", uploadPhoto, async (req, res) => {
   const intervention_id = req.params.id;
   const filename = req.file?.filename;
 

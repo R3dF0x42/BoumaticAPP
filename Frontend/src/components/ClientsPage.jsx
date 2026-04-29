@@ -2,7 +2,7 @@ import React, { useEffect, useId, useMemo, useState } from "react";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
-import { preparePhotoForUpload } from "../utils/images.js";
+import { buildUploadUrl, preparePhotoForUpload } from "../utils/images.js";
 
 function getDefaultMaintenanceDateTime() {
   const date = new Date();
@@ -1206,9 +1206,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
           ) : (
             <div className="photo-grid">
               {clientPhotos.map((p) => {
-                const photoSrc = p.url
-                  ? `${apiOrigin}${p.url}`
-                  : `${apiOrigin}/uploads/${p.filename}`;
+                const photoSrc = buildUploadUrl(apiOrigin, p.url || p.filename);
                 return (
                 <div key={p.id} className="photo-item">
                   <button
