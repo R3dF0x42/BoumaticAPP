@@ -374,8 +374,25 @@ function buildMaintenanceDatesUntil(startAt, frequencyMonths, endAt) {
   return dates;
 }
 
-function getMaintenanceKitLabel(index) {
-  return `Maintenance Kit N°${(index % 6) + 1}`;
+const MAINTENANCE_KIT_MODELS = {
+  gemini: {
+    label: "Gemini",
+    count: 8
+  },
+  gemini_up: {
+    label: "Gemini UP",
+    count: 6
+  }
+};
+
+function getMaintenanceKitModel(value) {
+  return MAINTENANCE_KIT_MODELS[value] ? value : "gemini_up";
+}
+
+function getMaintenanceKitLabel(index, kitModel) {
+  const modelKey = getMaintenanceKitModel(kitModel);
+  const model = MAINTENANCE_KIT_MODELS[modelKey];
+  return `Maintenance ${model.label} Kit N°${(index % model.count) + 1}`;
 }
 
 async function createMaintenanceInterventions({
@@ -385,7 +402,8 @@ async function createMaintenanceInterventions({
   dates,
   priority,
   description,
-  durationMinutes
+  durationMinutes,
+  maintenanceKitModel
 }) {
   const createdIds = [];
   const baseDescription = description || "Maintenance contrat";
@@ -407,7 +425,7 @@ async function createMaintenanceInterventions({
         baseDescription,
         durationMinutes,
         planId,
-        getMaintenanceKitLabel(index)
+        getMaintenanceKitLabel(index, maintenanceKitModel)
       ]
     );
     createdIds.push(interventionResult.rows[0].id);
@@ -485,6 +503,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     start_at,
     end_at,
     frequency_months,
+    maintenance_kit_model,
     priority,
     description
   } = req.body;
@@ -492,6 +511,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
   const startDate = parseLocalDateTime(start_at);
   const endDate = parseLocalDateTime(end_at);
   const safeFrequency = Number(frequency_months);
+  const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
+  const safeKitCount = MAINTENANCE_KIT_MODELS[safeKitModel].count;
   const fullDayDurationMinutes = 1440;
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
@@ -524,8 +545,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     const planResult = await pool.query(
       `
       INSERT INTO client_maintenance_plans
-        (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, priority, description)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, maintenance_kit_model, maintenance_kit_count, priority, description)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING id
       `,
       [
@@ -536,6 +557,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
         safeFrequency,
         dates.length,
         fullDayDurationMinutes,
+        safeKitModel,
+        safeKitCount,
         priority || "Normale",
         description || "Maintenance contrat"
       ]
@@ -549,7 +572,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
       dates,
       priority,
       description,
-      durationMinutes: fullDayDurationMinutes
+      durationMinutes: fullDayDurationMinutes,
+      maintenanceKitModel: safeKitModel
     });
 
     res.status(201).json({
@@ -570,6 +594,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
     start_at,
     end_at,
     frequency_months,
+    maintenance_kit_model,
     priority,
     description
   } = req.body;
@@ -577,6 +602,8 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
   const startDate = parseLocalDateTime(start_at);
   const endDate = parseLocalDateTime(end_at);
   const safeFrequency = Number(frequency_months);
+  const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
+  const safeKitCount = MAINTENANCE_KIT_MODELS[safeKitModel].count;
   const fullDayDurationMinutes = 1440;
 
   if (!Number.isInteger(clientId) || clientId <= 0 || !Number.isInteger(planId) || planId <= 0) {
@@ -612,9 +639,11 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
           frequency_months=$4,
           occurrences=$5,
           duration_minutes=$6,
-          priority=$7,
-          description=$8
-      WHERE id=$9 AND client_id=$10
+          maintenance_kit_model=$7,
+          maintenance_kit_count=$8,
+          priority=$9,
+          description=$10
+      WHERE id=$11 AND client_id=$12
       `,
       [
         technician_id || null,
@@ -623,6 +652,8 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
         safeFrequency,
         dates.length,
         fullDayDurationMinutes,
+        safeKitModel,
+        safeKitCount,
         priority || "Normale",
         description || "Maintenance contrat",
         planId,
@@ -646,7 +677,8 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
       dates,
       priority,
       description,
-      durationMinutes: fullDayDurationMinutes
+      durationMinutes: fullDayDurationMinutes,
+      maintenanceKitModel: safeKitModel
     });
 
     res.json({ updated: true, intervention_ids: createdIds, count: createdIds.length });

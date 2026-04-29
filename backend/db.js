@@ -110,6 +110,8 @@ async function initDB() {
         frequency_months INTEGER NOT NULL,
         occurrences INTEGER NOT NULL,
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
+        maintenance_kit_model TEXT DEFAULT 'gemini_up' NOT NULL,
+        maintenance_kit_count INTEGER DEFAULT 6 NOT NULL,
         priority TEXT DEFAULT 'Normale' NOT NULL,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -157,13 +159,21 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS technician_id INTEGER,
         ADD COLUMN IF NOT EXISTS end_at TIMESTAMP,
         ADD COLUMN IF NOT EXISTS duration_minutes INTEGER,
+        ADD COLUMN IF NOT EXISTS maintenance_kit_model TEXT,
+        ADD COLUMN IF NOT EXISTS maintenance_kit_count INTEGER,
         ADD COLUMN IF NOT EXISTS priority TEXT,
         ADD COLUMN IF NOT EXISTS description TEXT;
       UPDATE client_maintenance_plans SET duration_minutes = 60 WHERE duration_minutes IS NULL;
+      UPDATE client_maintenance_plans SET maintenance_kit_model = 'gemini_up' WHERE maintenance_kit_model IS NULL;
+      UPDATE client_maintenance_plans SET maintenance_kit_count = 6 WHERE maintenance_kit_count IS NULL;
       UPDATE client_maintenance_plans SET priority = 'Normale' WHERE priority IS NULL;
       ALTER TABLE client_maintenance_plans
         ALTER COLUMN duration_minutes SET DEFAULT 60,
         ALTER COLUMN duration_minutes SET NOT NULL,
+        ALTER COLUMN maintenance_kit_model SET DEFAULT 'gemini_up',
+        ALTER COLUMN maintenance_kit_model SET NOT NULL,
+        ALTER COLUMN maintenance_kit_count SET DEFAULT 6,
+        ALTER COLUMN maintenance_kit_count SET NOT NULL,
         ALTER COLUMN priority SET DEFAULT 'Normale',
         ALTER COLUMN priority SET NOT NULL;
     `);

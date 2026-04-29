@@ -271,7 +271,16 @@ export default function DetailPanel({
               >
                 Modifier intervention
               </button>
-              {intervention.status !== "TERMINE" && onUpdateIntervention && (
+              {intervention.status === "TERMINE" && onUpdateIntervention ? (
+                <button
+                  className="btn small ghost"
+                  type="button"
+                  onClick={() => onUpdateIntervention({ status: "A FAIRE" })}
+                  disabled={updatingStatus}
+                >
+                  {updatingStatus ? "Mise a jour..." : "Repasser a faire"}
+                </button>
+              ) : onUpdateIntervention && (
                 <button
                   className="btn small"
                   type="button"

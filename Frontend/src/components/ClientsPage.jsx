@@ -33,6 +33,22 @@ function toDateInput(value) {
   return date.toISOString().slice(0, 10);
 }
 
+const MAINTENANCE_KIT_MODELS = {
+  gemini: {
+    label: "Gemini",
+    count: 8
+  },
+  gemini_up: {
+    label: "Gemini UP",
+    count: 6
+  }
+};
+
+function getMaintenanceKitModelLabel(value) {
+  const model = MAINTENANCE_KIT_MODELS[value] || MAINTENANCE_KIT_MODELS.gemini_up;
+  return `${model.label} - ${model.count} kits`;
+}
+
 export default function ClientsPage({ apiUrl, onSelectIntervention }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
@@ -79,6 +95,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
+    maintenance_kit_model: "gemini_up",
     priority: "Normale",
     description: "Maintenance contrat"
   });
@@ -87,6 +104,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
+    maintenance_kit_model: "gemini_up",
     priority: "Normale",
     description: "Maintenance contrat"
   });
@@ -610,6 +628,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       start_at: toDateTimeInput(plan.start_at),
       frequency_months: plan.frequency_months || 6,
       end_at: toDateInput(plan.end_at),
+      maintenance_kit_model: plan.maintenance_kit_model || "gemini_up",
       priority: plan.priority || "Normale",
       description: plan.description || "Maintenance contrat"
     });
@@ -818,6 +837,17 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   <option value={6}>Tous les 6 mois</option>
                 </select>
 
+                <label>Modele de kit</label>
+                <select
+                  value={maintenanceEditForm.maintenance_kit_model}
+                  onChange={(e) =>
+                    setMaintenanceEditValue("maintenance_kit_model", e.target.value)
+                  }
+                >
+                  <option value="gemini">Gemini - 8 kits</option>
+                  <option value="gemini_up">Gemini UP - 6 kits</option>
+                </select>
+
                 <label>Date de fin du contrat</label>
                 <input
                   type="date"
@@ -868,6 +898,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   </p>
                   <p className="muted-small">
                     Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - journee entiere
+                  </p>
+                  <p className="muted-small">
+                    {getMaintenanceKitModelLabel(plan.maintenance_kit_model)}
                   </p>
                 </div>
                 <div className="maintenance-plan-side">
@@ -1144,6 +1177,15 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               </div>
             </div>
 
+            <label>Modele de kit</label>
+            <select
+              value={maintenanceForm.maintenance_kit_model}
+              onChange={(e) => setMaintenanceValue("maintenance_kit_model", e.target.value)}
+            >
+              <option value="gemini">Gemini - 8 kits</option>
+              <option value="gemini_up">Gemini UP - 6 kits</option>
+            </select>
+
             <label>Priorite</label>
             <select
               value={maintenanceForm.priority}
@@ -1161,8 +1203,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
             />
             <p className="muted-small">
               Le commentaire de chaque intervention indiquera automatiquement :
-              Maintenance Kit N°1 a N°6, puis retour au N°1. Les interventions creees
-              sont prevues sur la journee entiere.
+              Gemini Kit N°1 a N°8 ou Gemini UP Kit N°1 a N°6, puis retour au N°1.
+              Les interventions creees sont prevues sur la journee entiere.
             </p>
 
             <button className="btn small" type="submit" disabled={creatingMaintenance}>
