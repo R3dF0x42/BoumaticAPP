@@ -35,6 +35,14 @@ function TrashIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 export default function GeneralNotesPage({ apiUrl, loggedUser }) {
   const [clients, setClients] = useState([]);
   const [notes, setNotes] = useState([]);
@@ -133,7 +141,7 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
     [searchedNotes]
   );
 
-  const visibleNotes = showHistory ? historyNotes : searchedNotes;
+  const visibleNotes = showHistory ? historyNotes : activeNotes;
 
   const submitNote = async (event) => {
     event.preventDefault();
@@ -357,12 +365,14 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
                   ) : (
                     !note.completed_at && (
                       <button
-                        className="btn small done-btn"
+                        className="icon-btn done-btn"
                         type="button"
                         onClick={() => completeNote(note.id)}
                         disabled={completingId === note.id}
+                        aria-label="Marquer la note comme faite"
+                        title="Fait"
                       >
-                        {completingId === note.id ? "..." : "Fait"}
+                        <CheckIcon />
                       </button>
                     )
                   )}
