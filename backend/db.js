@@ -134,8 +134,14 @@ async function initDB() {
         client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
         author TEXT,
         content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP
       );
+    `);
+
+    await client.query(`
+      ALTER TABLE client_notes
+        ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;
     `);
 
     await client.query(`

@@ -345,6 +345,7 @@ app.get("/api/client-notes", async (req, res) => {
            n.author,
            n.content,
            n.created_at,
+           n.completed_at,
            c.name AS client_name
     FROM client_notes n
     INNER JOIN clients c ON c.id = n.client_id
@@ -359,7 +360,7 @@ app.get("/api/client-notes", async (req, res) => {
     params.push(clientId);
   }
 
-  sql += " ORDER BY n.created_at DESC";
+  sql += " ORDER BY COALESCE(n.completed_at, n.created_at) DESC";
 
   try {
     const result = await pool.query(sql, params);
@@ -387,12 +388,40 @@ app.post("/api/client-notes", async (req, res) => {
       `
       INSERT INTO client_notes (client_id, author, content)
       VALUES ($1, $2, $3)
-      RETURNING id, client_id, author, content, created_at
+      RETURNING id, client_id, author, content, created_at, completed_at
       `,
       [clientId, author, content]
     );
 
     res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/client-notes/:id/complete", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant note invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE client_notes
+      SET completed_at = COALESCE(completed_at, CURRENT_TIMESTAMP)
+      WHERE id = $1
+      RETURNING id, client_id, author, content, created_at, completed_at
+      `,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Note introuvable." });
+    }
+
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

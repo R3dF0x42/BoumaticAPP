@@ -1647,6 +1647,71 @@ textarea {
   align-items: start;
 }
 
+.notes-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(124, 146, 193, 0.28);
+  border-radius: 12px;
+  background: rgba(9, 14, 25, 0.72);
+  color: #dce8ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: rgba(73, 120, 220, 0.82);
+  background: rgba(44, 125, 255, 0.16);
+}
+
+.icon-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.history-toggle--active {
+  color: #fff;
+  border-color: rgba(73, 120, 220, 0.82);
+  background: linear-gradient(135deg, #2c7dff, #1552c6);
+}
+
+.general-notes-page .form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.general-notes-page .form select,
+.general-notes-page .form textarea {
+  width: 100%;
+}
+
+.general-notes-page .form textarea {
+  min-height: 128px;
+  max-height: 42vh;
+  resize: vertical;
+  overflow-y: auto;
+  line-height: 1.45;
+}
+
 .notes-list-card {
   min-height: 420px;
 }
@@ -1668,11 +1733,45 @@ textarea {
   gap: 10px;
 }
 
+.general-note-row .table-row-head {
+  align-items: flex-start;
+}
+
+.general-note-row--done {
+  opacity: 0.68;
+  filter: grayscale(0.45);
+}
+
+.general-note-row--done .general-note-content {
+  color: #aeb9cc;
+}
+
 .general-note-content {
   margin: 0;
-  color: #dce8ff;
-  line-height: 1.45;
+  color: #f3f7ff;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.done-btn {
+  min-width: 74px;
+  border: 1px solid rgba(34, 197, 94, 0.48);
+  background: rgba(34, 197, 94, 0.16);
+  color: #d7ffe4;
+}
+
+.trash-btn {
+  flex: 0 0 auto;
+  border-color: rgba(225, 29, 72, 0.48);
+  background: rgba(225, 29, 72, 0.13);
+  color: #ffd8df;
+}
+
+.trash-btn:hover:not(:disabled) {
+  border-color: rgba(225, 29, 72, 0.72);
+  background: rgba(225, 29, 72, 0.22);
 }
 
 .notes-empty {
