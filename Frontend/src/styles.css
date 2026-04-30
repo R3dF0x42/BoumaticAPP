@@ -2950,10 +2950,11 @@ textarea {
   .detail-modal .modal-box {
     width: 100%;
     max-width: none;
-    min-height: calc(var(--vh, 1vh) * 100);
-    max-height: calc(var(--vh, 1vh) * 100);
-    border-radius: 26px 26px 0 0;
-    padding: calc(22px + env(safe-area-inset-top)) 14px calc(22px + env(safe-area-inset-bottom));
+    min-height: auto;
+    max-height: min(90vh, 820px);
+    overflow-y: auto;
+    border-radius: 24px 24px 0 0;
+    padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
     margin-top: 0;
   }
 
@@ -2974,10 +2975,8 @@ textarea {
   }
 
   .detail-modal .modal-close {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    margin-bottom: 8px;
+    position: static;
+    margin-bottom: 0;
   }
 
   .mobile-detail-nav {
