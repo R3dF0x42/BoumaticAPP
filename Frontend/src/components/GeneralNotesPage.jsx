@@ -276,7 +276,7 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
     } else if (/^\s*\[x\]\s+/i.test(line)) {
       lines[lineIndex] = line.replace(/^(\s*)\[x\](\s+)/i, "$1[ ]$2");
     } else {
-      return;
+      lines[lineIndex] = `[x] ${line}`;
     }
     updateNoteContent(note, lines.join("\n"));
   };
@@ -289,24 +289,21 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
         {lines.map((line, index) => {
           const todoMatch = line.match(/^\s*\[\s\]\s+(.*)$/);
           const doneMatch = line.match(/^\s*\[x\]\s+(.*)$/i);
+          const text = todoMatch?.[1] || doneMatch?.[1] || line;
 
-          if (todoMatch || doneMatch) {
-            const checked = Boolean(doneMatch);
-            const label = todoMatch?.[1] || doneMatch?.[1] || "";
-            return (
-              <label className="note-checkline" key={`${note.id}-${index}`}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleChecklistLine(note, index)}
-                  disabled={updatingContentId === note.id}
-                />
-                <span>{label}</span>
-              </label>
-            );
-          }
+          if (!text.trim()) return null;
 
-          return <p key={`${note.id}-${index}`}>{line}</p>;
+          return (
+            <label className="note-checkline" key={`${note.id}-${index}`}>
+              <input
+                type="checkbox"
+                checked={Boolean(doneMatch)}
+                onChange={() => toggleChecklistLine(note, index)}
+                disabled={updatingContentId === note.id}
+              />
+              <span>{text}</span>
+            </label>
+          );
         })}
       </div>
     );
