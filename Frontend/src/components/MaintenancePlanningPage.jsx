@@ -40,6 +40,15 @@ function CheckIcon() {
   );
 }
 
+function UncheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M18 6 6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
 function isContractMaintenance(intervention) {
   return Boolean(intervention.maintenance_plan_id || intervention.maintenance_kit_label);
 }
@@ -193,22 +202,24 @@ export default function MaintenancePlanningPage({ apiUrl }) {
             <strong>{intervention.client_name || "Client"}</strong>
             <span>{intervention.maintenance_kit_label || intervention.description}</span>
           </div>
-          {isReady ? (
-            <span className="icon-btn maintenance-ready-check maintenance-ready-check--active" title="Pret" aria-label="Pret">
-              <CheckIcon />
-            </span>
-          ) : (
-            <button
-              className="icon-btn maintenance-ready-check"
-              type="button"
-              onClick={() => updateIntervention(intervention, { status: "PRET" })}
-              disabled={savingId === intervention.id}
-              title="Marquer comme pret"
-              aria-label="Marquer la maintenance comme prete"
-            >
-              <CheckIcon />
-            </button>
-          )}
+          <button
+            className={`icon-btn maintenance-ready-check ${
+              isReady ? "maintenance-ready-check--active" : ""
+            }`}
+            type="button"
+            onClick={() =>
+              updateIntervention(intervention, { status: isReady ? "A FAIRE" : "PRET" })
+            }
+            disabled={savingId === intervention.id}
+            title={isReady ? "Repasser a planifier" : "Marquer comme pret"}
+            aria-label={
+              isReady
+                ? "Repasser la maintenance a planifier"
+                : "Marquer la maintenance comme prete"
+            }
+          >
+            {isReady ? <UncheckIcon /> : <CheckIcon />}
+          </button>
         </div>
 
         {intervention.description && (
