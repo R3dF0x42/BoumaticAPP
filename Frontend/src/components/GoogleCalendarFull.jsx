@@ -90,7 +90,14 @@ export default function GoogleCalendarFull({
     fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59`)
       .then((r) => r.json())
       .then((data) => {
-        const formatted = data.map((inter) => {
+        const visibleInterventions = data.filter((inter) => {
+          const isContractMaintenance = Boolean(
+            inter.maintenance_plan_id || inter.maintenance_kit_label
+          );
+          return !isContractMaintenance || inter.status === "PRET";
+        });
+
+        const formatted = visibleInterventions.map((inter) => {
           const start = new Date(inter.scheduled_at);
           const duration = inter.duration_minutes || 60; // 60 minutes par defaut
           const end = new Date(start.getTime() + duration * 60000);
@@ -116,7 +123,7 @@ export default function GoogleCalendarFull({
         });
 
         setEvents(formatted);
-        onInterventionsLoaded && onInterventionsLoaded(data);
+        onInterventionsLoaded && onInterventionsLoaded(visibleInterventions);
       })
       .catch((err) => console.error("Erreur chargement interventions :", err));
   }, [onInterventionsLoaded]);

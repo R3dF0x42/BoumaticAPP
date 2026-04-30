@@ -238,6 +238,7 @@ export default function MaintenancePlanningPage({ apiUrl }) {
             <input
               type="date"
               value={dateValue}
+              required
               onChange={(event) =>
                 updateIntervention(intervention, {
                   scheduled_at: event.target.value
