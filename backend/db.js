@@ -129,6 +129,16 @@ async function initDB() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS client_notes (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        author TEXT,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
       ALTER TABLE clients
         ADD COLUMN IF NOT EXISTS gps_lat DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS gps_lng DOUBLE PRECISION,
@@ -204,6 +214,9 @@ async function initDB() {
         ALTER TABLE client_photos DROP CONSTRAINT IF EXISTS client_photos_client_id_fkey;
         ALTER TABLE client_photos ADD CONSTRAINT client_photos_client_id_fkey FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE;
 
+        ALTER TABLE client_notes DROP CONSTRAINT IF EXISTS client_notes_client_id_fkey;
+        ALTER TABLE client_notes ADD CONSTRAINT client_notes_client_id_fkey FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE;
+
         ALTER TABLE client_maintenance_plans DROP CONSTRAINT IF EXISTS client_maintenance_plans_client_id_fkey;
         ALTER TABLE client_maintenance_plans ADD CONSTRAINT client_maintenance_plans_client_id_fkey FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE;
 
@@ -231,6 +244,10 @@ async function initDB() {
         IF NOT EXISTS (SELECT 1 FROM client_photos WHERE client_id IS NULL) THEN
           ALTER TABLE client_photos ALTER COLUMN client_id SET NOT NULL;
         END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM client_notes WHERE client_id IS NULL) THEN
+          ALTER TABLE client_notes ALTER COLUMN client_id SET NOT NULL;
+        END IF;
       END
       $$;
     `);
@@ -243,6 +260,7 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_notes_intervention_id ON notes(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_photos_intervention_id ON photos(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_client_photos_client_id ON client_photos(client_id);
+      CREATE INDEX IF NOT EXISTS idx_client_notes_client_id ON client_notes(client_id);
     `);
 
     await client.query("COMMIT");

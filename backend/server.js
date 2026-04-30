@@ -333,6 +333,94 @@ app.delete("/api/clients/:clientId/photos/:photoId", async (req, res) => {
   }
 });
 
+/* ----------------------- CLIENT NOTES ----------------------- */
+
+app.get("/api/client-notes", async (req, res) => {
+  const clientId = req.query.client_id ? Number(req.query.client_id) : null;
+  const params = [];
+
+  let sql = `
+    SELECT n.id,
+           n.client_id,
+           n.author,
+           n.content,
+           n.created_at,
+           c.name AS client_name
+    FROM client_notes n
+    INNER JOIN clients c ON c.id = n.client_id
+  `;
+
+  if (clientId) {
+    if (!Number.isInteger(clientId) || clientId <= 0) {
+      return res.status(400).json({ error: "Identifiant client invalide." });
+    }
+
+    sql += " WHERE n.client_id = $1";
+    params.push(clientId);
+  }
+
+  sql += " ORDER BY n.created_at DESC";
+
+  try {
+    const result = await pool.query(sql, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/client-notes", async (req, res) => {
+  const clientId = Number(req.body?.client_id);
+  const author = req.body?.author?.trim() || "Utilisateur";
+  const content = req.body?.content?.trim();
+
+  if (!Number.isInteger(clientId) || clientId <= 0) {
+    return res.status(400).json({ error: "Selectionnez un client." });
+  }
+
+  if (!content) {
+    return res.status(400).json({ error: "La note ne peut pas etre vide." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO client_notes (client_id, author, content)
+      VALUES ($1, $2, $3)
+      RETURNING id, client_id, author, content, created_at
+      `,
+      [clientId, author, content]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/client-notes/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant note invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM client_notes WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Note introuvable." });
+    }
+
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ----------------------- MAINTENANCE PLANS ----------------------- */
 
 function parseLocalDateTime(value) {

@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import DetailPanel from "./components/DetailPanel.jsx";
 import NewIntervention from "./components/NewIntervention.jsx";
 import ClientsPage from "./components/ClientsPage.jsx";
+import GeneralNotesPage from "./components/GeneralNotesPage.jsx";
 import TechniciansPage from "./components/TechniciansPage.jsx";
 import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
@@ -243,6 +244,7 @@ export default function App() {
 
   const mobilePages = [
     { value: "planning", label: "Planning", short: "Planning" },
+    { value: "notes", label: "Notes generales", short: "Notes" },
     { value: "clients", label: "Clients", short: "Clients" },
     ...(isAdmin ? [{ value: "admin", label: "Admin", short: "Admin" }] : [])
   ];
@@ -321,11 +323,14 @@ export default function App() {
             {currentPage === "clients" && (
               <ClientsPage apiUrl={API_URL} onSelectIntervention={handleSelectEvent} />
             )}
+            {currentPage === "notes" && (
+              <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
+            )}
             {currentPage === "admin" && isAdmin && (
               <TechniciansPage apiUrl={API_URL} canManage />
             )}
 
-            {currentPage !== "admin" && (
+            {currentPage !== "admin" && currentPage !== "notes" && (
               <DetailPanel
                 apiUrl={API_URL}
                 data={selectedDetails}
@@ -342,6 +347,9 @@ export default function App() {
 
         {isMobile && currentPage === "clients" && (
           <ClientsPage apiUrl={API_URL} onSelectIntervention={handleSelectEvent} />
+        )}
+        {isMobile && currentPage === "notes" && (
+          <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
         )}
         {isMobile && currentPage === "admin" && isAdmin && (
           <TechniciansPage apiUrl={API_URL} canManage />

@@ -1258,6 +1258,10 @@ textarea {
   .page {
     min-height: calc(100vh - 36px);
   }
+
+  .page--wide {
+    grid-column: span 2;
+  }
 }
 
 @media (min-width: 1100px) {
@@ -1418,6 +1422,10 @@ textarea {
   padding: 16px;
   border: 1px solid var(--border);
   overflow-y: auto;
+}
+
+.page--wide {
+  grid-column: span 1;
 }
 
 .page-grid {
@@ -1633,6 +1641,47 @@ textarea {
 
 .history-sort-btn {
   min-width: 190px;
+}
+
+.notes-layout {
+  align-items: start;
+}
+
+.notes-list-card {
+  min-height: 420px;
+}
+
+.notes-toolbar {
+  margin-bottom: 12px;
+}
+
+.notes-toolbar h3,
+.notes-list-card h3 {
+  margin-top: 0;
+}
+
+.notes-table {
+  gap: 10px;
+}
+
+.general-note-row {
+  gap: 10px;
+}
+
+.general-note-content {
+  margin: 0;
+  color: #dce8ff;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.notes-empty {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(116, 136, 179, 0.28);
+  border-radius: 16px;
+  background: rgba(7, 12, 23, 0.5);
 }
 
 .maintenance-form {
