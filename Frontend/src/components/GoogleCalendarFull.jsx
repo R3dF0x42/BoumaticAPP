@@ -186,6 +186,10 @@ export default function GoogleCalendarFull({
     month: "long",
     year: "numeric"
   });
+  const selectedMonthLabel = selectedDate.toLocaleDateString("fr-FR", {
+    month: "long",
+    year: "numeric"
+  });
 
   const weekLabel = `${weekDays[0].toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -202,8 +206,8 @@ export default function GoogleCalendarFull({
       <div className="page calendar-shell calendar-shell--mobile mobile-agenda-shell">
         <div className="mobile-agenda-header">
           <div>
-            <p className="muted-small">Planning interventions</p>
-            <h2>{selectedDateLabel}</h2>
+            <p className="muted-small">{selectedDateLabel}</p>
+            <h2>{selectedMonthLabel}</h2>
           </div>
           <span className="mobile-agenda-count">
             {selectedDayEvents.length}

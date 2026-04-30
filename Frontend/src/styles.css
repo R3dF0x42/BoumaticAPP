@@ -1815,7 +1815,7 @@ textarea {
 
 .maintenance-summary-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -1844,10 +1844,6 @@ textarea {
 
 .maintenance-summary--ready {
   border-color: rgba(34, 197, 94, 0.42);
-}
-
-.maintenance-summary--partial {
-  border-color: rgba(245, 158, 11, 0.46);
 }
 
 .maintenance-summary--missing {
@@ -1920,11 +1916,7 @@ textarea {
   background: linear-gradient(180deg, rgba(21, 83, 50, 0.72), rgba(8, 34, 25, 0.86));
 }
 
-.maintenance-month-card--partial {
-  border-color: rgba(245, 158, 11, 0.68);
-  background: linear-gradient(180deg, rgba(91, 59, 14, 0.72), rgba(36, 24, 10, 0.88));
-}
-
+.maintenance-month-card--partial,
 .maintenance-month-card--missing {
   border-color: rgba(225, 29, 72, 0.68);
   background: linear-gradient(180deg, rgba(87, 21, 43, 0.72), rgba(35, 10, 22, 0.88));
@@ -1968,6 +1960,27 @@ textarea {
   font-style: normal;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.maintenance-ready-check {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-color: rgba(34, 197, 94, 0.62);
+  background: rgba(34, 197, 94, 0.2);
+  color: #d7ffe4;
+}
+
+.maintenance-ready-check:not(.maintenance-ready-check--active) {
+  border-color: rgba(124, 146, 193, 0.34);
+  background: rgba(9, 14, 25, 0.62);
+  color: #dce8ff;
+}
+
+.maintenance-ready-check:not(.maintenance-ready-check--active):hover:not(:disabled) {
+  border-color: rgba(34, 197, 94, 0.72);
+  background: rgba(34, 197, 94, 0.18);
+  color: #d7ffe4;
 }
 
 .maintenance-month-description {
@@ -3013,7 +3026,7 @@ textarea {
   bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 42;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding: 8px;
   border: 1px solid rgba(116, 136, 179, 0.2);
@@ -3041,7 +3054,7 @@ textarea {
 
 @media (max-width: 900px) {
   .mobile-layout {
-    padding: 10px 10px calc(108px + env(safe-area-inset-bottom));
+    padding: 10px 10px calc(168px + env(safe-area-inset-bottom));
     gap: 14px;
     align-items: stretch;
   }

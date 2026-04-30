@@ -23,18 +23,21 @@ function toTimePart(value) {
 }
 
 function getMaintenanceState(intervention) {
-  const hasDate = Boolean(toDateInput(intervention.scheduled_at));
-  const hasTechnician = Boolean(intervention.technician_id);
-
-  if (hasDate && hasTechnician) return "ready";
-  if (!hasDate && !hasTechnician) return "missing";
-  return "partial";
+  if (intervention.status === "PRET") return "ready";
+  return "missing";
 }
 
 function getMaintenanceStateLabel(state) {
   if (state === "ready") return "Pret";
-  if (state === "partial") return "A completer";
   return "A planifier";
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
 }
 
 function isContractMaintenance(intervention) {
@@ -118,7 +121,7 @@ export default function MaintenancePlanningPage({ apiUrl }) {
   }, [visibleInterventions]);
 
   const summary = useMemo(() => {
-    const counts = { ready: 0, partial: 0, missing: 0 };
+    const counts = { ready: 0, missing: 0 };
     visibleInterventions.forEach((intervention) => {
       counts[getMaintenanceState(intervention)] += 1;
     });
@@ -178,6 +181,7 @@ export default function MaintenancePlanningPage({ apiUrl }) {
   const renderMaintenanceCard = (intervention) => {
     const state = getMaintenanceState(intervention);
     const dateValue = toDateInput(intervention.scheduled_at);
+    const isReady = state === "ready";
 
     return (
       <article
@@ -189,7 +193,22 @@ export default function MaintenancePlanningPage({ apiUrl }) {
             <strong>{intervention.client_name || "Client"}</strong>
             <span>{intervention.maintenance_kit_label || intervention.description}</span>
           </div>
-          <em>{getMaintenanceStateLabel(state)}</em>
+          {isReady ? (
+            <span className="icon-btn maintenance-ready-check maintenance-ready-check--active" title="Pret" aria-label="Pret">
+              <CheckIcon />
+            </span>
+          ) : (
+            <button
+              className="icon-btn maintenance-ready-check"
+              type="button"
+              onClick={() => updateIntervention(intervention, { status: "PRET" })}
+              disabled={savingId === intervention.id}
+              title="Marquer comme pret"
+              aria-label="Marquer la maintenance comme prete"
+            >
+              <CheckIcon />
+            </button>
+          )}
         </div>
 
         {intervention.description && (
@@ -268,10 +287,6 @@ export default function MaintenancePlanningPage({ apiUrl }) {
         <span className="maintenance-summary maintenance-summary--ready">
           <strong>{summary.ready}</strong>
           pret
-        </span>
-        <span className="maintenance-summary maintenance-summary--partial">
-          <strong>{summary.partial}</strong>
-          a completer
         </span>
         <span className="maintenance-summary maintenance-summary--missing">
           <strong>{summary.missing}</strong>
