@@ -1,9 +1,9 @@
 {
   "source": "fiche client robot.xlsx",
-  "generated_at": "2026-04-30T12:12:50",
+  "generated_at": "2026-04-30T13:06:25",
   "clients": [
     {
-      "name": "LA PAIX",
+      "name": "GAEC DE LA PAIX",
       "responsible": "rémi",
       "commissioning_date": null,
       "attention": "",
@@ -67,7 +67,7 @@
       "todos": []
     },
     {
-      "name": "GARNIER",
+      "name": "EARL GARNIER",
       "responsible": "rémi",
       "commissioning_date": null,
       "attention": "",
@@ -101,7 +101,7 @@
       "todos": []
     },
     {
-      "name": "CHEVROTIERE",
+      "name": "GAEC DE LA CHEVROTIERE",
       "responsible": "alexandre",
       "commissioning_date": null,
       "attention": "",
@@ -195,7 +195,7 @@
       "todos": []
     },
     {
-      "name": "FAVERGE",
+      "name": "EARL DE FAVERGE",
       "responsible": "rémi",
       "commissioning_date": null,
       "attention": "",
@@ -259,7 +259,7 @@
       "todos": []
     },
     {
-      "name": "GUERET",
+      "name": "GAEC DU GUERET",
       "responsible": "adrien",
       "commissioning_date": null,
       "attention": "",
@@ -353,7 +353,7 @@
       "todos": []
     },
     {
-      "name": "TERRON",
+      "name": "GAEC DU TERRON",
       "responsible": "alexandre",
       "commissioning_date": null,
       "attention": "",
@@ -399,7 +399,7 @@
       "todos": []
     },
     {
-      "name": "PILAT 2",
+      "name": "GAEC PILAT 2",
       "responsible": "alexandre",
       "commissioning_date": null,
       "attention": "",
@@ -433,7 +433,7 @@
       "todos": []
     },
     {
-      "name": "BERNUIZET",
+      "name": "GAEC DE BERNUIZET",
       "responsible": "rémi",
       "commissioning_date": null,
       "attention": "",
@@ -521,7 +521,7 @@
       "todos": []
     },
     {
-      "name": "HAUT BEJURE",
+      "name": "GAEC DES HAUT DE BEJURE",
       "responsible": "alexandre",
       "commissioning_date": null,
       "attention": "",
@@ -549,7 +549,7 @@
       "todos": []
     },
     {
-      "name": "4 ROUTES",
+      "name": "GAEC DES 4 ROUTES",
       "responsible": "benjamin",
       "commissioning_date": null,
       "attention": "",
@@ -607,7 +607,7 @@
       "todos": []
     },
     {
-      "name": "BOIS BERNARD",
+      "name": "EARL BOIS BERNARD",
       "responsible": "benjamin",
       "commissioning_date": null,
       "attention": "",
@@ -629,7 +629,7 @@
       "todos": []
     },
     {
-      "name": "ROCHE VIVE",
+      "name": "GAEC ROCHE VIVE",
       "responsible": "alexandre",
       "commissioning_date": null,
       "attention": "",
@@ -669,7 +669,7 @@
       "todos": []
     },
     {
-      "name": "LUCINGE",
+      "name": "GAEC DE LUCINGES",
       "responsible": "benjamin",
       "commissioning_date": null,
       "attention": "",
@@ -691,7 +691,7 @@
       "todos": []
     },
     {
-      "name": "AS DE TREFLE",
+      "name": "GAEC AS DE TREFLE",
       "responsible": "adrien",
       "commissioning_date": null,
       "attention": "",
@@ -749,7 +749,7 @@
       "todos": []
     },
     {
-      "name": "COLLIIERE",
+      "name": "GAEC COLLIERE",
       "responsible": "adrien",
       "commissioning_date": null,
       "attention": "",
@@ -813,7 +813,7 @@
       "todos": []
     },
     {
-      "name": "CHAMP DU BOIS",
+      "name": "GAEC CHAMP DU BOIS",
       "responsible": "adrien",
       "commissioning_date": null,
       "attention": "",
