@@ -104,6 +104,12 @@ export default function MaintenancePlanningPage({ apiUrl }) {
     [interventions, year]
   );
 
+  const orderedMonths = useMemo(() => {
+    const now = new Date();
+    const firstMonth = year === now.getFullYear() ? now.getMonth() : 0;
+    return Array.from({ length: 12 }, (_, index) => MONTHS[(firstMonth + index) % 12]);
+  }, [year]);
+
   const monthGroups = useMemo(() => {
     const groups = MONTHS.map((month) => ({
       ...month,
@@ -318,7 +324,9 @@ export default function MaintenancePlanningPage({ apiUrl }) {
       )}
 
       <div className="maintenance-month-grid">
-        {monthGroups.groups.map((month) => (
+        {orderedMonths.map((orderedMonth) => {
+          const month = monthGroups.groups[orderedMonth.index];
+          return (
           <section className="maintenance-month" key={month.index}>
             <div className="maintenance-month-title">
               <h3>{month.label}</h3>
@@ -332,7 +340,8 @@ export default function MaintenancePlanningPage({ apiUrl }) {
               )}
             </div>
           </section>
-        ))}
+          );
+        })}
       </div>
     </main>
   );
