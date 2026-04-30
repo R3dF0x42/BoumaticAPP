@@ -36,6 +36,15 @@ export default function Sidebar({
 
       <button
         className={
+          "nav-item " + (currentPage === "maintenance" ? "nav-item--active" : "")
+        }
+        onClick={() => setCurrentPage("maintenance")}
+      >
+        Maintenance a prevoir
+      </button>
+
+      <button
+        className={
           "nav-item " + (currentPage === "notes" ? "nav-item--active" : "")
         }
         onClick={() => setCurrentPage("notes")}

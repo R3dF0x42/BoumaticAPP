@@ -1801,6 +1801,220 @@ textarea {
   background: rgba(7, 12, 23, 0.5);
 }
 
+.maintenance-year-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.maintenance-year-nav strong {
+  min-width: 70px;
+  text-align: center;
+  font-size: 18px;
+}
+
+.maintenance-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.maintenance-summary {
+  min-height: 70px;
+  border-radius: 16px;
+  border: 1px solid rgba(116, 136, 179, 0.2);
+  background: rgba(8, 13, 24, 0.64);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.maintenance-summary strong {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.maintenance-summary--ready {
+  border-color: rgba(34, 197, 94, 0.42);
+}
+
+.maintenance-summary--partial {
+  border-color: rgba(245, 158, 11, 0.46);
+}
+
+.maintenance-summary--missing {
+  border-color: rgba(225, 29, 72, 0.46);
+}
+
+.maintenance-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.maintenance-month {
+  min-width: 0;
+  border: 1px solid rgba(116, 136, 179, 0.2);
+  border-radius: 18px;
+  background: rgba(7, 12, 23, 0.46);
+  padding: 12px;
+}
+
+.maintenance-month--unscheduled {
+  margin-bottom: 14px;
+  border-color: rgba(225, 29, 72, 0.38);
+}
+
+.maintenance-month-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  text-transform: capitalize;
+}
+
+.maintenance-month-title h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.maintenance-month-title span {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(124, 146, 193, 0.24);
+  background: rgba(9, 14, 25, 0.72);
+  color: #dce8ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.maintenance-month-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.maintenance-month-card {
+  border-radius: 16px;
+  border: 1px solid rgba(116, 136, 179, 0.2);
+  background: linear-gradient(180deg, rgba(18, 27, 46, 0.9), rgba(9, 15, 28, 0.9));
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.maintenance-month-card--ready {
+  border-color: rgba(34, 197, 94, 0.62);
+  background: linear-gradient(180deg, rgba(21, 83, 50, 0.72), rgba(8, 34, 25, 0.86));
+}
+
+.maintenance-month-card--partial {
+  border-color: rgba(245, 158, 11, 0.68);
+  background: linear-gradient(180deg, rgba(91, 59, 14, 0.72), rgba(36, 24, 10, 0.88));
+}
+
+.maintenance-month-card--missing {
+  border-color: rgba(225, 29, 72, 0.68);
+  background: linear-gradient(180deg, rgba(87, 21, 43, 0.72), rgba(35, 10, 22, 0.88));
+}
+
+.maintenance-month-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.maintenance-month-card-head div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.maintenance-month-card-head strong {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.maintenance-month-card-head span {
+  color: #c8d5ee;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.maintenance-month-card-head em {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.18);
+  color: #f7fbff;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.maintenance-month-description {
+  margin: 0 0 10px;
+  color: #eaf1ff;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.maintenance-quick-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.maintenance-quick-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: rgba(225, 233, 247, 0.78);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.maintenance-quick-fields input,
+.maintenance-quick-fields select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(112, 135, 182, 0.28);
+  background: rgba(4, 9, 18, 0.78);
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+.maintenance-month-empty {
+  min-height: 86px;
+  border: 1px dashed rgba(116, 136, 179, 0.24);
+  border-radius: 14px;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  background: rgba(3, 8, 18, 0.34);
+}
+
 .maintenance-form {
   display: flex;
   flex-direction: column;
@@ -3071,6 +3285,19 @@ textarea {
   .history-filters select {
     min-width: 0;
     width: 100%;
+  }
+
+  .maintenance-summary-row {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-month-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-year-nav {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .maintenance-grid {
