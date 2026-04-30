@@ -427,6 +427,39 @@ app.patch("/api/client-notes/:id/complete", async (req, res) => {
   }
 });
 
+app.patch("/api/client-notes/:id/content", async (req, res) => {
+  const id = Number(req.params.id);
+  const content = req.body?.content?.trim();
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant note invalide." });
+  }
+
+  if (!content) {
+    return res.status(400).json({ error: "La note ne peut pas etre vide." });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE client_notes
+      SET content = $1
+      WHERE id = $2
+      RETURNING id, client_id, author, content, created_at, completed_at
+      `,
+      [content, id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Note introuvable." });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete("/api/client-notes/:id", async (req, res) => {
   const id = Number(req.params.id);
 

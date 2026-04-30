@@ -1768,6 +1768,41 @@ textarea {
   white-space: pre-wrap;
 }
 
+.general-note-content p {
+  margin: 0;
+}
+
+.general-note-content p + p,
+.note-checkline + p,
+.general-note-content p + .note-checkline,
+.note-checkline + .note-checkline {
+  margin-top: 8px;
+}
+
+.note-checkline {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #ffffff;
+}
+
+.note-checkline input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  accent-color: var(--success);
+}
+
+.note-checkline span {
+  min-width: 0;
+}
+
+.note-checkline input:checked + span {
+  color: #b8c4d8;
+  text-decoration: line-through;
+}
+
 .done-btn {
   border: 1px solid rgba(34, 197, 94, 0.48);
   background: rgba(34, 197, 94, 0.16);

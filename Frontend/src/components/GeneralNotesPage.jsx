@@ -53,6 +53,7 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState(null);
+  const [updatingContentId, setUpdatingContentId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState("");
@@ -238,6 +239,79 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
     }
   };
 
+  const updateNoteContent = async (note, nextContent) => {
+    setUpdatingContentId(note.id);
+    setError("");
+    setInfo("");
+
+    try {
+      const res = await fetch(`${apiUrl}/client-notes/${note.id}/content`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: nextContent })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || "Impossible de modifier la note.");
+      }
+
+      setNotes((items) =>
+        items.map((item) =>
+          item.id === note.id ? { ...item, content: nextContent } : item
+        )
+      );
+    } catch (err) {
+      setError(err.message || "Impossible de modifier la note.");
+    } finally {
+      setUpdatingContentId(null);
+    }
+  };
+
+  const toggleChecklistLine = (note, lineIndex) => {
+    const lines = String(note.content || "").split("\n");
+    const line = lines[lineIndex] || "";
+    if (/^\s*\[\s\]\s+/.test(line)) {
+      lines[lineIndex] = line.replace(/^(\s*)\[\s\](\s+)/, "$1[x]$2");
+    } else if (/^\s*\[x\]\s+/i.test(line)) {
+      lines[lineIndex] = line.replace(/^(\s*)\[x\](\s+)/i, "$1[ ]$2");
+    } else {
+      return;
+    }
+    updateNoteContent(note, lines.join("\n"));
+  };
+
+  const renderNoteContent = (note) => {
+    const lines = String(note.content || "").split("\n");
+
+    return (
+      <div className="general-note-content">
+        {lines.map((line, index) => {
+          const todoMatch = line.match(/^\s*\[\s\]\s+(.*)$/);
+          const doneMatch = line.match(/^\s*\[x\]\s+(.*)$/i);
+
+          if (todoMatch || doneMatch) {
+            const checked = Boolean(doneMatch);
+            const label = todoMatch?.[1] || doneMatch?.[1] || "";
+            return (
+              <label className="note-checkline" key={`${note.id}-${index}`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleChecklistLine(note, index)}
+                  disabled={updatingContentId === note.id}
+                />
+                <span>{label}</span>
+              </label>
+            );
+          }
+
+          return <p key={`${note.id}-${index}`}>{line}</p>;
+        })}
+      </div>
+    );
+  };
+
   return (
     <main className="page page--wide general-notes-page">
       <div className="page-header">
@@ -377,7 +451,7 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
                     )
                   )}
                 </div>
-                <p className="general-note-content">{note.content}</p>
+                {renderNoteContent(note)}
               </article>
             ))}
 
