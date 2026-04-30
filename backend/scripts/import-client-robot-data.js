@@ -19,6 +19,15 @@ function dateAtHour(isoDate, hour = 9) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function normalizeName(value = "") {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 async function findTechnicianId(name) {
   const safeName = name?.trim();
   if (!safeName) return null;
@@ -36,41 +45,24 @@ async function findTechnicianId(name) {
   return result.rows[0]?.id || null;
 }
 
-async function getOrCreateClient(client) {
+async function findExistingClientId(client) {
   const safeName = client.name?.trim();
   if (!safeName) return null;
-  const gpsLat = Number.isFinite(Number(client.gps_lat)) ? Number(client.gps_lat) : null;
-  const gpsLng = Number.isFinite(Number(client.gps_lng)) ? Number(client.gps_lng) : null;
 
-  const existing = await pool.query(
-    "SELECT id FROM clients WHERE LOWER(name) = LOWER($1) LIMIT 1",
+  const exact = await pool.query(
+    "SELECT id FROM clients WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1",
     [safeName]
   );
 
-  if (existing.rows.length) {
-    await pool.query(
-      `
-      UPDATE clients
-      SET commissioning_date = COALESCE($1, commissioning_date),
-          gps_lat = COALESCE(gps_lat, $2),
-          gps_lng = COALESCE(gps_lng, $3)
-      WHERE id = $4
-      `,
-      [client.commissioning_date || null, gpsLat, gpsLng, existing.rows[0].id]
-    );
-    return existing.rows[0].id;
-  }
+  if (exact.rows.length) return exact.rows[0].id;
 
-  const created = await pool.query(
-    `
-    INSERT INTO clients (name, commissioning_date, gps_lat, gps_lng)
-    VALUES ($1,$2,$3,$4)
-    RETURNING id
-    `,
-    [safeName, client.commissioning_date || null, gpsLat, gpsLng]
+  const allClients = await pool.query(
+    "SELECT id, name FROM clients"
   );
+  const target = normalizeName(safeName);
+  const fuzzyMatch = allClients.rows.find((row) => normalizeName(row.name) === target);
 
-  return created.rows[0].id;
+  return fuzzyMatch?.id || null;
 }
 
 async function insertIntervention({
@@ -137,12 +129,17 @@ async function main() {
   let historyImported = 0;
   let kitsImported = 0;
   let todosIgnored = 0;
+  let clientsSkipped = 0;
   let clientsWithGps = 0;
   const now = new Date();
 
   for (const client of data.clients || []) {
-    const clientId = await getOrCreateClient(client);
-    if (!clientId) continue;
+    const clientId = await findExistingClientId(client);
+    if (!clientId) {
+      clientsSkipped += 1;
+      console.log(`Client introuvable, ignore: ${client.name}`);
+      continue;
+    }
     clientsImported += 1;
     if (Number.isFinite(Number(client.gps_lat)) && Number.isFinite(Number(client.gps_lng))) {
       clientsWithGps += 1;
@@ -187,6 +184,7 @@ async function main() {
   }
 
   console.log(`Clients traites: ${clientsImported}`);
+  console.log(`Clients ignores car introuvables: ${clientsSkipped}`);
   console.log(`Clients avec coordonnees GPS dans le fichier: ${clientsWithGps}`);
   console.log(`Historique importe: ${historyImported}`);
   console.log(`Maintenances kit importees: ${kitsImported}`);
