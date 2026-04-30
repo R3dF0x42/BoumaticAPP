@@ -11,6 +11,7 @@ import { API_URL } from "./config/api.js";
 import { preparePhotoForUpload } from "./utils/images.js";
 
 const SESSION_KEY = "boumatic-user-session";
+const PAGE_KEY = "boumatic-current-page";
 
 function normalizeSession(rawSession) {
   if (!rawSession) return null;
@@ -23,7 +24,10 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [showNewIntervention, setShowNewIntervention] = useState(false);
-  const [currentPage, setCurrentPage] = useState("planning");
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window === "undefined") return "planning";
+    return window.localStorage.getItem(PAGE_KEY) || "planning";
+  });
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.innerWidth < 900;
@@ -71,6 +75,11 @@ export default function App() {
       setCurrentPage("planning");
     }
   }, [isAdmin, currentPage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PAGE_KEY, currentPage);
+  }, [currentPage]);
 
   const handleUpdateIntervention = async (updates) => {
     if (!selectedId || !selectedDetails?.intervention) return;
@@ -235,6 +244,7 @@ export default function App() {
     setCurrentPage("planning");
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(SESSION_KEY);
+      window.localStorage.removeItem(PAGE_KEY);
     }
   };
 
