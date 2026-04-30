@@ -2966,9 +2966,7 @@ textarea {
   }
 
   .intervention-modal-header {
-    position: sticky;
-    top: 0;
-    z-index: 3;
+    position: static;
     padding-bottom: 10px;
     margin-bottom: 12px;
     background: linear-gradient(180deg, rgba(20, 29, 49, 0.98), rgba(20, 29, 49, 0.88));
