@@ -239,13 +239,12 @@ export default function MaintenancePlanningPage({ apiUrl }) {
               type="date"
               value={dateValue}
               required
-              onChange={(event) =>
+              onChange={(event) => {
+                if (!event.target.value) return;
                 updateIntervention(intervention, {
-                  scheduled_at: event.target.value
-                    ? `${event.target.value}T${toTimePart(intervention.scheduled_at)}:00`
-                    : null
-                })
-              }
+                  scheduled_at: `${event.target.value}T${toTimePart(intervention.scheduled_at)}:00`
+                });
+              }}
               disabled={savingId === intervention.id}
             />
           </label>
