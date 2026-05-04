@@ -229,6 +229,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       }
 
       setMaintenancePlans(Array.isArray(data) ? data : []);
+      await loadClients();
     } catch {
       setMaintenancePlans([]);
       setClientError("Impossible de charger les maintenances.");
@@ -275,6 +276,14 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     const count = Number(client?.deplacements_offerts_utilises || 0);
     if (!Number.isFinite(count)) return 0;
     return Math.max(0, Math.min(4, count));
+  };
+
+  const isOfferedTravelContractActive = (plan) => {
+    if (!plan?.deplacement_offert) return false;
+    if (!plan.end_at) return true;
+    const endDate = new Date(plan.end_at);
+    if (Number.isNaN(endDate.getTime())) return false;
+    return endDate >= new Date();
   };
 
   const updateOfferedTravelLights = async (nextCount) => {
@@ -1190,7 +1199,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       .map((date) => new Date(date))
       .filter((date) => !Number.isNaN(date.getTime()))
       .sort((a, b) => a.getTime() - b.getTime())[0];
-    const hasOfferedTravelContract = maintenancePlans.some((plan) => plan.deplacement_offert);
+    const hasOfferedTravelContract = maintenancePlans.some(isOfferedTravelContractActive);
 
     return (
       <>

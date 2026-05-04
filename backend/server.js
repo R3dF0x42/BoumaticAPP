@@ -679,6 +679,31 @@ async function attachGoogleEvent(interventionId) {
   }
 }
 
+async function resetOfferedTravelCount(clientId) {
+  await pool.query(
+    "UPDATE clients SET deplacements_offerts_utilises = 0 WHERE id = $1",
+    [clientId]
+  );
+}
+
+async function resetOfferedTravelCountIfNoActiveContract(clientId) {
+  await pool.query(
+    `
+    UPDATE clients c
+    SET deplacements_offerts_utilises = 0
+    WHERE c.id = $1
+      AND NOT EXISTS (
+        SELECT 1
+        FROM client_maintenance_plans mp
+        WHERE mp.client_id = c.id
+          AND mp.deplacement_offert = TRUE
+          AND (mp.end_at IS NULL OR mp.end_at >= NOW())
+      )
+    `,
+    [clientId]
+  );
+}
+
 app.get("/api/clients/:id/maintenance-plans", async (req, res) => {
   const clientId = Number(req.params.id);
 
@@ -687,6 +712,8 @@ app.get("/api/clients/:id/maintenance-plans", async (req, res) => {
   }
 
   try {
+    await resetOfferedTravelCountIfNoActiveContract(clientId);
+
     const result = await pool.query(
       `
       SELECT mp.*,
@@ -784,6 +811,10 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     );
 
     const planId = planResult.rows[0].id;
+    if (deplacement_offert === true) {
+      await resetOfferedTravelCount(clientId);
+    }
+
     const createdIds = await createMaintenanceInterventions({
       planId,
       clientId,
@@ -847,7 +878,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
 
   try {
     const plan = await pool.query(
-      "SELECT id FROM client_maintenance_plans WHERE id = $1 AND client_id = $2",
+      "SELECT id, deplacement_offert, end_at FROM client_maintenance_plans WHERE id = $1 AND client_id = $2",
       [planId, clientId]
     );
 
@@ -889,6 +920,16 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
         clientId
       ]
     );
+
+    const previousPlan = plan.rows[0];
+    const previousEndDate = previousPlan.end_at ? new Date(previousPlan.end_at) : null;
+    const wasExpired = previousEndDate ? previousEndDate < new Date() : false;
+
+    if (deplacement_offert === true && (!previousPlan.deplacement_offert || wasExpired)) {
+      await resetOfferedTravelCount(clientId);
+    } else if (deplacement_offert !== true) {
+      await resetOfferedTravelCountIfNoActiveContract(clientId);
+    }
 
     await pool.query(
       `
@@ -948,6 +989,8 @@ app.delete("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) 
       planId,
       clientId
     ]);
+
+    await resetOfferedTravelCount(clientId);
 
     res.json({ deleted: true });
   } catch (err) {
