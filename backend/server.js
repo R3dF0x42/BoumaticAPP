@@ -185,6 +185,52 @@ app.put("/api/clients/:id", async (req, res) => {
   }
 });
 
+app.put("/api/clients/:id/deplacements-offerts", async (req, res) => {
+  const id = Number(req.params.id);
+  const usedCount = Number(req.body?.used_count);
+  const isAdmin = req.body?.is_admin === true;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant client invalide." });
+  }
+
+  if (!Number.isInteger(usedCount) || usedCount < 0 || usedCount > 4) {
+    return res.status(400).json({ error: "Nombre de deplacements offert invalide." });
+  }
+
+  try {
+    const existing = await pool.query(
+      "SELECT deplacements_offerts_utilises FROM clients WHERE id = $1",
+      [id]
+    );
+
+    if (!existing.rows.length) {
+      return res.status(404).json({ error: "Client introuvable." });
+    }
+
+    const currentCount = Number(existing.rows[0].deplacements_offerts_utilises || 0);
+    if (usedCount < currentCount && !isAdmin) {
+      return res.status(403).json({
+        error: "Seul un admin peut remettre un deplacement offert en vert."
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE clients
+      SET deplacements_offerts_utilises = $1
+      WHERE id = $2
+      RETURNING id, deplacements_offerts_utilises
+      `,
+      [usedCount, id]
+    );
+
+    res.json({ client: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete("/api/clients/:id", async (req, res) => {
   const id = Number(req.params.id);
 
@@ -672,6 +718,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     maintenance_type,
     maintenance_kit_model,
     priority,
+    deplacement_offert,
     description
   } = req.body;
 
@@ -715,8 +762,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     const planResult = await pool.query(
       `
       INSERT INTO client_maintenance_plans
-        (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, maintenance_type, maintenance_kit_model, maintenance_kit_count, priority, description)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, maintenance_type, maintenance_kit_model, maintenance_kit_count, priority, deplacement_offert, description)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING id
       `,
       [
@@ -731,6 +778,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
         safeKitModel,
         safeKitCount,
         priority || "Normale",
+        deplacement_offert === true,
         description || (safeMaintenanceType === "compressor" ? "Maintenance compresseur" : "Maintenance contrat")
       ]
     );
@@ -769,6 +817,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
     maintenance_type,
     maintenance_kit_model,
     priority,
+    deplacement_offert,
     description
   } = req.body;
 
@@ -819,8 +868,9 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
           maintenance_kit_model=$8,
           maintenance_kit_count=$9,
           priority=$10,
-          description=$11
-      WHERE id=$12 AND client_id=$13
+          deplacement_offert=$11,
+          description=$12
+      WHERE id=$13 AND client_id=$14
       `,
       [
         technician_id || null,
@@ -833,6 +883,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
         safeKitModel,
         safeKitCount,
         priority || "Normale",
+        deplacement_offert === true,
         description || (safeMaintenanceType === "compressor" ? "Maintenance compresseur" : "Maintenance contrat"),
         planId,
         clientId

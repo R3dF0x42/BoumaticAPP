@@ -114,6 +114,7 @@ async function initDB() {
         maintenance_kit_model TEXT DEFAULT 'gemini_up' NOT NULL,
         maintenance_kit_count INTEGER DEFAULT 6 NOT NULL,
         priority TEXT DEFAULT 'Normale' NOT NULL,
+        deplacement_offert BOOLEAN DEFAULT FALSE NOT NULL,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -149,8 +150,12 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS gps_lat DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS gps_lng DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS commissioning_date DATE,
+        ADD COLUMN IF NOT EXISTS deplacements_offerts_utilises INTEGER DEFAULT 0 NOT NULL,
         ALTER COLUMN gps_lat TYPE DOUBLE PRECISION,
         ALTER COLUMN gps_lng TYPE DOUBLE PRECISION;
+      UPDATE clients
+      SET deplacements_offerts_utilises = 0
+      WHERE deplacements_offerts_utilises IS NULL;
     `);
 
     await client.query(`
@@ -180,12 +185,14 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS maintenance_kit_model TEXT,
         ADD COLUMN IF NOT EXISTS maintenance_kit_count INTEGER,
         ADD COLUMN IF NOT EXISTS priority TEXT,
+        ADD COLUMN IF NOT EXISTS deplacement_offert BOOLEAN DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS description TEXT;
       UPDATE client_maintenance_plans SET duration_minutes = 60 WHERE duration_minutes IS NULL;
       UPDATE client_maintenance_plans SET maintenance_type = 'robot' WHERE maintenance_type IS NULL;
       UPDATE client_maintenance_plans SET maintenance_kit_model = 'gemini_up' WHERE maintenance_kit_model IS NULL;
       UPDATE client_maintenance_plans SET maintenance_kit_count = 6 WHERE maintenance_kit_count IS NULL;
       UPDATE client_maintenance_plans SET priority = 'Normale' WHERE priority IS NULL;
+      UPDATE client_maintenance_plans SET deplacement_offert = FALSE WHERE deplacement_offert IS NULL;
       ALTER TABLE client_maintenance_plans
         ALTER COLUMN duration_minutes SET DEFAULT 60,
         ALTER COLUMN duration_minutes SET NOT NULL,
@@ -196,7 +203,9 @@ async function initDB() {
         ALTER COLUMN maintenance_kit_count SET DEFAULT 6,
         ALTER COLUMN maintenance_kit_count SET NOT NULL,
         ALTER COLUMN priority SET DEFAULT 'Normale',
-        ALTER COLUMN priority SET NOT NULL;
+        ALTER COLUMN priority SET NOT NULL,
+        ALTER COLUMN deplacement_offert SET DEFAULT FALSE,
+        ALTER COLUMN deplacement_offert SET NOT NULL;
     `);
 
     await client.query(`

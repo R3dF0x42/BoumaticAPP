@@ -2095,6 +2095,24 @@ textarea {
   resize: vertical;
 }
 
+.maintenance-form .maintenance-checkbox-row {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.maintenance-form .maintenance-checkbox-row input {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  accent-color: #22c55e;
+  cursor: pointer;
+}
+
 .maintenance-form--edit {
   width: 100%;
   margin-bottom: 0;
@@ -2301,6 +2319,56 @@ textarea {
 
 .client-badge--muted {
   color: var(--muted);
+}
+
+.offered-travel-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.offered-travel-panel strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.offered-travel-panel p {
+  margin: 0;
+}
+
+.offered-travel-lights {
+  display: grid;
+  grid-template-columns: repeat(4, 38px);
+  gap: 8px;
+}
+
+.offered-travel-light {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #06110b;
+  font-weight: 900;
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.26), 0 8px 18px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+}
+
+.offered-travel-light--green {
+  background: radial-gradient(circle at 35% 30%, #dcfce7, #22c55e 58%, #0f7a3d);
+}
+
+.offered-travel-light--red {
+  background: radial-gradient(circle at 35% 30%, #fee2e2, #ef4444 58%, #991b1b);
+  color: #fff7f7;
+}
+
+.offered-travel-light:disabled {
+  cursor: not-allowed;
+  opacity: 0.82;
 }
 
 .client-kpi-grid {
@@ -3277,6 +3345,11 @@ textarea {
   .modal-actions .btn {
     width: 100%;
     min-width: 0;
+  }
+
+  .offered-travel-panel {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .client-hero,

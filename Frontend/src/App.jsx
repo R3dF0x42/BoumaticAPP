@@ -333,7 +333,11 @@ export default function App() {
         {!isMobile && (
           <>
             {currentPage === "clients" && (
-              <ClientsPage apiUrl={API_URL} onSelectIntervention={handleSelectEvent} />
+              <ClientsPage
+                apiUrl={API_URL}
+                onSelectIntervention={handleSelectEvent}
+                isAdmin={isAdmin}
+              />
             )}
             {currentPage === "notes" && (
               <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
@@ -363,7 +367,11 @@ export default function App() {
         )}
 
         {isMobile && currentPage === "clients" && (
-          <ClientsPage apiUrl={API_URL} onSelectIntervention={handleSelectEvent} />
+          <ClientsPage
+            apiUrl={API_URL}
+            onSelectIntervention={handleSelectEvent}
+            isAdmin={isAdmin}
+          />
         )}
         {isMobile && currentPage === "notes" && (
           <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />

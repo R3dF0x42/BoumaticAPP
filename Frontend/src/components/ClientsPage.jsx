@@ -67,7 +67,7 @@ function getMaintenanceTypeLabel(value) {
   return value === "compressor" ? "Compresseur" : "Robot de traite";
 }
 
-export default function ClientsPage({ apiUrl, onSelectIntervention }) {
+export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = false }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -117,6 +117,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     end_at: getDefaultContractEndDate(),
     maintenance_kit_model: "gemini_up",
     priority: "Normale",
+    deplacement_offert: false,
     description: "Maintenance contrat"
   });
   const [maintenanceEditForm, setMaintenanceEditForm] = useState({
@@ -127,6 +128,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     end_at: getDefaultContractEndDate(),
     maintenance_kit_model: "gemini_up",
     priority: "Normale",
+    deplacement_offert: false,
     description: "Maintenance contrat"
   });
   const apiOrigin = apiUrl.replace(/\/api$/, "");
@@ -267,6 +269,62 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
 
   const setMaintenanceEditValue = (field, value) => {
     setMaintenanceEditForm((f) => ({ ...f, [field]: value }));
+  };
+
+  const getOfferedTravelUsedCount = (client) => {
+    const count = Number(client?.deplacements_offerts_utilises || 0);
+    if (!Number.isFinite(count)) return 0;
+    return Math.max(0, Math.min(4, count));
+  };
+
+  const updateOfferedTravelLights = async (nextCount) => {
+    if (!selectedClient?.id) return;
+
+    const currentCount = getOfferedTravelUsedCount(selectedClient);
+
+    if (nextCount < currentCount && !isAdmin) {
+      setClientError("Seul un admin peut remettre un deplacement offert en vert.");
+      return;
+    }
+
+    const message =
+      nextCount > currentCount
+        ? "Confirmer que ce deplacement offert a ete utilise ?"
+        : "Remettre ce deplacement offert en vert ?";
+
+    if (!window.confirm(message)) return;
+
+    setClientError("");
+    setClientInfo("");
+
+    try {
+      const res = await fetch(`${apiUrl}/clients/${selectedClient.id}/deplacements-offerts`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ used_count: nextCount, is_admin: isAdmin })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setClientError(data.error || "Impossible de modifier les deplacements offerts.");
+        return;
+      }
+
+      setClients((list) =>
+        list.map((client) =>
+          client.id === selectedClient.id
+            ? {
+                ...client,
+                deplacements_offerts_utilises:
+                  data.client?.deplacements_offerts_utilises ?? nextCount
+              }
+            : client
+        )
+      );
+      setClientInfo("Deplacements offerts mis a jour.");
+    } catch {
+      setClientError("Impossible de modifier les deplacements offerts.");
+    }
   };
 
   const setMaintenanceType = (value) => {
@@ -730,6 +788,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       end_at: toDateInput(plan.end_at),
       maintenance_kit_model: plan.maintenance_kit_model || "gemini_up",
       priority: plan.priority || "Normale",
+      deplacement_offert: plan.deplacement_offert === true,
       description: plan.description || "Maintenance contrat"
     });
   };
@@ -992,6 +1051,17 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   <option>Urgente</option>
                 </select>
 
+                <label className="maintenance-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={maintenanceEditForm.deplacement_offert}
+                    onChange={(e) =>
+                      setMaintenanceEditValue("deplacement_offert", e.target.checked)
+                    }
+                  />
+                  <span>Deplacement offert</span>
+                </label>
+
                 <label>Description</label>
                 <textarea
                   value={maintenanceEditForm.description}
@@ -1026,6 +1096,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
                   <p className="muted-small">
                     Fin contrat: {plan.end_at ? formatDate(plan.end_at) : "Non renseignee"} - journee entiere
                   </p>
+                  {plan.deplacement_offert && (
+                    <p className="muted-small">Deplacement offert active sur ce contrat</p>
+                  )}
                   {plan.maintenance_type !== "compressor" && (
                     <p className="muted-small">
                       {getMaintenanceKitModelLabel(plan.maintenance_kit_model)}
@@ -1061,6 +1134,52 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
     );
   };
 
+  const renderOfferedTravelLights = () => {
+    const usedCount = getOfferedTravelUsedCount(selectedClient);
+
+    return (
+      <div className="offered-travel-panel">
+        <div>
+          <strong>Deplacements offerts</strong>
+          <p className="muted-small">
+            {usedCount}/4 utilise(s)
+            {!isAdmin ? " - retour en vert reserve a l'admin" : ""}
+          </p>
+        </div>
+        <div className="offered-travel-lights" aria-label="Deplacements offerts">
+          {[0, 1, 2, 3].map((index) => {
+            const isUsed = index < usedCount;
+            const canToggle = !isUsed || isAdmin;
+            const nextCount = isUsed ? index : index + 1;
+
+            return (
+              <button
+                key={index}
+                className={`offered-travel-light ${
+                  isUsed ? "offered-travel-light--red" : "offered-travel-light--green"
+                }`}
+                type="button"
+                role="checkbox"
+                aria-checked={isUsed}
+                disabled={!canToggle}
+                title={
+                  isUsed && !isAdmin
+                    ? "Connexion admin requise pour remettre en vert"
+                    : isUsed
+                      ? "Remettre ce feu en vert"
+                      : "Marquer ce deplacement comme utilise"
+                }
+                onClick={() => updateOfferedTravelLights(nextCount)}
+              >
+                <span>{index + 1}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   if (mode === "detail" && selectedClient) {
     const mapTarget = getClientMapTarget(selectedClient);
     const hasMapTarget = Boolean(mapTarget);
@@ -1071,6 +1190,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
       .map((date) => new Date(date))
       .filter((date) => !Number.isNaN(date.getTime()))
       .sort((a, b) => a.getTime() - b.getTime())[0];
+    const hasOfferedTravelContract = maintenancePlans.some((plan) => plan.deplacement_offert);
 
     return (
       <>
@@ -1258,6 +1378,10 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
           )}
         </div>
 
+        {hasOfferedTravelContract && (
+          <div className="card">{renderOfferedTravelLights()}</div>
+        )}
+
         <div className="card">
           <h3>Contrat de maintenance</h3>
           <form className="maintenance-form" onSubmit={submitMaintenancePlan}>
@@ -1345,6 +1469,15 @@ export default function ClientsPage({ apiUrl, onSelectIntervention }) {
               <option>Normale</option>
               <option>Urgente</option>
             </select>
+
+            <label className="maintenance-checkbox-row">
+              <input
+                type="checkbox"
+                checked={maintenanceForm.deplacement_offert}
+                onChange={(e) => setMaintenanceValue("deplacement_offert", e.target.checked)}
+              />
+              <span>Deplacement offert</span>
+            </label>
 
             <label>Description</label>
             <textarea
