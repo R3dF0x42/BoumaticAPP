@@ -94,7 +94,11 @@ export default function GoogleCalendarFull({
           const isContractMaintenance = Boolean(
             inter.maintenance_plan_id || inter.maintenance_kit_label
           );
-          return !isContractMaintenance || inter.status === "PRET";
+          return (
+            !isContractMaintenance ||
+            inter.status === "PRET" ||
+            inter.status === "TERMINE"
+          );
         });
 
         const formatted = visibleInterventions.map((inter) => {
