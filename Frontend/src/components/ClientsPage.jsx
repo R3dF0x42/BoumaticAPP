@@ -67,7 +67,21 @@ function getMaintenanceTypeLabel(value) {
   return value === "compressor" ? "Compresseur" : "Robot de traite";
 }
 
-export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = false }) {
+function buildViewerQuery(user) {
+  if (!user) return "";
+  const params = new URLSearchParams();
+
+  if (user.role === "admin") {
+    params.set("viewer_role", "admin");
+  } else if (user.id) {
+    params.set("viewer_technician_id", String(user.id));
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = false, loggedUser }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -173,7 +187,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
   const loadInterventions = async () => {
     setLoadingHistory(true);
     try {
-      const res = await fetch(`${apiUrl}/interventions`);
+      const res = await fetch(`${apiUrl}/interventions${buildViewerQuery(loggedUser)}`);
       setInterventions(await res.json());
     } finally {
       setLoadingHistory(false);

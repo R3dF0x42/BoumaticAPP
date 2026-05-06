@@ -78,6 +78,7 @@ async function initDB() {
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
         maintenance_kit_label TEXT,
         maintenance_occurrence_index INTEGER,
+        private_to_technician_id INTEGER,
         google_event_id TEXT
       );
     `);
@@ -166,6 +167,7 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS google_event_id TEXT,
         ADD COLUMN IF NOT EXISTS maintenance_plan_id INTEGER,
         ADD COLUMN IF NOT EXISTS maintenance_occurrence_index INTEGER,
+        ADD COLUMN IF NOT EXISTS private_to_technician_id INTEGER,
         ALTER COLUMN status SET DEFAULT 'pending',
         ALTER COLUMN priority SET DEFAULT 'normal';
       UPDATE interventions SET duration_minutes = 60 WHERE duration_minutes IS NULL;
@@ -293,6 +295,7 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_interventions_scheduled_at ON interventions(scheduled_at);
       CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_plan_id ON interventions(maintenance_plan_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_occurrence ON interventions(maintenance_plan_id, maintenance_occurrence_index);
+      CREATE INDEX IF NOT EXISTS idx_interventions_private_to_technician_id ON interventions(private_to_technician_id);
       CREATE INDEX IF NOT EXISTS idx_client_maintenance_plans_client_id ON client_maintenance_plans(client_id);
       CREATE INDEX IF NOT EXISTS idx_notes_intervention_id ON notes(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_photos_intervention_id ON photos(intervention_id);

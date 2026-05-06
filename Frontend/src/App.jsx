@@ -52,6 +52,20 @@ function buildNavigationHash(page, interventionId = null) {
   return `#/${safePage}`;
 }
 
+function buildViewerQuery(user) {
+  if (!user) return "";
+  const params = new URLSearchParams();
+
+  if (user.role === "admin") {
+    params.set("viewer_role", "admin");
+  } else if (user.id) {
+    params.set("viewer_technician_id", String(user.id));
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export default function App() {
   const initialNavigation = readNavigationFromLocation();
   const [interventions, setInterventions] = useState([]);
@@ -79,6 +93,7 @@ export default function App() {
   });
 
   const isAdmin = loggedUser?.role === "admin";
+  const viewerQuery = buildViewerQuery(loggedUser);
 
   const applyNavigation = useCallback((navigation) => {
     const nextPage = VALID_PAGES.has(navigation.page) ? navigation.page : "planning";
@@ -145,11 +160,11 @@ export default function App() {
   useEffect(() => {
     if (!selectedId) return;
 
-    fetch(`${API_URL}/interventions/${selectedId}`)
+    fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`)
       .then((res) => res.json())
       .then(setSelectedDetails)
       .catch(console.error);
-  }, [selectedId]);
+  }, [selectedId, viewerQuery]);
 
   useEffect(() => {
     if (!isAdmin && currentPage === "admin") {
@@ -182,7 +197,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
         (r) => r.json()
       );
       setSelectedDetails(refreshed);
@@ -211,7 +226,7 @@ export default function App() {
         throw new Error("Erreur ajout note");
       }
 
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
         (r) => r.json()
       );
       setSelectedDetails(refreshed);
@@ -239,7 +254,7 @@ export default function App() {
         throw new Error(data.error || "Erreur upload photo");
       }
 
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
         (r) => r.json()
       );
       setSelectedDetails(refreshed);
@@ -267,7 +282,7 @@ export default function App() {
         throw new Error("Erreur suppression photo");
       }
 
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}`).then(
+      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
         (r) => r.json()
       );
       setSelectedDetails(refreshed);
@@ -420,6 +435,7 @@ export default function App() {
             <GoogleCalendarFull
               onSelectEvent={handleSelectEvent}
               onInterventionsLoaded={handleInterventionsLoaded}
+              loggedUser={loggedUser}
             />
           )}
 
@@ -430,13 +446,14 @@ export default function App() {
                   apiUrl={API_URL}
                   onSelectIntervention={handleSelectEvent}
                   isAdmin={isAdmin}
+                  loggedUser={loggedUser}
                 />
               )}
               {currentPage === "notes" && (
                 <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
               )}
               {currentPage === "maintenance" && (
-                <MaintenancePlanningPage apiUrl={API_URL} />
+                <MaintenancePlanningPage apiUrl={API_URL} loggedUser={loggedUser} />
               )}
               {currentPage === "admin" && isAdmin && (
                 <TechniciansPage apiUrl={API_URL} canManage />
@@ -464,13 +481,14 @@ export default function App() {
               apiUrl={API_URL}
               onSelectIntervention={handleSelectEvent}
               isAdmin={isAdmin}
+              loggedUser={loggedUser}
             />
           )}
           {isMobile && currentPage === "notes" && (
             <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
           )}
           {isMobile && currentPage === "maintenance" && (
-            <MaintenancePlanningPage apiUrl={API_URL} />
+            <MaintenancePlanningPage apiUrl={API_URL} loggedUser={loggedUser} />
           )}
           {isMobile && currentPage === "admin" && isAdmin && (
             <TechniciansPage apiUrl={API_URL} canManage />
@@ -492,6 +510,7 @@ export default function App() {
 
       {showNewIntervention && (
         <NewIntervention
+          loggedUser={loggedUser}
           onClose={() => setShowNewIntervention(false)}
           onCreated={() => {
             window.dispatchEvent(new Event("refreshCalendar"));

@@ -68,9 +68,24 @@ function formatEventTime(date) {
   });
 }
 
+function buildViewerQuery(user) {
+  if (!user) return "";
+  const params = new URLSearchParams();
+
+  if (user.role === "admin") {
+    params.set("viewer_role", "admin");
+  } else if (user.id) {
+    params.set("viewer_technician_id", String(user.id));
+  }
+
+  const query = params.toString();
+  return query ? `&${query}` : "";
+}
+
 export default function GoogleCalendarFull({
   onSelectEvent,
-  onInterventionsLoaded
+  onInterventionsLoaded,
+  loggedUser
 }) {
   const [events, setEvents] = useState([]);
   const [currentStart, setCurrentStart] = useState(null);
@@ -89,7 +104,9 @@ export default function GoogleCalendarFull({
 
     const { start, end } = getWeekRange(dateObj);
 
-    fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59`)
+    fetch(
+      `${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59${buildViewerQuery(loggedUser)}`
+    )
       .then((r) => r.json())
       .then((data) => {
         const visibleInterventions = data.filter((inter) => {
@@ -132,7 +149,7 @@ export default function GoogleCalendarFull({
         onInterventionsLoaded && onInterventionsLoaded(visibleInterventions);
       })
       .catch((err) => console.error("Erreur chargement interventions :", err));
-  }, [onInterventionsLoaded]);
+  }, [loggedUser, onInterventionsLoaded]);
 
   // ---- refresh du calendrier externe (nouvelle intervention) ----
   useEffect(() => {

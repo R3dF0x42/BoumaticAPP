@@ -25,9 +25,10 @@ const TIME_MODES = {
   custom: { label: "Heure precise", start: getDefaultTime(), duration: 60 }
 };
 
-export default function NewIntervention({ onClose, onCreated }) {
+export default function NewIntervention({ loggedUser, onClose, onCreated }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
+  const canCreatePrivateIntervention = loggedUser?.role === "technician" && loggedUser?.id;
   const [form, setForm] = useState({
     client_id: "",
     technician_id: "",
@@ -37,7 +38,8 @@ export default function NewIntervention({ onClose, onCreated }) {
     priority: "Normale",
     status: "A FAIRE",
     description: "",
-    duration_minutes: 60
+    duration_minutes: 60,
+    private_to_me: false
   });
 
   useEffect(() => {
@@ -66,7 +68,9 @@ export default function NewIntervention({ onClose, onCreated }) {
       priority: form.priority,
       status: form.status,
       description: form.description,
-      duration_minutes: duration
+      duration_minutes: duration,
+      private_to_technician_id:
+        canCreatePrivateIntervention && form.private_to_me ? Number(loggedUser.id) : null
     };
 
     const res = await fetch(API + "/interventions", {
@@ -215,6 +219,17 @@ export default function NewIntervention({ onClose, onCreated }) {
             placeholder="Maintenance, panne, action a effectuer..."
             required
           />
+
+          {canCreatePrivateIntervention && (
+            <label className="maintenance-checkbox-row">
+              <input
+                type="checkbox"
+                checked={form.private_to_me}
+                onChange={(e) => setValue("private_to_me", e.target.checked)}
+              />
+              <span>Visible uniquement par moi</span>
+            </label>
+          )}
 
           <div className="modal-actions">
             <button className="btn new-intervention" type="submit">

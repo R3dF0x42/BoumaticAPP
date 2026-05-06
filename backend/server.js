@@ -1309,6 +1309,18 @@ app.post("/api/auth/technician/login", async (req, res) => {
 
 /* ----------------------- INTERVENTIONS ----------------------- */
 
+function getInterventionVisibilityFilter(query, params) {
+  if (query.viewer_role === "admin") return "";
+
+  const viewerTechnicianId = Number(query.viewer_technician_id);
+  if (Number.isInteger(viewerTechnicianId) && viewerTechnicianId > 0) {
+    params.push(viewerTechnicianId);
+    return `(i.private_to_technician_id IS NULL OR i.private_to_technician_id = $${params.length})`;
+  }
+
+  return "i.private_to_technician_id IS NULL";
+}
+
 app.get("/api/interventions", async (req, res) => {
   const { start, end } = req.query;
 
@@ -1322,10 +1334,20 @@ app.get("/api/interventions", async (req, res) => {
     LEFT JOIN technicians t ON i.technician_id = t.id
   `;
   const params = [];
+  const where = [];
 
   if (start && end) {
-    sql += " WHERE i.scheduled_at BETWEEN $1 AND $2";
     params.push(start, end);
+    where.push(`i.scheduled_at BETWEEN $${params.length - 1} AND $${params.length}`);
+  }
+
+  const visibilityFilter = getInterventionVisibilityFilter(req.query, params);
+  if (visibilityFilter) {
+    where.push(visibilityFilter);
+  }
+
+  if (where.length) {
+    sql += ` WHERE ${where.join(" AND ")}`;
   }
 
   sql += " ORDER BY i.scheduled_at";
@@ -1343,6 +1365,8 @@ app.get("/api/interventions/:id", async (req, res) => {
   const id = req.params.id;
 
   try {
+    const params = [id];
+    const visibilityFilter = getInterventionVisibilityFilter(req.query, params);
     const inter = await pool.query(
       `
       SELECT 
@@ -1355,6 +1379,7 @@ app.get("/api/interventions/:id", async (req, res) => {
         i.description,
         i.duration_minutes,
         i.maintenance_kit_label,
+        i.private_to_technician_id,
         c.name AS client_name,
         c.address,
         c.gps_lat,
@@ -1365,8 +1390,9 @@ app.get("/api/interventions/:id", async (req, res) => {
       LEFT JOIN clients c ON i.client_id = c.id
       LEFT JOIN technicians t ON i.technician_id = t.id
       WHERE i.id = $1
+      ${visibilityFilter ? `AND ${visibilityFilter}` : ""}
       `,
-      [id]
+      params
     );
 
     if (!inter.rows.length)
@@ -1401,16 +1427,22 @@ app.post("/api/interventions", async (req, res) => {
   status,
   priority,
   description,
-  duration_minutes
+  duration_minutes,
+  private_to_technician_id
 } = req.body;
+  const safePrivateToTechnicianId = Number(private_to_technician_id);
+  const privateToTechnicianId =
+    Number.isInteger(safePrivateToTechnicianId) && safePrivateToTechnicianId > 0
+      ? safePrivateToTechnicianId
+      : null;
 
 
   try {
     // 1) on insère l'intervention
     const result = await pool.query(
       `INSERT INTO interventions
-      (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, private_to_technician_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING id`,
       [
         client_id,
@@ -1419,7 +1451,8 @@ app.post("/api/interventions", async (req, res) => {
         status,
         priority,
         description,
-        duration_minutes || 60
+        duration_minutes || 60,
+        privateToTechnicianId
       ]
 
     );
