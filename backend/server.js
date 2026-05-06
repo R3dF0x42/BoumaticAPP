@@ -113,9 +113,35 @@ async function deleteUploadedFiles(filenames = []) {
 
 /* ----------------------- CLIENTS ----------------------- */
 
+function getInterventionVisibilityFilter(query, params) {
+  if (query.viewer_role === "admin") return "";
+
+  const viewerTechnicianId = Number(query.viewer_technician_id);
+  if (Number.isInteger(viewerTechnicianId) && viewerTechnicianId > 0) {
+    params.push(viewerTechnicianId);
+    return `(i.private_to_technician_id IS NULL OR i.private_to_technician_id = $${params.length})`;
+  }
+
+  return "i.private_to_technician_id IS NULL";
+}
+
 app.get("/api/clients", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM clients ORDER BY name");
+    const params = [];
+    const visibilityFilter = getInterventionVisibilityFilter(req.query, params);
+    const result = await pool.query(
+      `
+      SELECT
+        c.*,
+        COUNT(i.id)::int AS intervention_count
+      FROM clients c
+      LEFT JOIN interventions i ON i.client_id = c.id
+        ${visibilityFilter ? `AND ${visibilityFilter}` : ""}
+      GROUP BY c.id
+      ORDER BY c.name
+      `,
+      params
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1309,20 +1335,8 @@ app.post("/api/auth/technician/login", async (req, res) => {
 
 /* ----------------------- INTERVENTIONS ----------------------- */
 
-function getInterventionVisibilityFilter(query, params) {
-  if (query.viewer_role === "admin") return "";
-
-  const viewerTechnicianId = Number(query.viewer_technician_id);
-  if (Number.isInteger(viewerTechnicianId) && viewerTechnicianId > 0) {
-    params.push(viewerTechnicianId);
-    return `(i.private_to_technician_id IS NULL OR i.private_to_technician_id = $${params.length})`;
-  }
-
-  return "i.private_to_technician_id IS NULL";
-}
-
 app.get("/api/interventions", async (req, res) => {
-  const { start, end } = req.query;
+  const { start, end, client_id, maintenance_only, year } = req.query;
 
   let sql = `
     SELECT i.*,
@@ -1339,6 +1353,22 @@ app.get("/api/interventions", async (req, res) => {
   if (start && end) {
     params.push(start, end);
     where.push(`i.scheduled_at BETWEEN $${params.length - 1} AND $${params.length}`);
+  }
+
+  const clientId = Number(client_id);
+  if (Number.isInteger(clientId) && clientId > 0) {
+    params.push(clientId);
+    where.push(`i.client_id = $${params.length}`);
+  }
+
+  if (maintenance_only === "true") {
+    where.push("(i.maintenance_plan_id IS NOT NULL OR i.maintenance_kit_label IS NOT NULL)");
+  }
+
+  const safeYear = Number(year);
+  if (Number.isInteger(safeYear) && safeYear >= 2000 && safeYear <= 2100) {
+    params.push(`${safeYear}-01-01 00:00:00`, `${safeYear + 1}-01-01 00:00:00`);
+    where.push(`i.scheduled_at >= $${params.length - 1} AND i.scheduled_at < $${params.length}`);
   }
 
   const visibilityFilter = getInterventionVisibilityFilter(req.query, params);

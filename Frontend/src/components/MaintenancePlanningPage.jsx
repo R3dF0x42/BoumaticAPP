@@ -53,13 +53,15 @@ function isContractMaintenance(intervention) {
   return Boolean(intervention.maintenance_plan_id || intervention.maintenance_kit_label);
 }
 
-function buildViewerQuery(user) {
-  if (!user) return "";
+function buildViewerQuery(user, year) {
   const params = new URLSearchParams();
 
-  if (user.role === "admin") {
+  params.set("maintenance_only", "true");
+  params.set("year", String(year));
+
+  if (user?.role === "admin") {
     params.set("viewer_role", "admin");
-  } else if (user.id) {
+  } else if (user?.id) {
     params.set("viewer_technician_id", String(user.id));
   }
 
@@ -80,7 +82,7 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
 
     try {
       const [interventionsRes, techniciansRes] = await Promise.all([
-        fetch(`${apiUrl}/interventions${buildViewerQuery(loggedUser)}`),
+        fetch(`${apiUrl}/interventions${buildViewerQuery(loggedUser, year)}`),
         fetch(`${apiUrl}/technicians`)
       ]);
       const [interventionsData, techniciansData] = await Promise.all([
@@ -107,7 +109,7 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
 
   useEffect(() => {
     loadData();
-  }, [apiUrl, loggedUser]);
+  }, [apiUrl, loggedUser, year]);
 
   const visibleInterventions = useMemo(
     () =>

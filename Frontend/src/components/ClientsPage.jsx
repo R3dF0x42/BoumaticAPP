@@ -81,6 +81,25 @@ function buildViewerQuery(user) {
   return query ? `?${query}` : "";
 }
 
+function buildInterventionsQuery(user, extraParams = {}) {
+  const params = new URLSearchParams();
+
+  if (user?.role === "admin") {
+    params.set("viewer_role", "admin");
+  } else if (user?.id) {
+    params.set("viewer_technician_id", String(user.id));
+  }
+
+  Object.entries(extraParams).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = false, loggedUser }) {
   const [clients, setClients] = useState([]);
   const [interventions, setInterventions] = useState([]);
@@ -180,14 +199,21 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
   };
 
   const loadClients = async () => {
-    const res = await fetch(`${apiUrl}/clients`);
+    const res = await fetch(`${apiUrl}/clients${buildViewerQuery(loggedUser)}`);
     setClients(await res.json());
   };
 
-  const loadInterventions = async () => {
+  const loadInterventions = async (clientId = selectedClientId) => {
+    if (!clientId) {
+      setInterventions([]);
+      return;
+    }
+
     setLoadingHistory(true);
     try {
-      const res = await fetch(`${apiUrl}/interventions${buildViewerQuery(loggedUser)}`);
+      const res = await fetch(
+        `${apiUrl}/interventions${buildInterventionsQuery(loggedUser, { client_id: clientId })}`
+      );
       setInterventions(await res.json());
     } finally {
       setLoadingHistory(false);
@@ -253,14 +279,14 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
   useEffect(() => {
     loadClients();
-    loadInterventions();
     loadTechnicians();
   }, []);
 
   useEffect(() => {
     const refresh = () => {
-      loadInterventions();
+      loadClients();
       if (selectedClientId) {
+        loadInterventions(selectedClientId);
         loadMaintenancePlans(selectedClientId);
       }
     };
@@ -452,6 +478,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
   useEffect(() => {
     if (!selectedClientId) return;
+    loadInterventions(selectedClientId);
     loadClientPhotos(selectedClientId);
     loadMaintenancePlans(selectedClientId);
   }, [selectedClientId]);
@@ -511,14 +538,11 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
   const interventionCountsByClient = useMemo(() => {
     const counts = new Map();
-    for (const intervention of interventions) {
-      counts.set(
-        intervention.client_id,
-        (counts.get(intervention.client_id) || 0) + 1
-      );
+    for (const client of clients) {
+      counts.set(client.id, Number(client.intervention_count || 0));
     }
     return counts;
-  }, [interventions]);
+  }, [clients]);
 
   const getClientInterventionCount = (clientId) =>
     interventionCountsByClient.get(clientId) || 0;
@@ -693,8 +717,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       setClientPhotos([]);
       setMaintenancePlans([]);
       setSelectedClientId(null);
+      setInterventions([]);
       await loadClients();
-      await loadInterventions();
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch {
       setClientError("Impossible de supprimer le client.");
@@ -801,7 +825,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       setClientInfo(`${data.count || 0} intervention(s) de maintenance creee(s).`);
       await loadClients();
       await loadMaintenancePlans(selectedClient.id);
-      await loadInterventions();
+      await loadInterventions(selectedClient.id);
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch {
       setClientError("Impossible de programmer la maintenance.");
@@ -867,7 +891,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       cancelEditMaintenance();
       await loadClients();
       await loadMaintenancePlans(selectedClient.id);
-      await loadInterventions();
+      await loadInterventions(selectedClient.id);
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch {
       setClientError("Impossible de modifier le contrat.");
@@ -902,7 +926,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       setClientInfo("Contrat de maintenance supprime.");
       await loadClients();
       await loadMaintenancePlans(selectedClient.id);
-      await loadInterventions();
+      await loadInterventions(selectedClient.id);
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch {
       setClientError("Impossible de supprimer le contrat.");
