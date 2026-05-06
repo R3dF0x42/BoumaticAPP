@@ -183,7 +183,7 @@ export default function DetailPanel({
             <input
               type="number"
               min="15"
-              max="480"
+              max="660"
               step="15"
               inputMode="numeric"
               value={editForm.duration_minutes}
@@ -237,7 +237,7 @@ export default function DetailPanel({
               {new Date(intervention.scheduled_at).toLocaleString("fr-FR")}
               {intervention.duration_minutes
                 ? ` - ${
-                    intervention.duration_minutes >= 1440
+                    intervention.duration_minutes >= 660
                       ? "journee entiere"
                       : `${intervention.duration_minutes} min`
                   }`

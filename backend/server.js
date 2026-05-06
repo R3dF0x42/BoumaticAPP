@@ -558,6 +558,12 @@ function formatDbDateTime(date) {
   )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+function setWorkdayStart(date) {
+  const next = new Date(date);
+  next.setHours(7, 0, 0, 0);
+  return next;
+}
+
 function buildMaintenanceDatesUntil(startAt, frequencyMonths, endAt) {
   const dates = [];
   let current = new Date(startAt);
@@ -757,7 +763,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
   const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
   const safeKitCount =
     safeMaintenanceType === "compressor" ? 0 : MAINTENANCE_KIT_MODELS[safeKitModel].count;
-  const fullDayDurationMinutes = 1440;
+  const fullDayDurationMinutes = 660;
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
     return res.status(400).json({ error: "Identifiant client invalide." });
@@ -779,7 +785,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     return res.status(400).json({ error: "Fréquence de maintenance invalide." });
   }
 
-  const dates = buildMaintenanceDatesUntil(startDate, safeFrequency, endDate);
+  const firstMaintenanceDate = setWorkdayStart(startDate);
+  const dates = buildMaintenanceDatesUntil(firstMaintenanceDate, safeFrequency, endDate);
 
   if (!dates.length) {
     return res.status(400).json({ error: "Aucune maintenance à créer sur cette période." });
@@ -796,7 +803,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
       [
         clientId,
         technician_id || null,
-        formatDbDateTime(startDate),
+        formatDbDateTime(firstMaintenanceDate),
         formatDbDateTime(endDate),
         safeFrequency,
         dates.length,
@@ -860,7 +867,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
   const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
   const safeKitCount =
     safeMaintenanceType === "compressor" ? 0 : MAINTENANCE_KIT_MODELS[safeKitModel].count;
-  const fullDayDurationMinutes = 1440;
+  const fullDayDurationMinutes = 660;
 
   if (!Number.isInteger(clientId) || clientId <= 0 || !Number.isInteger(planId) || planId <= 0) {
     return res.status(400).json({ error: "Identifiant contrat invalide." });
@@ -874,7 +881,8 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
     return res.status(400).json({ error: "Fréquence de maintenance invalide." });
   }
 
-  const dates = buildMaintenanceDatesUntil(startDate, safeFrequency, endDate);
+  const firstMaintenanceDate = setWorkdayStart(startDate);
+  const dates = buildMaintenanceDatesUntil(firstMaintenanceDate, safeFrequency, endDate);
 
   try {
     const plan = await pool.query(
@@ -905,7 +913,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
       `,
       [
         technician_id || null,
-        formatDbDateTime(startDate),
+        formatDbDateTime(firstMaintenanceDate),
         formatDbDateTime(endDate),
         safeFrequency,
         dates.length,

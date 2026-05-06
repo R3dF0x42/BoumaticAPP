@@ -7,7 +7,7 @@ import { buildUploadUrl, preparePhotoForUpload } from "../utils/images.js";
 function getDefaultMaintenanceDateTime() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
-  date.setHours(9, 0, 0, 0);
+  date.setHours(7, 0, 0, 0);
   const offsetMs = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
@@ -28,7 +28,7 @@ function getCompressorStartDateTime(commissioningDate) {
   const date = new Date(commissioningDate);
   if (Number.isNaN(date.getTime())) return getDefaultMaintenanceDateTime();
   date.setMonth(date.getMonth() + 6);
-  date.setHours(9, 0, 0, 0);
+  date.setHours(7, 0, 0, 0);
   return toDateTimeInputValue(date);
 }
 
@@ -918,7 +918,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               {inter.priority && <span>Priorite : {inter.priority}</span>}
               {inter.duration_minutes && (
                 <span>
-                  Duree : {inter.duration_minutes >= 1440
+                  Duree : {inter.duration_minutes >= 660
                     ? "journee entiere"
                     : `${inter.duration_minutes} min`}
                 </span>

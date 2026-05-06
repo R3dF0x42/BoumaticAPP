@@ -19,9 +19,9 @@ function getDefaultTime() {
 }
 
 const TIME_MODES = {
-  full_day: { label: "Journee entiere", start: "08:00", duration: 1440 },
-  morning: { label: "Matin", start: "08:00", duration: 240 },
-  afternoon: { label: "Apres-midi", start: "13:30", duration: 240 },
+  full_day: { label: "Journee entiere", start: "07:00", duration: 660 },
+  morning: { label: "Matin", start: "07:00", duration: 300 },
+  afternoon: { label: "Apres-midi", start: "13:00", duration: 300 },
   custom: { label: "Heure precise", start: getDefaultTime(), duration: 60 }
 };
 
@@ -33,7 +33,7 @@ export default function NewIntervention({ onClose, onCreated }) {
     technician_id: "",
     scheduled_date: getDefaultDate(),
     time_mode: "morning",
-    scheduled_time: "08:00",
+    scheduled_time: "07:00",
     priority: "Normale",
     status: "A FAIRE",
     description: "",

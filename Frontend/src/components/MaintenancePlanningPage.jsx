@@ -146,7 +146,9 @@ export default function MaintenancePlanningPage({ apiUrl }) {
   const updateIntervention = async (intervention, updates) => {
     const next = { ...intervention, ...updates };
     const dateValue = toDateInput(next.scheduled_at);
-    const timeValue = toTimePart(intervention.scheduled_at);
+    const timeValue = (next.duration_minutes || intervention.duration_minutes) >= 660
+      ? "07:00"
+      : toTimePart(intervention.scheduled_at);
     const scheduledAt = dateValue ? `${dateValue} ${timeValue}:00` : null;
 
     setSavingId(intervention.id);
@@ -164,7 +166,7 @@ export default function MaintenancePlanningPage({ apiUrl }) {
           priority: next.priority || "Normale",
           description: next.description || "",
           scheduled_at: scheduledAt,
-          duration_minutes: next.duration_minutes || 1440
+          duration_minutes: next.duration_minutes || 660
         })
       });
       const data = await res.json().catch(() => ({}));
