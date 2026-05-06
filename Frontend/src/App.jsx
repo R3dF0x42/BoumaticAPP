@@ -14,6 +14,7 @@ const TechniciansPage = lazy(() => import("./components/TechniciansPage.jsx"));
 
 const SESSION_KEY = "boumatic-user-session";
 const PAGE_KEY = "boumatic-current-page";
+const VALID_PAGES = new Set(["planning", "maintenance", "notes", "clients", "admin"]);
 
 function normalizeSession(rawSession) {
   if (!rawSession) return null;
@@ -21,20 +22,50 @@ function normalizeSession(rawSession) {
   return { ...rawSession, role: "technician" };
 }
 
+function readNavigationFromLocation() {
+  if (typeof window === "undefined") {
+    return { page: "planning", interventionId: null };
+  }
+
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  const [pagePart, detailPart, idPart] = hash.split("/");
+  const storedPage = window.localStorage.getItem(PAGE_KEY);
+  const page = VALID_PAGES.has(pagePart)
+    ? pagePart
+    : VALID_PAGES.has(storedPage)
+      ? storedPage
+      : "planning";
+  const interventionId =
+    page === "planning" && detailPart === "intervention" ? Number(idPart) : null;
+
+  return {
+    page,
+    interventionId: Number.isInteger(interventionId) && interventionId > 0 ? interventionId : null
+  };
+}
+
+function buildNavigationHash(page, interventionId = null) {
+  const safePage = VALID_PAGES.has(page) ? page : "planning";
+  if (safePage === "planning" && interventionId) {
+    return `#/${safePage}/intervention/${interventionId}`;
+  }
+  return `#/${safePage}`;
+}
+
 export default function App() {
+  const initialNavigation = readNavigationFromLocation();
   const [interventions, setInterventions] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(initialNavigation.interventionId);
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [showNewIntervention, setShowNewIntervention] = useState(false);
-  const [currentPage, setCurrentPage] = useState(() => {
-    if (typeof window === "undefined") return "planning";
-    return window.localStorage.getItem(PAGE_KEY) || "planning";
-  });
+  const [currentPage, setCurrentPage] = useState(initialNavigation.page);
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.innerWidth < 900;
   });
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(() =>
+    Boolean(initialNavigation.interventionId && typeof window !== "undefined" && window.innerWidth < 900)
+  );
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [loggedUser, setLoggedUser] = useState(() => {
     if (typeof window === "undefined") return null;
@@ -48,6 +79,35 @@ export default function App() {
   });
 
   const isAdmin = loggedUser?.role === "admin";
+
+  const applyNavigation = useCallback((navigation) => {
+    const nextPage = VALID_PAGES.has(navigation.page) ? navigation.page : "planning";
+    const nextInterventionId = nextPage === "planning" ? navigation.interventionId : null;
+
+    setCurrentPage(nextPage);
+    setSelectedId(nextInterventionId);
+    setShowDetailModal(Boolean(nextInterventionId && window.innerWidth < 900));
+    if (!nextInterventionId) {
+      setSelectedDetails(null);
+    }
+  }, []);
+
+  const navigateTo = useCallback((page, options = {}) => {
+    if (typeof window === "undefined") return;
+
+    const nextPage = VALID_PAGES.has(page) ? page : "planning";
+    const interventionId =
+      nextPage === "planning" && options.interventionId ? Number(options.interventionId) : null;
+    const navigation = {
+      page: nextPage,
+      interventionId: Number.isInteger(interventionId) && interventionId > 0 ? interventionId : null
+    };
+    const hash = buildNavigationHash(navigation.page, navigation.interventionId);
+    const method = options.replace ? "replaceState" : "pushState";
+
+    applyNavigation(navigation);
+    window.history[method](navigation, "", hash);
+  }, [applyNavigation]);
 
   useEffect(() => {
     const open = () => setShowNewIntervention(true);
@@ -64,6 +124,25 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const currentNavigation = readNavigationFromLocation();
+    window.history.replaceState(
+      currentNavigation,
+      "",
+      buildNavigationHash(currentNavigation.page, currentNavigation.interventionId)
+    );
+
+    const handlePopState = () => {
+      applyNavigation(readNavigationFromLocation());
+      setShowNewIntervention(false);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [applyNavigation]);
+
+  useEffect(() => {
     if (!selectedId) return;
 
     fetch(`${API_URL}/interventions/${selectedId}`)
@@ -74,9 +153,9 @@ export default function App() {
 
   useEffect(() => {
     if (!isAdmin && currentPage === "admin") {
-      setCurrentPage("planning");
+      navigateTo("planning", { replace: true });
     }
-  }, [isAdmin, currentPage]);
+  }, [isAdmin, currentPage, navigateTo]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -216,6 +295,7 @@ export default function App() {
       setSelectedId(null);
       setSelectedDetails(null);
       setShowDetailModal(false);
+      navigateTo("planning", { replace: true });
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch (e) {
       console.error("Erreur suppression intervention :", e);
@@ -224,9 +304,12 @@ export default function App() {
   };
 
   const handleSelectEvent = (ev) => {
-    setSelectedId(Number(ev.id));
-    if (isMobile) setShowDetailModal(true);
+    navigateTo("planning", { interventionId: Number(ev.id) });
   };
+
+  const handleSelectInterventionId = useCallback((id) => {
+    navigateTo("planning", { interventionId: Number(id) });
+  }, [navigateTo]);
 
   const handleInterventionsLoaded = useCallback((list) => {
     setInterventions(list);
@@ -241,7 +324,7 @@ export default function App() {
   const handleLogin = (userSession) => {
     const normalized = normalizeSession(userSession);
     setLoggedUser(normalized);
-    setCurrentPage(normalized?.role === "admin" ? "admin" : "planning");
+    navigateTo(normalized?.role === "admin" ? "admin" : "planning", { replace: true });
     if (typeof window !== "undefined") {
       window.localStorage.setItem(SESSION_KEY, JSON.stringify(normalized));
     }
@@ -253,7 +336,7 @@ export default function App() {
     setSelectedDetails(null);
     setShowNewIntervention(false);
     setShowDetailModal(false);
-    setCurrentPage("planning");
+    navigateTo("planning", { replace: true });
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(SESSION_KEY);
       window.localStorage.removeItem(PAGE_KEY);
@@ -299,14 +382,14 @@ export default function App() {
   const renderBottomNavMobile = () => (
     <nav className="mobile-bottom-nav" aria-label="Navigation principale">
       {mobilePages.map((page) => (
-        <button
-          key={page.value}
-          className={`mobile-bottom-tab ${
-            currentPage === page.value ? "mobile-bottom-tab--active" : ""
-          }`}
-          type="button"
-          onClick={() => setCurrentPage(page.value)}
-        >
+          <button
+            key={page.value}
+            className={`mobile-bottom-tab ${
+              currentPage === page.value ? "mobile-bottom-tab--active" : ""
+            }`}
+            type="button"
+            onClick={() => navigateTo(page.value)}
+          >
           <span>{page.short}</span>
         </button>
       ))}
@@ -322,9 +405,9 @@ export default function App() {
           <Sidebar
             interventions={interventions}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleSelectInterventionId}
             currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
+            setCurrentPage={navigateTo}
             isMobile={isMobile}
             loggedUser={loggedUser}
             isAdmin={isAdmin}
@@ -428,7 +511,7 @@ export default function App() {
               </div>
               <button
                 className="modal-close modal-close--inline"
-                onClick={() => setShowDetailModal(false)}
+                onClick={() => navigateTo("planning", { replace: true })}
                 type="button"
                 aria-label="Fermer"
               >
