@@ -605,7 +605,7 @@ function getMaintenanceKitLabel(index, kitModel) {
   return `Maintenance ${model.label} Kit N°${(index % model.count) + 1}`;
 }
 
-async function createMaintenanceInterventions({
+async function syncMaintenanceInterventions({
   planId,
   clientId,
   technicianId,
@@ -614,24 +614,111 @@ async function createMaintenanceInterventions({
   description,
   durationMinutes,
   maintenanceType,
-  maintenanceKitModel
+  maintenanceKitModel,
+  preserveExistingDates = false
 }) {
-  const createdIds = [];
+  const interventionIds = [];
   const safeMaintenanceType = getMaintenanceType(maintenanceType);
   const baseDescription =
     description || (safeMaintenanceType === "compressor" ? "Maintenance compresseur" : "Maintenance contrat");
+  const existingResult = await pool.query(
+    `
+    SELECT
+      id,
+      status,
+      google_event_id,
+      to_char(scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
+      maintenance_occurrence_index
+    FROM interventions
+    WHERE maintenance_plan_id = $1
+    ORDER BY maintenance_occurrence_index NULLS LAST, scheduled_at, id
+    `,
+    [planId]
+  );
+  const existingByIndex = new Map();
+  const duplicateIds = [];
+  let fallbackIndex = 0;
+
+  for (const row of existingResult.rows) {
+    let occurrenceIndex = row.maintenance_occurrence_index;
+
+    if (occurrenceIndex == null) {
+      while (existingByIndex.has(fallbackIndex)) fallbackIndex += 1;
+      occurrenceIndex = fallbackIndex;
+      await pool.query(
+        "UPDATE interventions SET maintenance_occurrence_index = $1 WHERE id = $2",
+        [occurrenceIndex, row.id]
+      );
+    }
+
+    if (!existingByIndex.has(occurrenceIndex)) {
+      existingByIndex.set(occurrenceIndex, row);
+    } else if (row.status !== "TERMINE") {
+      duplicateIds.push(row.id);
+    }
+  }
+
+  if (duplicateIds.length) {
+    await pool.query("DELETE FROM interventions WHERE id = ANY($1::int[])", [duplicateIds]);
+  }
 
   for (const [index, date] of dates.entries()) {
     const kitLabel =
       safeMaintenanceType === "compressor"
         ? null
         : getMaintenanceKitLabel(index, maintenanceKitModel);
+    const existing = existingByIndex.get(index);
+
+    if (existing) {
+      const scheduledAt = preserveExistingDates
+        ? existing.scheduled_at
+        : formatDbDateTime(date);
+
+      await pool.query(
+        `
+        UPDATE interventions
+        SET client_id=$1,
+            technician_id=$2,
+            scheduled_at=$3,
+            priority=$4,
+            description=$5,
+            duration_minutes=$6,
+            maintenance_kit_label=$7,
+            maintenance_occurrence_index=$8
+        WHERE id=$9
+        `,
+        [
+          clientId,
+          technicianId || null,
+          scheduledAt,
+          priority || "Normale",
+          baseDescription,
+          durationMinutes,
+          kitLabel,
+          index,
+          existing.id
+        ]
+      );
+
+      if (existing.google_event_id) {
+        try {
+          await updateGoogleEvent(existing.google_event_id, scheduledAt, durationMinutes);
+        } catch (e) {
+          console.error("Erreur maj event Google:", e.message);
+        }
+      } else {
+        await attachGoogleEvent(existing.id);
+      }
+
+      interventionIds.push(existing.id);
+      continue;
+    }
 
     const interventionResult = await pool.query(
       `
       INSERT INTO interventions
-        (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id, maintenance_kit_label)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id, maintenance_kit_label, maintenance_occurrence_index)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       RETURNING id
       `,
       [
@@ -643,17 +730,31 @@ async function createMaintenanceInterventions({
         baseDescription,
         durationMinutes,
         planId,
-        kitLabel
+        kitLabel,
+        index
       ]
     );
-    createdIds.push(interventionResult.rows[0].id);
+    interventionIds.push(interventionResult.rows[0].id);
   }
 
-  for (const interventionId of createdIds) {
-    await attachGoogleEvent(interventionId);
+  await pool.query(
+    `
+    DELETE FROM interventions
+    WHERE maintenance_plan_id = $1
+      AND status <> 'TERMINE'
+      AND maintenance_occurrence_index >= $2
+    `,
+    [planId, dates.length]
+  );
+
+  for (const interventionId of interventionIds) {
+    const wasExisting = existingResult.rows.some((row) => row.id === interventionId);
+    if (!wasExisting) {
+      await attachGoogleEvent(interventionId);
+    }
   }
 
-  return createdIds;
+  return interventionIds;
 }
 
 async function attachGoogleEvent(interventionId) {
@@ -824,7 +925,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
       await resetOfferedTravelCount(clientId);
     }
 
-    const createdIds = await createMaintenanceInterventions({
+    const interventionIds = await syncMaintenanceInterventions({
       planId,
       clientId,
       technicianId: technician_id,
@@ -838,8 +939,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
 
     res.status(201).json({
       id: planId,
-      intervention_ids: createdIds,
-      count: createdIds.length
+      intervention_ids: interventionIds,
+      count: interventionIds.length
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -941,16 +1042,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
       await resetOfferedTravelCountIfNoActiveContract(clientId);
     }
 
-    await pool.query(
-      `
-      DELETE FROM interventions
-      WHERE maintenance_plan_id = $1
-        AND status <> 'TERMINE'
-      `,
-      [planId]
-    );
-
-    const createdIds = await createMaintenanceInterventions({
+    const interventionIds = await syncMaintenanceInterventions({
       planId,
       clientId,
       technicianId: technician_id,
@@ -959,10 +1051,11 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
       description,
       durationMinutes: fullDayDurationMinutes,
       maintenanceType: safeMaintenanceType,
-      maintenanceKitModel: safeKitModel
+      maintenanceKitModel: safeKitModel,
+      preserveExistingDates: true
     });
 
-    res.json({ updated: true, intervention_ids: createdIds, count: createdIds.length });
+    res.json({ updated: true, intervention_ids: interventionIds, count: interventionIds.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

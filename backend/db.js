@@ -77,6 +77,7 @@ async function initDB() {
         description TEXT,
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
         maintenance_kit_label TEXT,
+        maintenance_occurrence_index INTEGER,
         google_event_id TEXT
       );
     `);
@@ -164,6 +165,7 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS maintenance_kit_label TEXT,
         ADD COLUMN IF NOT EXISTS google_event_id TEXT,
         ADD COLUMN IF NOT EXISTS maintenance_plan_id INTEGER,
+        ADD COLUMN IF NOT EXISTS maintenance_occurrence_index INTEGER,
         ALTER COLUMN status SET DEFAULT 'pending',
         ALTER COLUMN priority SET DEFAULT 'normal';
       UPDATE interventions SET duration_minutes = 60 WHERE duration_minutes IS NULL;
@@ -268,10 +270,29 @@ async function initDB() {
     `);
 
     await client.query(`
+      WITH numbered AS (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            PARTITION BY maintenance_plan_id
+            ORDER BY scheduled_at, id
+          ) - 1 AS occurrence_index
+        FROM interventions
+        WHERE maintenance_plan_id IS NOT NULL
+          AND maintenance_occurrence_index IS NULL
+      )
+      UPDATE interventions i
+      SET maintenance_occurrence_index = numbered.occurrence_index
+      FROM numbered
+      WHERE i.id = numbered.id;
+    `);
+
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_interventions_client_id ON interventions(client_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_technician_id ON interventions(technician_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_scheduled_at ON interventions(scheduled_at);
       CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_plan_id ON interventions(maintenance_plan_id);
+      CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_occurrence ON interventions(maintenance_plan_id, maintenance_occurrence_index);
       CREATE INDEX IF NOT EXISTS idx_client_maintenance_plans_client_id ON client_maintenance_plans(client_id);
       CREATE INDEX IF NOT EXISTS idx_notes_intervention_id ON notes(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_photos_intervention_id ON photos(intervention_id);
