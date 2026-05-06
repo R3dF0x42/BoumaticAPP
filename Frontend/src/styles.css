@@ -3115,7 +3115,7 @@ textarea {
 
 .mobile-create-fab {
   right: 18px;
-  bottom: calc(86px + env(safe-area-inset-bottom));
+  bottom: calc(148px + env(safe-area-inset-bottom));
   z-index: 40;
   min-height: 52px;
   padding: 0 18px;
