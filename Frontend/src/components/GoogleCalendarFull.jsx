@@ -17,6 +17,8 @@ const TECH_COLORS = [
   "#ffb800"
 ];
 
+const CALENDAR_PLUGINS = [timeGridPlugin, dayGridPlugin, interactionPlugin];
+
 function getTechColor(techId) {
   if (!techId) return "#1d6fff";
   return TECH_COLORS[techId % TECH_COLORS.length];
@@ -160,11 +162,19 @@ export default function GoogleCalendarFull({
       center: "title",
       right: "timeGridWeek,timeGridDay,dayGridMonth"
     }),
-    [isMobile]
+    []
   );
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
   const selectedDateKey = formatDateKey(selectedDate);
+  const eventCountsByDay = useMemo(() => {
+    const counts = new Map();
+    for (const event of events) {
+      const dayKey = formatDateKey(event.start);
+      counts.set(dayKey, (counts.get(dayKey) || 0) + 1);
+    }
+    return counts;
+  }, [events]);
   const selectedDayEvents = useMemo(
     () =>
       events
@@ -184,12 +194,19 @@ export default function GoogleCalendarFull({
     });
   }, [mobileFilter, selectedDayEvents]);
 
-  const openCount = selectedDayEvents.filter(
-    (event) => !String(event.extendedProps.status || "").toLowerCase().includes("termine")
-  ).length;
-  const urgentCount = selectedDayEvents.filter((event) =>
-    String(event.extendedProps.priority || "").toLowerCase().includes("urgent")
-  ).length;
+  const daySummary = useMemo(() => {
+    let openCount = 0;
+    let urgentCount = 0;
+
+    for (const event of selectedDayEvents) {
+      const status = String(event.extendedProps.status || "").toLowerCase();
+      const priority = String(event.extendedProps.priority || "").toLowerCase();
+      if (!status.includes("termine")) openCount += 1;
+      if (priority.includes("urgent")) urgentCount += 1;
+    }
+
+    return { openCount, urgentCount };
+  }, [selectedDayEvents]);
 
   const selectedDateLabel = selectedDate.toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -227,11 +244,11 @@ export default function GoogleCalendarFull({
 
         <div className="mobile-agenda-summary">
           <span>
-            <strong>{openCount}</strong>
+            <strong>{daySummary.openCount}</strong>
             a faire
           </span>
           <span>
-            <strong>{urgentCount}</strong>
+            <strong>{daySummary.urgentCount}</strong>
             urgent
           </span>
           <span>
@@ -271,7 +288,7 @@ export default function GoogleCalendarFull({
         <div className="mobile-day-strip" aria-label="Jours de la semaine">
           {weekDays.map((day) => {
             const dayKey = formatDateKey(day);
-            const count = events.filter((event) => formatDateKey(event.start) === dayKey).length;
+            const count = eventCountsByDay.get(dayKey) || 0;
             return (
               <button
                 key={dayKey}
@@ -363,7 +380,7 @@ export default function GoogleCalendarFull({
 
       <div className="calendar-zoom-wrapper">
         <FullCalendar
-          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+          plugins={CALENDAR_PLUGINS}
           initialView="timeGridWeek"
           allDaySlot={false}
           slotDuration="00:30:00"

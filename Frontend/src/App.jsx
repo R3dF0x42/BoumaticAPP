@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar.jsx";
 import DetailPanel from "./components/DetailPanel.jsx";
 import NewIntervention from "./components/NewIntervention.jsx";
-import ClientsPage from "./components/ClientsPage.jsx";
-import GeneralNotesPage from "./components/GeneralNotesPage.jsx";
-import MaintenancePlanningPage from "./components/MaintenancePlanningPage.jsx";
-import TechniciansPage from "./components/TechniciansPage.jsx";
-import GoogleCalendarFull from "./components/GoogleCalendarFull.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
 import { API_URL } from "./config/api.js";
 import { preparePhotoForUpload } from "./utils/images.js";
+
+const GoogleCalendarFull = lazy(() => import("./components/GoogleCalendarFull.jsx"));
+const ClientsPage = lazy(() => import("./components/ClientsPage.jsx"));
+const GeneralNotesPage = lazy(() => import("./components/GeneralNotesPage.jsx"));
+const MaintenancePlanningPage = lazy(() => import("./components/MaintenancePlanningPage.jsx"));
+const TechniciansPage = lazy(() => import("./components/TechniciansPage.jsx"));
 
 const SESSION_KEY = "boumatic-user-session";
 const PAGE_KEY = "boumatic-current-page";
@@ -227,6 +228,16 @@ export default function App() {
     if (isMobile) setShowDetailModal(true);
   };
 
+  const handleInterventionsLoaded = useCallback((list) => {
+    setInterventions(list);
+  }, []);
+
+  const renderPageFallback = () => (
+    <main className="page">
+      <p className="muted">Chargement...</p>
+    </main>
+  );
+
   const handleLogin = (userSession) => {
     const normalized = normalizeSession(userSession);
     setLoggedUser(normalized);
@@ -321,67 +332,67 @@ export default function App() {
           />
         )}
 
-        {currentPage === "planning" && (
-          <GoogleCalendarFull
-            onSelectEvent={handleSelectEvent}
-            onInterventionsLoaded={(list) => {
-              setInterventions(list);
-            }}
-          />
-        )}
+        <Suspense fallback={renderPageFallback()}>
+          {currentPage === "planning" && (
+            <GoogleCalendarFull
+              onSelectEvent={handleSelectEvent}
+              onInterventionsLoaded={handleInterventionsLoaded}
+            />
+          )}
 
-        {!isMobile && (
-          <>
-            {currentPage === "clients" && (
-              <ClientsPage
-                apiUrl={API_URL}
-                onSelectIntervention={handleSelectEvent}
-                isAdmin={isAdmin}
-              />
-            )}
-            {currentPage === "notes" && (
-              <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
-            )}
-            {currentPage === "maintenance" && (
-              <MaintenancePlanningPage apiUrl={API_URL} />
-            )}
-            {currentPage === "admin" && isAdmin && (
-              <TechniciansPage apiUrl={API_URL} canManage />
-            )}
+          {!isMobile && (
+            <>
+              {currentPage === "clients" && (
+                <ClientsPage
+                  apiUrl={API_URL}
+                  onSelectIntervention={handleSelectEvent}
+                  isAdmin={isAdmin}
+                />
+              )}
+              {currentPage === "notes" && (
+                <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
+              )}
+              {currentPage === "maintenance" && (
+                <MaintenancePlanningPage apiUrl={API_URL} />
+              )}
+              {currentPage === "admin" && isAdmin && (
+                <TechniciansPage apiUrl={API_URL} canManage />
+              )}
 
-            {currentPage !== "admin" &&
-              currentPage !== "notes" &&
-              currentPage !== "maintenance" && (
-              <DetailPanel
-                apiUrl={API_URL}
-                data={selectedDetails}
-                onAddNote={handleAddNote}
-                onUploadPhoto={handleUploadPhoto}
-                onDeletePhoto={handleDeletePhoto}
-                onUpdateIntervention={handleUpdateIntervention}
-                onDeleteIntervention={handleDeleteIntervention}
-                updatingStatus={updatingStatus}
-              />
-            )}
-          </>
-        )}
+              {currentPage !== "admin" &&
+                currentPage !== "notes" &&
+                currentPage !== "maintenance" && (
+                <DetailPanel
+                  apiUrl={API_URL}
+                  data={selectedDetails}
+                  onAddNote={handleAddNote}
+                  onUploadPhoto={handleUploadPhoto}
+                  onDeletePhoto={handleDeletePhoto}
+                  onUpdateIntervention={handleUpdateIntervention}
+                  onDeleteIntervention={handleDeleteIntervention}
+                  updatingStatus={updatingStatus}
+                />
+              )}
+            </>
+          )}
 
-        {isMobile && currentPage === "clients" && (
-          <ClientsPage
-            apiUrl={API_URL}
-            onSelectIntervention={handleSelectEvent}
-            isAdmin={isAdmin}
-          />
-        )}
-        {isMobile && currentPage === "notes" && (
-          <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
-        )}
-        {isMobile && currentPage === "maintenance" && (
-          <MaintenancePlanningPage apiUrl={API_URL} />
-        )}
-        {isMobile && currentPage === "admin" && isAdmin && (
-          <TechniciansPage apiUrl={API_URL} canManage />
-        )}
+          {isMobile && currentPage === "clients" && (
+            <ClientsPage
+              apiUrl={API_URL}
+              onSelectIntervention={handleSelectEvent}
+              isAdmin={isAdmin}
+            />
+          )}
+          {isMobile && currentPage === "notes" && (
+            <GeneralNotesPage apiUrl={API_URL} loggedUser={loggedUser} />
+          )}
+          {isMobile && currentPage === "maintenance" && (
+            <MaintenancePlanningPage apiUrl={API_URL} />
+          )}
+          {isMobile && currentPage === "admin" && isAdmin && (
+            <TechniciansPage apiUrl={API_URL} canManage />
+          )}
+        </Suspense>
       </div>
 
       {isMobile && currentPage === "planning" && (

@@ -270,6 +270,7 @@ async function initDB() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_interventions_client_id ON interventions(client_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_technician_id ON interventions(technician_id);
+      CREATE INDEX IF NOT EXISTS idx_interventions_scheduled_at ON interventions(scheduled_at);
       CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_plan_id ON interventions(maintenance_plan_id);
       CREATE INDEX IF NOT EXISTS idx_client_maintenance_plans_client_id ON client_maintenance_plans(client_id);
       CREATE INDEX IF NOT EXISTS idx_notes_intervention_id ON notes(intervention_id);

@@ -229,7 +229,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       }
 
       setMaintenancePlans(Array.isArray(data) ? data : []);
-      await loadClients();
     } catch {
       setMaintenancePlans([]);
       setClientError("Impossible de charger les maintenances.");
@@ -496,8 +495,19 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     client?.gps_lng !== null &&
     client?.gps_lng !== undefined;
 
+  const interventionCountsByClient = useMemo(() => {
+    const counts = new Map();
+    for (const intervention of interventions) {
+      counts.set(
+        intervention.client_id,
+        (counts.get(intervention.client_id) || 0) + 1
+      );
+    }
+    return counts;
+  }, [interventions]);
+
   const getClientInterventionCount = (clientId) =>
-    interventions.filter((intervention) => intervention.client_id === clientId).length;
+    interventionCountsByClient.get(clientId) || 0;
 
   const getWarrantyBadge = (commissioningDate) => {
     if (!commissioningDate) return null;
@@ -775,6 +785,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       }
 
       setClientInfo(`${data.count || 0} intervention(s) de maintenance creee(s).`);
+      await loadClients();
       await loadMaintenancePlans(selectedClient.id);
       await loadInterventions();
       window.dispatchEvent(new Event("refreshCalendar"));
@@ -840,6 +851,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
       setClientInfo(`${data.count || 0} intervention(s) de maintenance mise(s) a jour.`);
       cancelEditMaintenance();
+      await loadClients();
       await loadMaintenancePlans(selectedClient.id);
       await loadInterventions();
       window.dispatchEvent(new Event("refreshCalendar"));
@@ -874,6 +886,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       }
 
       setClientInfo("Contrat de maintenance supprime.");
+      await loadClients();
       await loadMaintenancePlans(selectedClient.id);
       await loadInterventions();
       window.dispatchEvent(new Event("refreshCalendar"));
