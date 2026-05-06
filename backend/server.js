@@ -566,11 +566,11 @@ function setWorkdayStart(date) {
 
 function buildMaintenanceDatesUntil(startAt, frequencyMonths, endAt) {
   const dates = [];
-  let current = new Date(startAt);
+  let current = setWorkdayStart(startAt);
 
   while (current <= endAt && dates.length < 60) {
-    dates.push(new Date(current));
-    current = addMonthsClamped(current, frequencyMonths);
+    dates.push(setWorkdayStart(current));
+    current = setWorkdayStart(addMonthsClamped(current, frequencyMonths));
   }
 
   return dates;
@@ -659,7 +659,9 @@ async function createMaintenanceInterventions({
 async function attachGoogleEvent(interventionId) {
   const detail = await pool.query(
     `
-    SELECT i.*, c.name AS client_name
+    SELECT i.*,
+           to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
+           c.name AS client_name
     FROM interventions i
     LEFT JOIN clients c ON i.client_id = c.id
     WHERE i.id = $1
@@ -1219,6 +1221,7 @@ app.get("/api/interventions", async (req, res) => {
 
   let sql = `
     SELECT i.*,
+           to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
            c.name AS client_name,
            t.name AS technician_name
     FROM interventions i
@@ -1333,7 +1336,9 @@ app.post("/api/interventions", async (req, res) => {
     // 2) on récupère l'intervention + client pour créer l'event Google
     const detail = await pool.query(
       `
-        SELECT i.*, c.name AS client_name
+        SELECT i.*,
+               to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
+               c.name AS client_name
         FROM interventions i
         LEFT JOIN clients c ON i.client_id = c.id
         WHERE i.id = $1
@@ -1415,7 +1420,7 @@ app.put("/api/interventions/:id", async (req, res) => {
 
     // mise à jour Google
     try {
-      await updateGoogleEvent(googleEventId, scheduled_at);
+      await updateGoogleEvent(googleEventId, scheduled_at, duration_minutes || 60);
     } catch (e) {
       console.error("Erreur maj event Google:", e.message);
     }
