@@ -121,7 +121,7 @@ async function initDB() {
         frequency_months INTEGER NOT NULL,
         occurrences INTEGER NOT NULL,
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
-        maintenance_type TEXT DEFAULT 'robot' NOT NULL,
+        maintenance_type TEXT DEFAULT 'robot_1' NOT NULL,
         maintenance_kit_model TEXT DEFAULT 'gemini_up' NOT NULL,
         maintenance_kit_count INTEGER DEFAULT 6 NOT NULL,
         maintenance_kit_start_number INTEGER DEFAULT 1 NOT NULL,
@@ -203,7 +203,7 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS deplacement_offert BOOLEAN DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS description TEXT;
       UPDATE client_maintenance_plans SET duration_minutes = 60 WHERE duration_minutes IS NULL;
-      UPDATE client_maintenance_plans SET maintenance_type = 'robot' WHERE maintenance_type IS NULL;
+      UPDATE client_maintenance_plans SET maintenance_type = 'robot_1' WHERE maintenance_type IS NULL;
       UPDATE client_maintenance_plans SET maintenance_kit_model = 'gemini_up' WHERE maintenance_kit_model IS NULL;
       UPDATE client_maintenance_plans SET maintenance_kit_count = 6 WHERE maintenance_kit_count IS NULL;
       UPDATE client_maintenance_plans SET maintenance_kit_start_number = 1 WHERE maintenance_kit_start_number IS NULL;
@@ -212,7 +212,7 @@ async function initDB() {
       ALTER TABLE client_maintenance_plans
         ALTER COLUMN duration_minutes SET DEFAULT 60,
         ALTER COLUMN duration_minutes SET NOT NULL,
-        ALTER COLUMN maintenance_type SET DEFAULT 'robot',
+        ALTER COLUMN maintenance_type SET DEFAULT 'robot_1',
         ALTER COLUMN maintenance_type SET NOT NULL,
         ALTER COLUMN maintenance_kit_model SET DEFAULT 'gemini_up',
         ALTER COLUMN maintenance_kit_model SET NOT NULL,

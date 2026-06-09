@@ -67,8 +67,20 @@ function getMaintenanceKitCount(value) {
   return (MAINTENANCE_KIT_MODELS[value] || MAINTENANCE_KIT_MODELS.gemini_up).count;
 }
 
+function normalizeMaintenanceType(value) {
+  if (value === "compressor") return "compressor";
+  if (value === "robot_2") return "robot_2";
+  return "robot_1";
+}
+
+function isRobotMaintenanceType(value) {
+  return normalizeMaintenanceType(value) !== "compressor";
+}
+
 function getMaintenanceTypeLabel(value) {
-  return value === "compressor" ? "Compresseur" : "Robot de traite";
+  if (value === "compressor") return "Compresseur";
+  if (value === "robot_2") return "Robot de traite 2";
+  return "Robot de traite 1";
 }
 
 function buildViewerQuery(user) {
@@ -149,7 +161,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
   });
   const [maintenanceForm, setMaintenanceForm] = useState({
     technician_id: "",
-    maintenance_type: "robot",
+    maintenance_type: "robot_1",
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
@@ -161,7 +173,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
   });
   const [maintenanceEditForm, setMaintenanceEditForm] = useState({
     technician_id: "",
-    maintenance_type: "robot",
+    maintenance_type: "robot_1",
     start_at: getDefaultMaintenanceDateTime(),
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
@@ -881,7 +893,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     setEditingMaintenanceId(plan.id);
     setMaintenanceEditForm({
       technician_id: plan.technician_id || "",
-      maintenance_type: plan.maintenance_type || "robot",
+      maintenance_type: normalizeMaintenanceType(plan.maintenance_type),
       start_at: toDateTimeInput(plan.start_at),
       frequency_months: plan.frequency_months || 6,
       end_at: toDateInput(plan.end_at),
@@ -1092,7 +1104,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                   value={maintenanceEditForm.maintenance_type}
                   onChange={(e) => setMaintenanceEditType(e.target.value)}
                 >
-                  <option value="robot">Robot de traite</option>
+                  <option value="robot_1">Robot de traite 1</option>
+                  <option value="robot_2">Robot de traite 2</option>
                   <option value="compressor">Compresseur</option>
                 </select>
 
@@ -1111,10 +1124,11 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                     setMaintenanceEditValue("frequency_months", Number(e.target.value))
                   }
                 >
-                  {maintenanceEditForm.maintenance_type === "robot" && (
+                  {isRobotMaintenanceType(maintenanceEditForm.maintenance_type) && (
                     <>
                       <option value={3}>Tous les 3 mois</option>
                       <option value={4}>Tous les 4 mois</option>
+                      <option value={5}>Tous les 5 mois</option>
                     </>
                   )}
                   <option value={6}>Tous les 6 mois</option>
@@ -1123,7 +1137,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                   )}
                 </select>
 
-                {maintenanceEditForm.maintenance_type === "robot" && (
+                {isRobotMaintenanceType(maintenanceEditForm.maintenance_type) && (
                   <>
                     <label>Modele de kit</label>
                     <select
@@ -1217,7 +1231,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                   {plan.deplacement_offert && (
                     <p className="muted-small">Deplacement offert active sur ce contrat</p>
                   )}
-                  {plan.maintenance_type !== "compressor" && (
+                  {isRobotMaintenanceType(plan.maintenance_type) && (
                     <p className="muted-small">
                       {getMaintenanceKitModelLabel(plan.maintenance_kit_model)}
                       {` - depart Kit N°${plan.maintenance_kit_start_number || 1}`}
@@ -1548,7 +1562,8 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               value={maintenanceForm.maintenance_type}
               onChange={(e) => setMaintenanceType(e.target.value)}
             >
-              <option value="robot">Robot de traite</option>
+              <option value="robot_1">Robot de traite 1</option>
+              <option value="robot_2">Robot de traite 2</option>
               <option value="compressor">Compresseur</option>
             </select>
 
@@ -1567,10 +1582,11 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                 setMaintenanceValue("frequency_months", Number(e.target.value))
               }
             >
-              {maintenanceForm.maintenance_type === "robot" && (
+              {isRobotMaintenanceType(maintenanceForm.maintenance_type) && (
                 <>
                   <option value={3}>Tous les 3 mois</option>
                   <option value={4}>Tous les 4 mois</option>
+                  <option value={5}>Tous les 5 mois</option>
                 </>
               )}
               <option value={6}>Tous les 6 mois</option>
@@ -1593,7 +1609,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               </div>
             </div>
 
-            {maintenanceForm.maintenance_type === "robot" && (
+            {isRobotMaintenanceType(maintenanceForm.maintenance_type) && (
               <>
                 <label>Modele de kit</label>
                 <select

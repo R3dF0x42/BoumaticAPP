@@ -680,11 +680,17 @@ function getMaintenanceKitModel(value) {
 }
 
 function getMaintenanceType(value) {
-  return value === "compressor" ? "compressor" : "robot";
+  if (value === "compressor") return "compressor";
+  if (value === "robot_2") return "robot_2";
+  return "robot_1";
+}
+
+function isRobotMaintenanceType(value) {
+  return getMaintenanceType(value) !== "compressor";
 }
 
 function getAllowedMaintenanceFrequencies(maintenanceType) {
-  return maintenanceType === "compressor" ? [6, 12] : [3, 4, 6];
+  return maintenanceType === "compressor" ? [6, 12] : [3, 4, 5, 6];
 }
 
 function getMaintenanceKitLabel(index, kitModel, startNumber = 1) {
@@ -961,9 +967,9 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
   const allowedFrequencies = getAllowedMaintenanceFrequencies(safeMaintenanceType);
   const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
   const safeKitCount =
-    safeMaintenanceType === "compressor" ? 0 : MAINTENANCE_KIT_MODELS[safeKitModel].count;
+    isRobotMaintenanceType(safeMaintenanceType) ? MAINTENANCE_KIT_MODELS[safeKitModel].count : 0;
   const safeKitStartNumber =
-    safeMaintenanceType === "compressor" ? 1 : Number(maintenance_kit_start_number ?? 1);
+    isRobotMaintenanceType(safeMaintenanceType) ? Number(maintenance_kit_start_number ?? 1) : 1;
   const fullDayDurationMinutes = 660;
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
@@ -987,7 +993,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
   }
 
   if (
-    safeMaintenanceType === "robot" &&
+    isRobotMaintenanceType(safeMaintenanceType) &&
     (!Number.isInteger(safeKitStartNumber) ||
       safeKitStartNumber < 1 ||
       safeKitStartNumber > safeKitCount)
@@ -1079,9 +1085,9 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
   const allowedFrequencies = getAllowedMaintenanceFrequencies(safeMaintenanceType);
   const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
   const safeKitCount =
-    safeMaintenanceType === "compressor" ? 0 : MAINTENANCE_KIT_MODELS[safeKitModel].count;
+    isRobotMaintenanceType(safeMaintenanceType) ? MAINTENANCE_KIT_MODELS[safeKitModel].count : 0;
   const safeKitStartNumber =
-    safeMaintenanceType === "compressor" ? 1 : Number(maintenance_kit_start_number ?? 1);
+    isRobotMaintenanceType(safeMaintenanceType) ? Number(maintenance_kit_start_number ?? 1) : 1;
   const fullDayDurationMinutes = 660;
 
   if (!Number.isInteger(clientId) || clientId <= 0 || !Number.isInteger(planId) || planId <= 0) {
@@ -1097,7 +1103,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
   }
 
   if (
-    safeMaintenanceType === "robot" &&
+    isRobotMaintenanceType(safeMaintenanceType) &&
     (!Number.isInteger(safeKitStartNumber) ||
       safeKitStartNumber < 1 ||
       safeKitStartNumber > safeKitCount)
