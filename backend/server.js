@@ -639,6 +639,16 @@ function addMonthsClamped(date, monthsToAdd) {
   return next;
 }
 
+function addMaintenanceInterval(date, frequencyMonths) {
+  const wholeMonths = Math.trunc(frequencyMonths);
+  const extraDays = Math.round((frequencyMonths - wholeMonths) * 30);
+  const next = addMonthsClamped(date, wholeMonths);
+  if (extraDays > 0) {
+    next.setDate(next.getDate() + extraDays);
+  }
+  return next;
+}
+
 function formatDbDateTime(date) {
   const pad = (value) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
@@ -658,7 +668,7 @@ function buildMaintenanceDatesUntil(startAt, frequencyMonths, endAt) {
 
   while (current <= endAt && dates.length < 60) {
     dates.push(setWorkdayStart(current));
-    current = setWorkdayStart(addMonthsClamped(current, frequencyMonths));
+    current = setWorkdayStart(addMaintenanceInterval(current, frequencyMonths));
   }
 
   return dates;
@@ -690,7 +700,7 @@ function isRobotMaintenanceType(value) {
 }
 
 function getAllowedMaintenanceFrequencies(maintenanceType) {
-  return maintenanceType === "compressor" ? [6, 12] : [3, 4, 5, 6];
+  return maintenanceType === "compressor" ? [6, 12] : [3, 3.5, 4, 5, 6];
 }
 
 function getMaintenanceKitLabel(index, kitModel, startNumber = 1) {

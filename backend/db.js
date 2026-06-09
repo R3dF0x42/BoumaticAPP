@@ -118,7 +118,7 @@ async function initDB() {
         technician_id INTEGER REFERENCES technicians(id) ON DELETE SET NULL,
         start_at TIMESTAMP NOT NULL,
         end_at TIMESTAMP,
-        frequency_months INTEGER NOT NULL,
+        frequency_months NUMERIC NOT NULL,
         occurrences INTEGER NOT NULL,
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
         maintenance_type TEXT DEFAULT 'robot_1' NOT NULL,
@@ -210,6 +210,7 @@ async function initDB() {
       UPDATE client_maintenance_plans SET priority = 'Normale' WHERE priority IS NULL;
       UPDATE client_maintenance_plans SET deplacement_offert = FALSE WHERE deplacement_offert IS NULL;
       ALTER TABLE client_maintenance_plans
+        ALTER COLUMN frequency_months TYPE NUMERIC USING frequency_months::numeric,
         ALTER COLUMN duration_minutes SET DEFAULT 60,
         ALTER COLUMN duration_minutes SET NOT NULL,
         ALTER COLUMN maintenance_type SET DEFAULT 'robot_1',

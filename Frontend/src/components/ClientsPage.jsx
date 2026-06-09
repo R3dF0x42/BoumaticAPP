@@ -83,6 +83,12 @@ function getMaintenanceTypeLabel(value) {
   return "Robot de traite 1";
 }
 
+function getMaintenanceFrequencyLabel(value) {
+  const frequency = Number(value);
+  if (frequency === 3.5) return "3 mois et demi";
+  return `${frequency || 0} mois`;
+}
+
 function buildViewerQuery(user) {
   if (!user) return "";
   const params = new URLSearchParams();
@@ -424,7 +430,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
         value === "compressor"
           ? getCompressorStartDateTime(selectedClient?.commissioning_date)
           : f.start_at,
-      frequency_months: value === "compressor" ? 6 : f.frequency_months === 12 ? 6 : f.frequency_months,
+      frequency_months: value === "compressor" ? 6 : Number(f.frequency_months) === 12 ? 6 : f.frequency_months,
       description: value === "compressor" ? "Maintenance compresseur" : "Maintenance contrat"
     }));
   };
@@ -433,7 +439,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     setMaintenanceEditForm((f) => ({
       ...f,
       maintenance_type: value,
-      frequency_months: value === "compressor" ? 6 : f.frequency_months === 12 ? 6 : f.frequency_months,
+      frequency_months: value === "compressor" ? 6 : Number(f.frequency_months) === 12 ? 6 : f.frequency_months,
       description: value === "compressor" ? "Maintenance compresseur" : "Maintenance contrat"
     }));
   };
@@ -895,7 +901,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       technician_id: plan.technician_id || "",
       maintenance_type: normalizeMaintenanceType(plan.maintenance_type),
       start_at: toDateTimeInput(plan.start_at),
-      frequency_months: plan.frequency_months || 6,
+      frequency_months: Number(plan.frequency_months) || 6,
       end_at: toDateInput(plan.end_at),
       maintenance_kit_model: plan.maintenance_kit_model || "gemini_up",
       maintenance_kit_start_number: plan.maintenance_kit_start_number || 1,
@@ -1127,6 +1133,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                   {isRobotMaintenanceType(maintenanceEditForm.maintenance_type) && (
                     <>
                       <option value={3}>Tous les 3 mois</option>
+                      <option value={3.5}>Tous les 3 mois et demi</option>
                       <option value={4}>Tous les 4 mois</option>
                       <option value={5}>Tous les 5 mois</option>
                     </>
@@ -1218,7 +1225,10 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
             ) : (
               <>
                 <div>
-                  <strong>{getMaintenanceTypeLabel(plan.maintenance_type)} - tous les {plan.frequency_months} mois</strong>
+                  <strong>
+                    {getMaintenanceTypeLabel(plan.maintenance_type)} - tous les{" "}
+                    {getMaintenanceFrequencyLabel(plan.frequency_months)}
+                  </strong>
                   <p className="muted-small">
                     {plan.generated_count} intervention(s) creee(s)
                     {plan.next_scheduled_at
@@ -1582,6 +1592,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               {isRobotMaintenanceType(maintenanceForm.maintenance_type) && (
                 <>
                   <option value={3}>Tous les 3 mois</option>
+                  <option value={3.5}>Tous les 3 mois et demi</option>
                   <option value={4}>Tous les 4 mois</option>
                   <option value={5}>Tous les 5 mois</option>
                 </>
