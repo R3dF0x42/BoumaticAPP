@@ -1655,6 +1655,13 @@ textarea {
   margin-bottom: 6px;
 }
 
+.history-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
 .history-description {
   line-height: 1.4;
 }

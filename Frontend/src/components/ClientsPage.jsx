@@ -89,6 +89,12 @@ function getMaintenanceFrequencyLabel(value) {
   return `${frequency || 0} mois`;
 }
 
+function getHistoryMaintenanceBadge(intervention) {
+  if (!intervention?.maintenance_plan_id && !intervention?.maintenance_kit_label) return "";
+  if (!isRobotMaintenanceType(intervention.maintenance_type)) return "";
+  return getMaintenanceTypeLabel(intervention.maintenance_type);
+}
+
 function buildViewerQuery(user) {
   if (!user) return "";
   const params = new URLSearchParams();
@@ -552,7 +558,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
             h.technician_name || ""
           } ${
             Array.isArray(h.technician_names) ? h.technician_names.join(" ") : ""
-          }`
+          } ${getHistoryMaintenanceBadge(h)}`
             .toLowerCase()
             .includes(term);
         return matchTech && matchTerm;
@@ -1011,39 +1017,54 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     }
     return (
       <div className="history-list">
-        {filteredHistory.map((inter) => (
-          <button
-            key={inter.id}
-            className="history-item history-item--clickable"
-            type="button"
-            onClick={() => onSelectIntervention?.({ id: inter.id })}
-          >
-            <div className="history-title">
-              <strong>{formatDate(inter.scheduled_at)}</strong>
-              <span
-                className={`badge badge-${inter.status?.toLowerCase?.() || "default"}`}
-              >
-                {inter.status || "Statut ?"}
-              </span>
-            </div>
-            <div className="history-meta">
-              <span>{inter.technician_name || "Technicien inconnu"}</span>
-              {inter.priority && <span>Priorite : {inter.priority}</span>}
-              {inter.duration_minutes && (
-                <span>
-                  Duree : {inter.duration_minutes >= 660
-                    ? "journee entiere"
-                    : `${inter.duration_minutes} min`}
+        {filteredHistory.map((inter) => {
+          const maintenanceBadge = getHistoryMaintenanceBadge(inter);
+          return (
+            <button
+              key={inter.id}
+              className="history-item history-item--clickable"
+              type="button"
+              onClick={() => onSelectIntervention?.({ id: inter.id })}
+            >
+              <div className="history-title">
+                <strong>{formatDate(inter.scheduled_at)}</strong>
+                <span
+                  className={`badge badge-${inter.status?.toLowerCase?.() || "default"}`}
+                >
+                  {inter.status || "Statut ?"}
                 </span>
-              )}
-            </div>
-            {inter.description && (
-              <div className="history-description muted-small">
-                {inter.description}
               </div>
-            )}
-          </button>
-        ))}
+              {maintenanceBadge && (
+                <div className="history-badges">
+                  <span className="client-badge client-badge--maintenance">
+                    {maintenanceBadge}
+                  </span>
+                  {inter.maintenance_kit_label && (
+                    <span className="client-badge client-badge--muted">
+                      {inter.maintenance_kit_label}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="history-meta">
+                <span>{inter.technician_name || "Technicien inconnu"}</span>
+                {inter.priority && <span>Priorite : {inter.priority}</span>}
+                {inter.duration_minutes && (
+                  <span>
+                    Duree : {inter.duration_minutes >= 660
+                      ? "journee entiere"
+                      : `${inter.duration_minutes} min`}
+                  </span>
+                )}
+              </div>
+              {inter.description && (
+                <div className="history-description muted-small">
+                  {inter.description}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
     );
   };
