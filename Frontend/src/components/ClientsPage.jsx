@@ -121,6 +121,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
   const [techFilter, setTechFilter] = useState("all");
   const [historySortOrder, setHistorySortOrder] = useState("desc");
   const [mode, setMode] = useState("list"); // list | detail
+  const [activeClientTab, setActiveClientTab] = useState("overview");
   const [showNewForm, setShowNewForm] = useState(false);
   const [clientError, setClientError] = useState("");
   const [clientInfo, setClientInfo] = useState("");
@@ -492,12 +493,19 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     const term = searchTerm.trim().toLowerCase();
     return historyForClient
       .filter((h) => {
+        const interventionTechnicianIds = Array.isArray(h.technician_ids)
+          ? h.technician_ids.map(Number)
+          : h.technician_id
+            ? [Number(h.technician_id)]
+            : [];
         const matchTech =
-          techFilter === "all" || Number(techFilter) === h.technician_id;
+          techFilter === "all" || interventionTechnicianIds.includes(Number(techFilter));
         const matchTerm =
           !term ||
           `${h.description || ""} ${h.status || ""} ${h.priority || ""} ${
             h.technician_name || ""
+          } ${
+            Array.isArray(h.technician_names) ? h.technician_names.join(" ") : ""
           }`
             .toLowerCase()
             .includes(term);
@@ -683,6 +691,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
   const handleSelectClient = (id) => {
     setSelectedClientId(id);
     setMode("detail");
+    setActiveClientTab("overview");
     setIsEditingClient(false);
     setClientError("");
     setClientInfo("");
@@ -713,6 +722,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
       setClientInfo("Client supprime.");
       setMode("list");
+      setActiveClientTab("overview");
       setIsEditingClient(false);
       setClientPhotos([]);
       setMaintenancePlans([]);
@@ -1251,10 +1261,16 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       .filter((date) => !Number.isNaN(date.getTime()))
       .sort((a, b) => a.getTime() - b.getTime())[0];
     const hasOfferedTravelContract = maintenancePlans.some(isOfferedTravelContractActive);
+    const clientDetailTabs = [
+      { value: "overview", label: "Infos" },
+      { value: "maintenance", label: `Contrats ${maintenancePlans.length}` },
+      { value: "history", label: `Historique ${historyForClient.length}` },
+      { value: "photos", label: `Photos ${clientPhotos.length}` }
+    ];
 
     return (
       <>
-      <section className="page">
+      <section className="page clients-page clients-page--detail">
         <div className="page-header">
           <div>
             <h2>{selectedClient.name}</h2>
@@ -1265,6 +1281,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               className="btn small"
               onClick={() => {
                 setIsEditingClient((v) => !v);
+                setActiveClientTab("overview");
                 setClientError("");
                 setClientInfo("");
               }}
@@ -1289,7 +1306,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
         {clientError && <p className="login-error">{clientError}</p>}
         {clientInfo && <p className="ok-message">{clientInfo}</p>}
 
-        <div className="card">
+        <div className="card client-profile-card">
           <div className="client-hero">
             <div className="client-avatar">{initials}</div>
             <div className="client-meta">
@@ -1306,7 +1323,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
             <div className="client-actions">
               {selectedClient.phone && (
                 <a className="btn small client-action-btn client-action-btn--phone" href={`tel:${selectedClient.phone}`}>
-                  <span aria-hidden="true">📞</span>
                   <span>Appeler</span>
                 </a>
               )}
@@ -1316,7 +1332,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                   type="button"
                   onClick={() => handleOpenMap(mapTarget, selectedClient.name)}
                 >
-                  <span aria-hidden="true">📍</span>
                   <span>Ouvrir carte</span>
                 </button>
               )}
@@ -1337,9 +1352,31 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               <strong>{nextMaintenanceDate ? formatDate(nextMaintenanceDate) : "Aucune"}</strong>
             </div>
           </div>
+        </div>
 
-          {isEditingClient ? (
-            <form className="client-detail-grid client-edit-grid" onSubmit={submitClientUpdate}>
+        <div className="client-detail-tabs" aria-label="Sections client">
+          {clientDetailTabs.map((tab) => (
+            <button
+              key={tab.value}
+              className={activeClientTab === tab.value ? "client-detail-tab--active" : ""}
+              type="button"
+              onClick={() => setActiveClientTab(tab.value)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeClientTab === "overview" && (
+          <>
+            {hasOfferedTravelContract && (
+              <div className="card">{renderOfferedTravelLights()}</div>
+            )}
+
+            <div className="card client-section-card">
+              <h3>Informations client</h3>
+              {isEditingClient ? (
+                <form className="client-detail-grid client-edit-grid" onSubmit={submitClientUpdate}>
               <div className="client-field">
                 <label>Nom de la ferme</label>
                 <input
@@ -1389,9 +1426,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                   Annuler
                 </button>
               </div>
-            </form>
-          ) : (
-            <div className="client-detail-grid">
+                </form>
+              ) : (
+                <div className="client-detail-grid">
               <div className="client-field">
                 <label>Adresse</label>
                 <p className="muted-small">{selectedClient.address || "Non renseignee"}</p>
@@ -1435,13 +1472,12 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                 </p>
               </div>
             </div>
-          )}
-        </div>
-
-        {hasOfferedTravelContract && (
-          <div className="card">{renderOfferedTravelLights()}</div>
+              )}
+            </div>
+          </>
         )}
 
+        {activeClientTab === "maintenance" && (
         <div className="card">
           <h3>Contrat de maintenance</h3>
           <form className="maintenance-form" onSubmit={submitMaintenancePlan}>
@@ -1558,13 +1594,17 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
           {renderMaintenancePlans()}
         </div>
+        )}
 
+        {activeClientTab === "history" && (
         <div className="card">
           <h3>Historique des interventions</h3>
           {renderHistoryFilters()}
           {renderHistory()}
         </div>
+        )}
 
+        {activeClientTab === "photos" && (
         <div className="card">
           <h3>Photos du client</h3>
           <label
@@ -1623,6 +1663,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
             </div>
           )}
         </div>
+        )}
       </section>
       <MapAppChooserModal
         open={Boolean(mapChooser)}
@@ -1637,7 +1678,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
   return (
     <>
-    <section className="page">
+    <section className="page clients-page">
       <div className="page-header">
           <div>
             <h2>Clients</h2>
@@ -1655,9 +1696,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       {clientError && <p className="login-error">{clientError}</p>}
       {clientInfo && <p className="ok-message">{clientInfo}</p>}
 
-      <div className="page-grid">
+      <div className="page-grid clients-grid">
         {showNewForm && (
-          <div className="card">
+          <div className="card client-create-card">
             <h3>Nouveau client</h3>
             <form className="form" onSubmit={submit}>
               <label>Nom de la ferme</label>
@@ -1700,8 +1741,13 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
           </div>
         )}
 
-        <div className="card">
-          <h3>Liste des clients</h3>
+        <div className="card client-list-card">
+          <div className="client-list-card-head">
+            <div>
+              <h3>Liste des clients</h3>
+              <p className="muted-small">{filteredClients.length} resultat(s)</p>
+            </div>
+          </div>
           <div className="mobile-search-row">
             <input
               type="search"
@@ -1710,7 +1756,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               placeholder="Rechercher ferme, ville, robot, telephone"
             />
           </div>
-          <div className="table">
+          <div className="table client-card-list">
             {filteredClients.map((c) => {
               const mapTarget = getClientMapTarget(c);
               const badges = renderClientBadges(c);
@@ -1750,7 +1796,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                         handleOpenMap(mapTarget, c.name);
                       }}
                     >
-                      <span aria-hidden="true">📍</span>
                       <span>GPS</span>
                     </button>
                   ) : (
@@ -1762,7 +1807,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                       href={`tel:${c.phone}`}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span aria-hidden="true">📞</span>
                       <span>Appeler</span>
                     </a>
                   )}
