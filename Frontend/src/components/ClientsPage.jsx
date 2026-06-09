@@ -660,12 +660,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
           GPS exact
         </span>
       );
-    } else if (client.address) {
-      badges.push(
-        <span key="address" className="client-badge client-badge--muted">
-          Adresse
-        </span>
-      );
     }
 
     if (client.phone) {
