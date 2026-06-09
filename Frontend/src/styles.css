@@ -395,6 +395,13 @@ textarea {
   font-weight: 600;
 }
 
+.intervention-technician {
+  color: #dce8ff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .intervention-status {
   font-size: 11px;
   color: var(--muted);
@@ -873,6 +880,15 @@ textarea {
 .fc-event-inner-custom strong {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.fc-technician-name {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 11px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fc-maintenance-tag {
@@ -1878,11 +1894,11 @@ textarea {
 }
 
 .maintenance-summary--done {
-  border-color: rgba(44, 125, 255, 0.48);
+  border-color: rgba(34, 197, 94, 0.42);
 }
 
 .maintenance-summary--ready {
-  border-color: rgba(34, 197, 94, 0.42);
+  border-color: rgba(44, 125, 255, 0.48);
 }
 
 .maintenance-summary--missing {
@@ -1951,13 +1967,13 @@ textarea {
 }
 
 .maintenance-month-card--ready {
-  border-color: rgba(34, 197, 94, 0.62);
-  background: linear-gradient(180deg, rgba(21, 83, 50, 0.72), rgba(8, 34, 25, 0.86));
+  border-color: rgba(44, 125, 255, 0.66);
+  background: linear-gradient(180deg, rgba(24, 76, 151, 0.72), rgba(10, 28, 62, 0.88));
 }
 
 .maintenance-month-card--done {
-  border-color: rgba(44, 125, 255, 0.66);
-  background: linear-gradient(180deg, rgba(24, 76, 151, 0.72), rgba(10, 28, 62, 0.88));
+  border-color: rgba(34, 197, 94, 0.62);
+  background: linear-gradient(180deg, rgba(21, 83, 50, 0.72), rgba(8, 34, 25, 0.86));
 }
 
 .maintenance-month-card--partial,
@@ -2010,6 +2026,12 @@ textarea {
   flex: 0 0 auto;
   width: 38px;
   height: 38px;
+  border-color: rgba(44, 125, 255, 0.66);
+  background: rgba(44, 125, 255, 0.22);
+  color: #dbeafe;
+}
+
+.maintenance-ready-check--done {
   border-color: rgba(34, 197, 94, 0.62);
   background: rgba(34, 197, 94, 0.2);
   color: #d7ffe4;
@@ -2022,9 +2044,9 @@ textarea {
 }
 
 .maintenance-ready-check:not(.maintenance-ready-check--active):hover:not(:disabled) {
-  border-color: rgba(34, 197, 94, 0.72);
-  background: rgba(34, 197, 94, 0.18);
-  color: #d7ffe4;
+  border-color: rgba(44, 125, 255, 0.76);
+  background: rgba(44, 125, 255, 0.18);
+  color: #dbeafe;
 }
 
 .maintenance-month-description {

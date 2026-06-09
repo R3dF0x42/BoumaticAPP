@@ -418,6 +418,9 @@ export default function GoogleCalendarFull({
               <strong>
                 {info.timeText} {info.event.title}
               </strong>
+              <span className="fc-technician-name">
+                {info.event.extendedProps.technician_name || "Technicien non assigne"}
+              </span>
               {info.event.extendedProps.maintenance_kit_label && (
                 <span className="fc-maintenance-tag">
                   {info.event.extendedProps.maintenance_kit_label}

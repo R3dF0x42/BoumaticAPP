@@ -180,6 +180,9 @@ export default function Sidebar({
                   </div>
                   <div>
                     <div className="intervention-client">{i.client_name}</div>
+                    <div className="intervention-technician">
+                      {i.technician_name || "Technicien non assigne"}
+                    </div>
                     <div className="intervention-status">
                       {i.status} - {i.priority}
                     </div>

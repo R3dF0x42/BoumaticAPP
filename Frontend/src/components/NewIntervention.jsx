@@ -29,9 +29,10 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
   const canCreatePrivateIntervention = loggedUser?.role === "technician" && loggedUser?.id;
+  const defaultTechnicianId = canCreatePrivateIntervention ? String(loggedUser.id) : "";
   const [form, setForm] = useState({
     client_id: "",
-    technician_id: "",
+    technician_id: defaultTechnicianId,
     scheduled_date: getDefaultDate(),
     time_mode: "morning",
     scheduled_time: "07:00",
@@ -50,6 +51,13 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
       .then((r) => r.json())
       .then(setTechs);
   }, []);
+
+  useEffect(() => {
+    if (!defaultTechnicianId) return;
+    setForm((current) =>
+      current.technician_id ? current : { ...current, technician_id: defaultTechnicianId }
+    );
+  }, [defaultTechnicianId]);
 
   const setValue = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));

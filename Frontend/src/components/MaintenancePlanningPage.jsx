@@ -233,6 +233,8 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
           <button
             className={`icon-btn maintenance-ready-check ${
               isReady || isDone ? "maintenance-ready-check--active" : ""
+            } ${
+              isDone ? "maintenance-ready-check--done" : ""
             }`}
             type="button"
             onClick={() =>
