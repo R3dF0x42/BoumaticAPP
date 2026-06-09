@@ -1850,7 +1850,7 @@ textarea {
 
 .maintenance-summary-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -1875,6 +1875,10 @@ textarea {
   color: var(--text);
   font-size: 22px;
   line-height: 1;
+}
+
+.maintenance-summary--done {
+  border-color: rgba(44, 125, 255, 0.48);
 }
 
 .maintenance-summary--ready {
@@ -1949,6 +1953,11 @@ textarea {
 .maintenance-month-card--ready {
   border-color: rgba(34, 197, 94, 0.62);
   background: linear-gradient(180deg, rgba(21, 83, 50, 0.72), rgba(8, 34, 25, 0.86));
+}
+
+.maintenance-month-card--done {
+  border-color: rgba(44, 125, 255, 0.66);
+  background: linear-gradient(180deg, rgba(24, 76, 151, 0.72), rgba(10, 28, 62, 0.88));
 }
 
 .maintenance-month-card--partial,

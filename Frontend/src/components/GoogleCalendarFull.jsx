@@ -446,8 +446,8 @@ export default function GoogleCalendarFull({
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  status: "A FAIRE",
-                  priority: "Normale",
+                  status: info.event.extendedProps.status || "A FAIRE",
+                  priority: info.event.extendedProps.priority || "Normale",
                   client_id: info.event.extendedProps.client_id,
                   technician_id: info.event.extendedProps.technician_id || null,
                   description: info.event.extendedProps.description || "",

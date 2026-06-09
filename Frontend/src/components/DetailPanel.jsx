@@ -197,6 +197,7 @@ export default function DetailPanel({
               onChange={(e) => setEditValue("status", e.target.value)}
             >
               <option>A FAIRE</option>
+              <option>PRET</option>
               <option>EN COURS</option>
               <option>TERMINE</option>
             </select>

@@ -23,11 +23,13 @@ function toTimePart(value) {
 }
 
 function getMaintenanceState(intervention) {
+  if (intervention.status === "TERMINE") return "done";
   if (intervention.status === "PRET") return "ready";
   return "missing";
 }
 
 function getMaintenanceStateLabel(state) {
+  if (state === "done") return "Termine";
   if (state === "ready") return "Pret";
   return "A planifier";
 }
@@ -152,7 +154,7 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
   }, [visibleInterventions]);
 
   const summary = useMemo(() => {
-    const counts = { ready: 0, missing: 0 };
+    const counts = { done: 0, ready: 0, missing: 0 };
     visibleInterventions.forEach((intervention) => {
       counts[getMaintenanceState(intervention)] += 1;
     });
@@ -215,6 +217,7 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
     const state = getMaintenanceState(intervention);
     const dateValue = toDateInput(intervention.scheduled_at);
     const isReady = state === "ready";
+    const isDone = state === "done";
 
     return (
       <article
@@ -226,23 +229,32 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
             <strong>{intervention.client_name || "Client"}</strong>
             <span>{intervention.maintenance_kit_label || intervention.description}</span>
           </div>
+          <em>{getMaintenanceStateLabel(state)}</em>
           <button
             className={`icon-btn maintenance-ready-check ${
-              isReady ? "maintenance-ready-check--active" : ""
+              isReady || isDone ? "maintenance-ready-check--active" : ""
             }`}
             type="button"
             onClick={() =>
-              updateIntervention(intervention, { status: isReady ? "A FAIRE" : "PRET" })
+              !isDone && updateIntervention(intervention, { status: isReady ? "A FAIRE" : "PRET" })
             }
-            disabled={savingId === intervention.id}
-            title={isReady ? "Repasser a planifier" : "Marquer comme pret"}
+            disabled={savingId === intervention.id || isDone}
+            title={
+              isDone
+                ? "Maintenance terminee"
+                : isReady
+                  ? "Repasser a planifier"
+                  : "Marquer comme pret"
+            }
             aria-label={
-              isReady
+              isDone
+                ? "Maintenance terminee"
+                : isReady
                 ? "Repasser la maintenance a planifier"
                 : "Marquer la maintenance comme prete"
             }
           >
-            {isReady ? <UncheckIcon /> : <CheckIcon />}
+            {isReady && !isDone ? <UncheckIcon /> : <CheckIcon />}
           </button>
         </div>
 
@@ -319,6 +331,10 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
       {info && <p className="ok-message">{info}</p>}
 
       <div className="maintenance-summary-row">
+        <span className="maintenance-summary maintenance-summary--done">
+          <strong>{summary.done}</strong>
+          termine
+        </span>
         <span className="maintenance-summary maintenance-summary--ready">
           <strong>{summary.ready}</strong>
           pret
