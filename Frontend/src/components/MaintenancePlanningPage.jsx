@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => ({
   index,
@@ -230,7 +231,7 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
         <div className="maintenance-month-card-head">
           <div>
             <strong>{intervention.client_name || "Client"}</strong>
-            <span>{intervention.maintenance_kit_label || intervention.description}</span>
+            <span>{formatMaintenanceKitLabel(intervention) || intervention.description}</span>
           </div>
           <em>{getMaintenanceStateLabel(state)}</em>
           <button

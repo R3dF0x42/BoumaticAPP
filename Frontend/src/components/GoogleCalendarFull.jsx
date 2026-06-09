@@ -4,6 +4,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import { API_URL } from "../config/api.js";
+import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
 
 const API = API_URL;
 
@@ -142,7 +143,8 @@ export default function GoogleCalendarFull({
               technician_id: inter.technician_id,
               technician_ids: inter.technician_ids,
               duration_minutes: inter.duration_minutes,
-              maintenance_kit_label: inter.maintenance_kit_label
+              maintenance_type: inter.maintenance_type,
+              maintenance_kit_label: formatMaintenanceKitLabel(inter)
             }
           };
         });

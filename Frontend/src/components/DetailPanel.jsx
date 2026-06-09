@@ -4,6 +4,7 @@ import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 import { buildUploadUrl } from "../utils/images.js";
+import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
 
 function normalizeTechnicianIdList(values) {
   const ids = [];
@@ -96,6 +97,7 @@ export default function DetailPanel({
   }
 
   const { intervention, notes, photos } = data;
+  const maintenanceKitLabel = formatMaintenanceKitLabel(intervention);
   const mapLinks = buildMapAppLinks({
     lat: intervention.gps_lat ?? null,
     lng: intervention.gps_lng ?? null,
@@ -313,6 +315,7 @@ export default function DetailPanel({
                   }`
                 : ""}
             </p>
+            {maintenanceKitLabel && <p className="muted-small">{maintenanceKitLabel}</p>}
             <p>{intervention.description}</p>
             <div className="badge-row">
               <span className="badge badge-status">{intervention.status}</span>

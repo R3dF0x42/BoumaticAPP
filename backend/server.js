@@ -1446,10 +1446,12 @@ app.get("/api/interventions", async (req, res) => {
     SELECT i.*,
            to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
            c.name AS client_name,
+           mp.maintenance_type AS maintenance_type,
 ${INTERVENTION_TECHNICIAN_SELECT}
     FROM interventions i
     LEFT JOIN clients c ON i.client_id = c.id
     LEFT JOIN technicians t ON i.technician_id = t.id
+    LEFT JOIN client_maintenance_plans mp ON mp.id = i.maintenance_plan_id
   `;
   const params = [];
   const where = [];
@@ -1513,6 +1515,7 @@ app.get("/api/interventions/:id", async (req, res) => {
         i.description,
         i.duration_minutes,
         i.maintenance_kit_label,
+        mp.maintenance_type AS maintenance_type,
         i.private_to_technician_id,
         c.name AS client_name,
         c.address,
@@ -1523,6 +1526,7 @@ ${INTERVENTION_TECHNICIAN_SELECT}
       FROM interventions i
       LEFT JOIN clients c ON i.client_id = c.id
       LEFT JOIN technicians t ON i.technician_id = t.id
+      LEFT JOIN client_maintenance_plans mp ON mp.id = i.maintenance_plan_id
       WHERE i.id = $1
       ${visibilityFilter ? `AND ${visibilityFilter}` : ""}
       `,
