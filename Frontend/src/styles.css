@@ -1267,13 +1267,15 @@ textarea {
 .photo-lightbox {
   position: fixed;
   inset: 0;
-  z-index: 1400;
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 18px;
   background: rgba(0, 0, 0, 0.9);
   cursor: zoom-out;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .photo-lightbox img {
@@ -1289,7 +1291,7 @@ textarea {
   position: fixed;
   top: calc(14px + env(safe-area-inset-top));
   right: 14px;
-  z-index: 1;
+  z-index: 10001;
   width: 44px;
   height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.24);
