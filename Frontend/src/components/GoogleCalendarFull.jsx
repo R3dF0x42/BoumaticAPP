@@ -50,6 +50,20 @@ function formatDateKey(date) {
   );
 }
 
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+}
+
+function endOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
+function eventOverlapsDay(event, date) {
+  const eventStart = event.start;
+  const eventEnd = event.end || event.start;
+  return eventStart <= endOfDay(date) && eventEnd >= startOfDay(date);
+}
+
 function addDays(date, days) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -67,6 +81,17 @@ function formatEventTime(date) {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function formatMobileEventTime(event, selectedDate) {
+  const eventEnd = event.end || event.start;
+  const startsBeforeDay = event.start < startOfDay(selectedDate);
+  const endsAfterDay = eventEnd > endOfDay(selectedDate);
+
+  if (startsBeforeDay && endsAfterDay) return "Toute la journee";
+  if (startsBeforeDay) return `Jusqu'a ${formatEventTime(eventEnd)}`;
+  if (endsAfterDay) return `Depuis ${formatEventTime(event.start)}`;
+  return formatEventTime(event.start);
 }
 
 function buildViewerQuery(user) {
@@ -191,17 +216,20 @@ export default function GoogleCalendarFull({
   const eventCountsByDay = useMemo(() => {
     const counts = new Map();
     for (const event of events) {
-      const dayKey = formatDateKey(event.start);
-      counts.set(dayKey, (counts.get(dayKey) || 0) + 1);
+      for (const day of weekDays) {
+        if (!eventOverlapsDay(event, day)) continue;
+        const dayKey = formatDateKey(day);
+        counts.set(dayKey, (counts.get(dayKey) || 0) + 1);
+      }
     }
     return counts;
-  }, [events]);
+  }, [events, weekDays]);
   const selectedDayEvents = useMemo(
     () =>
       events
-        .filter((event) => formatDateKey(event.start) === selectedDateKey)
+        .filter((event) => eventOverlapsDay(event, selectedDate))
         .sort((a, b) => a.start.getTime() - b.start.getTime()),
-    [events, selectedDateKey]
+    [events, selectedDate]
   );
   const visibleDayEvents = useMemo(() => {
     if (mobileFilter === "all") return selectedDayEvents;
@@ -357,7 +385,7 @@ export default function GoogleCalendarFull({
               style={{ "--event-color": event.backgroundColor }}
             >
               <span className="mobile-agenda-time">
-                {formatEventTime(event.start)}
+                {formatMobileEventTime(event, selectedDate)}
               </span>
               <span className="mobile-agenda-body">
                 <strong>{event.title}</strong>
@@ -443,6 +471,36 @@ export default function GoogleCalendarFull({
           }}
           eventClick={(info) => {
             onSelectEvent && onSelectEvent(info.event);
+          }}
+          eventResize={async (info) => {
+            const durationMinutes = Math.max(
+              15,
+              Math.round(
+                ((info.event.end || info.event.start).getTime() - info.event.start.getTime()) /
+                  60000
+              )
+            );
+
+            try {
+              await fetch(`${API}/interventions/${info.event.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  client_id: info.event.extendedProps.client_id,
+                  technician_id: info.event.extendedProps.technician_id,
+                  technician_ids: info.event.extendedProps.technician_ids,
+                  status: info.event.extendedProps.status,
+                  priority: info.event.extendedProps.priority,
+                  description: info.event.extendedProps.description,
+                  scheduled_at: info.event.start.toISOString().slice(0, 19).replace("T", " "),
+                  duration_minutes: durationMinutes
+                })
+              });
+              window.dispatchEvent(new Event("refreshCalendar"));
+            } catch (e) {
+              console.error("Erreur resize event :", e);
+              info.revert();
+            }
           }}
           eventDrop={async (info) => {
             const newDate = info.event.start;

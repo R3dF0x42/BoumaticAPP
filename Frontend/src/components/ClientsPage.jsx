@@ -590,6 +590,21 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     return d.toLocaleDateString("fr-FR");
   };
 
+  const formatInterventionDuration = (intervention) => {
+    const duration = Number(intervention.duration_minutes);
+    if (!duration) return "";
+
+    const start = new Date(intervention.scheduled_at);
+    if (!Number.isNaN(start.getTime())) {
+      const end = new Date(start.getTime() + duration * 60000);
+      if (start.toLocaleDateString("fr-FR") !== end.toLocaleDateString("fr-FR")) {
+        return `du ${formatDate(start)} au ${formatDate(end)}`;
+      }
+    }
+
+    return duration >= 660 ? "journee entiere" : `${duration} min`;
+  };
+
   const hasExactGps = (client) =>
     client?.gps_lat !== null &&
     client?.gps_lat !== undefined &&
@@ -1056,11 +1071,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                 <span>{inter.technician_name || "Technicien inconnu"}</span>
                 {inter.priority && <span>Priorite : {inter.priority}</span>}
                 {inter.duration_minutes && (
-                  <span>
-                    Duree : {inter.duration_minutes >= 660
-                      ? "journee entiere"
-                      : `${inter.duration_minutes} min`}
-                  </span>
+                  <span>Duree : {formatInterventionDuration(inter)}</span>
                 )}
               </div>
               {inter.description && (

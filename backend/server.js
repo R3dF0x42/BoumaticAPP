@@ -1538,7 +1538,9 @@ ${INTERVENTION_TECHNICIAN_SELECT}
 
   if (start && end) {
     params.push(start, end);
-    where.push(`i.scheduled_at BETWEEN $${params.length - 1} AND $${params.length}`);
+    where.push(
+      `i.scheduled_at < $${params.length} AND (i.scheduled_at + (COALESCE(i.duration_minutes, 60) * INTERVAL '1 minute')) > $${params.length - 1}`
+    );
   }
 
   const clientId = Number(client_id);
@@ -1554,7 +1556,9 @@ ${INTERVENTION_TECHNICIAN_SELECT}
   const safeYear = Number(year);
   if (Number.isInteger(safeYear) && safeYear >= 2000 && safeYear <= 2100) {
     params.push(`${safeYear}-01-01 00:00:00`, `${safeYear + 1}-01-01 00:00:00`);
-    where.push(`i.scheduled_at >= $${params.length - 1} AND i.scheduled_at < $${params.length}`);
+    where.push(
+      `i.scheduled_at < $${params.length} AND (i.scheduled_at + (COALESCE(i.duration_minutes, 60) * INTERVAL '1 minute')) > $${params.length - 1}`
+    );
   }
 
   const visibilityFilter = getInterventionVisibilityFilter(req.query, params);

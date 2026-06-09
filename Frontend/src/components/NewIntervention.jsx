@@ -22,6 +22,7 @@ const TIME_MODES = {
   full_day: { label: "Journee entiere", start: "07:00", duration: 660 },
   morning: { label: "Matin", start: "07:00", duration: 300 },
   afternoon: { label: "Apres-midi", start: "13:00", duration: 300 },
+  multi_day: { label: "Plusieurs jours", start: "07:00", end: "18:00" },
   custom: { label: "Heure precise", start: getDefaultTime(), duration: 60 }
 };
 
@@ -40,6 +41,13 @@ function getTechnicianRows(selectedIds, technicians) {
   return rows.length ? rows : [""];
 }
 
+function getDurationBetweenDates(startDate, startTime, endDate, endTime) {
+  const start = new Date(`${startDate}T${startTime}`);
+  const end = new Date(`${endDate}T${endTime}`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.round((end.getTime() - start.getTime()) / 60000);
+}
+
 export default function NewIntervention({ loggedUser, onClose, onCreated }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
@@ -49,6 +57,7 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
     client_id: "",
     technician_ids: defaultTechnicianId ? [defaultTechnicianId] : [],
     scheduled_date: getDefaultDate(),
+    scheduled_end_date: getDefaultDate(),
     time_mode: "morning",
     scheduled_time: "07:00",
     priority: "Normale",
@@ -80,6 +89,14 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
     setForm((f) => ({ ...f, [field]: value }));
   };
 
+  const setScheduledDate = (value) => {
+    setForm((f) => ({
+      ...f,
+      scheduled_date: value,
+      scheduled_end_date: f.scheduled_end_date < value ? value : f.scheduled_end_date
+    }));
+  };
+
   const setTechnicianAt = (index, value) => {
     setForm((current) => {
       const nextIds = normalizeTechnicianIdList(current.technician_ids);
@@ -96,8 +113,23 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
     e.preventDefault();
     const mode = TIME_MODES[form.time_mode] || TIME_MODES.custom;
     const startTime = form.time_mode === "custom" ? form.scheduled_time : mode.start;
-    const duration = form.time_mode === "custom" ? form.duration_minutes || 60 : mode.duration;
+    const duration =
+      form.time_mode === "multi_day"
+        ? getDurationBetweenDates(
+            form.scheduled_date,
+            mode.start,
+            form.scheduled_end_date,
+            mode.end
+          )
+        : form.time_mode === "custom"
+          ? form.duration_minutes || 60
+          : mode.duration;
     const technicianIds = normalizeTechnicianIdList(form.technician_ids).map(Number);
+
+    if (!duration || duration < 15) {
+      alert("La date de fin doit etre apres la date de debut.");
+      return;
+    }
 
     const payload = {
       client_id: Number(form.client_id),
@@ -198,7 +230,7 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
           <input
             type="date"
             value={form.scheduled_date}
-            onChange={(e) => setValue("scheduled_date", e.target.value)}
+            onChange={(e) => setScheduledDate(e.target.value)}
             required
           />
 
@@ -215,6 +247,22 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
               </button>
             ))}
           </div>
+
+          {form.time_mode === "multi_day" && (
+            <>
+              <label>Date de fin</label>
+              <input
+                type="date"
+                min={form.scheduled_date}
+                value={form.scheduled_end_date}
+                onChange={(e) => setValue("scheduled_end_date", e.target.value)}
+                required
+              />
+              <p className="muted-small">
+                L'intervention commence a 07:00 le premier jour et finit a 18:00 le dernier jour.
+              </p>
+            </>
+          )}
 
           {form.time_mode === "custom" && (
             <>

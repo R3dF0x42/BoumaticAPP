@@ -34,6 +34,46 @@ function getTechnicianLabel(intervention) {
   return intervention?.technician_name || "Technicien non assigne";
 }
 
+function toDateTimeInput(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function getInterventionEndInput(intervention) {
+  if (!intervention?.scheduled_at) return "";
+  const start = new Date(intervention.scheduled_at);
+  if (Number.isNaN(start.getTime())) return "";
+  const duration = Number(intervention.duration_minutes) || 60;
+  return toDateTimeInput(new Date(start.getTime() + duration * 60000));
+}
+
+function getDurationBetweenDateTimes(startValue, endValue) {
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.round((end.getTime() - start.getTime()) / 60000);
+}
+
+function formatInterventionTiming(intervention) {
+  const start = new Date(intervention.scheduled_at);
+  if (Number.isNaN(start.getTime())) return intervention.scheduled_at || "";
+
+  const duration = Number(intervention.duration_minutes) || 60;
+  const end = new Date(start.getTime() + duration * 60000);
+  const sameDay = start.toLocaleDateString("fr-FR") === end.toLocaleDateString("fr-FR");
+
+  if (!sameDay) {
+    return `${start.toLocaleString("fr-FR")} -> ${end.toLocaleString("fr-FR")}`;
+  }
+
+  const durationLabel =
+    duration >= 660 ? "journee entiere" : `${duration} min`;
+  return `${start.toLocaleString("fr-FR")} - ${durationLabel}`;
+}
+
 export default function DetailPanel({
   apiUrl,
   data,
@@ -55,6 +95,7 @@ export default function DetailPanel({
     client_id: "",
     technician_ids: [],
     scheduled_at: "",
+    end_at: "",
     duration_minutes: 60,
     status: "A FAIRE",
     priority: "Normale",
@@ -80,7 +121,8 @@ export default function DetailPanel({
     setEditForm({
       client_id: intervention.client_id || "",
       technician_ids: getInterventionTechnicianIds(intervention),
-      scheduled_at: intervention.scheduled_at?.slice(0, 16) || "",
+      scheduled_at: toDateTimeInput(intervention.scheduled_at),
+      end_at: getInterventionEndInput(intervention),
       duration_minutes: intervention.duration_minutes || 60,
       status: intervention.status || "A FAIRE",
       priority: intervention.priority || "Normale",
@@ -150,12 +192,19 @@ export default function DetailPanel({
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     const technicianIds = normalizeTechnicianIdList(editForm.technician_ids).map(Number);
+    const durationMinutes = getDurationBetweenDateTimes(editForm.scheduled_at, editForm.end_at);
+
+    if (!durationMinutes || durationMinutes < 15) {
+      alert("La date de fin doit etre apres la date de debut.");
+      return;
+    }
+
     await onUpdateIntervention?.({
       client_id: Number(editForm.client_id),
       technician_id: technicianIds[0] || null,
       technician_ids: technicianIds,
       scheduled_at: editForm.scheduled_at.replace("T", " ") + ":00",
-      duration_minutes: Number(editForm.duration_minutes) || 60,
+      duration_minutes: durationMinutes,
       status: editForm.status,
       priority: editForm.priority,
       description: editForm.description
@@ -248,7 +297,7 @@ export default function DetailPanel({
               })}
             </div>
 
-            <label>Date et heure</label>
+            <label>Debut</label>
             <input
               type="datetime-local"
               value={editForm.scheduled_at}
@@ -256,15 +305,12 @@ export default function DetailPanel({
               required
             />
 
-            <label>Duree de l'intervention (minutes)</label>
+            <label>Fin</label>
             <input
-              type="number"
-              min="15"
-              max="660"
-              step="15"
-              inputMode="numeric"
-              value={editForm.duration_minutes}
-              onChange={(e) => setEditValue("duration_minutes", Number(e.target.value))}
+              type="datetime-local"
+              min={editForm.scheduled_at}
+              value={editForm.end_at}
+              onChange={(e) => setEditValue("end_at", e.target.value)}
               required
             />
 
@@ -312,14 +358,7 @@ export default function DetailPanel({
         ) : (
           <>
             <p className="muted-small">
-              {new Date(intervention.scheduled_at).toLocaleString("fr-FR")}
-              {intervention.duration_minutes
-                ? ` - ${
-                    intervention.duration_minutes >= 660
-                      ? "journee entiere"
-                      : `${intervention.duration_minutes} min`
-                  }`
-                : ""}
+              {formatInterventionTiming(intervention)}
             </p>
             {maintenanceKitLabel && <p className="muted-small">{maintenanceKitLabel}</p>}
             <p>{intervention.description}</p>
