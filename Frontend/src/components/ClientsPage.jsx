@@ -1754,6 +1754,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                     onClick={(event) =>
                       openPhotoPreview(event, { src: photoSrc, alt: "Photo client" })
                     }
+                    onPointerUp={(event) =>
+                      openPhotoPreview(event, { src: photoSrc, alt: "Photo client" })
+                    }
                     onTouchEnd={(event) =>
                       openPhotoPreview(event, { src: photoSrc, alt: "Photo client" })
                     }

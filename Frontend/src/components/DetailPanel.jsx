@@ -463,6 +463,9 @@ export default function DetailPanel({
                 onClick={(event) =>
                   openPhotoPreview(event, { src: photoSrc, alt: "Photo intervention" })
                 }
+                onPointerUp={(event) =>
+                  openPhotoPreview(event, { src: photoSrc, alt: "Photo intervention" })
+                }
                 onTouchEnd={(event) =>
                   openPhotoPreview(event, { src: photoSrc, alt: "Photo intervention" })
                 }
