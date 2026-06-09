@@ -654,6 +654,14 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       );
     }
 
+    if (Number(client.maintenance_plan_count || 0) > 0) {
+      badges.push(
+        <span key="maintenance" className="client-badge client-badge--maintenance">
+          {Number(client.maintenance_plan_count)} contrat(s)
+        </span>
+      );
+    }
+
     if (hasExactGps(client)) {
       badges.push(
         <span key="gps" className="client-badge client-badge--gps">

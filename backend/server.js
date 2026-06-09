@@ -193,10 +193,12 @@ app.get("/api/clients", async (req, res) => {
       `
       SELECT
         c.*,
-        COUNT(i.id)::int AS intervention_count
+        COUNT(DISTINCT i.id)::int AS intervention_count,
+        COUNT(DISTINCT mp.id)::int AS maintenance_plan_count
       FROM clients c
       LEFT JOIN interventions i ON i.client_id = c.id
         ${visibilityFilter ? `AND ${visibilityFilter}` : ""}
+      LEFT JOIN client_maintenance_plans mp ON mp.client_id = c.id
       GROUP BY c.id
       ORDER BY c.name
       `,
