@@ -177,6 +177,12 @@ export default function DetailPanel({
     });
   };
 
+  const openPhotoPreview = (event, photo) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedPhoto(photo);
+  };
+
   return (
     <>
     <aside className="detail-panel">
@@ -449,17 +455,24 @@ export default function DetailPanel({
             const photoSrc = buildUploadUrl(apiOrigin, p.url || p.filename);
             return (
             <div key={p.id} className="photo-item">
-              <button
+              <a
+                href={photoSrc}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="photo-preview-btn"
-                type="button"
-                onClick={() => setSelectedPhoto({ src: photoSrc, alt: "Photo intervention" })}
+                onClick={(event) =>
+                  openPhotoPreview(event, { src: photoSrc, alt: "Photo intervention" })
+                }
+                onTouchEnd={(event) =>
+                  openPhotoPreview(event, { src: photoSrc, alt: "Photo intervention" })
+                }
                 aria-label="Agrandir la photo"
               >
                 <img
                   src={photoSrc}
                   alt="intervention"
                 />
-              </button>
+              </a>
               <button
                 className="photo-delete-btn"
                 type="button"

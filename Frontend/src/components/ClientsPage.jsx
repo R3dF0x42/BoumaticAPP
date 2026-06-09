@@ -858,6 +858,12 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     }
   };
 
+  const openPhotoPreview = (event, photo) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedPhoto(photo);
+  };
+
   const submitMaintenancePlan = async (e) => {
     e.preventDefault();
     if (!selectedClient?.id) return;
@@ -1740,17 +1746,24 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                 const photoSrc = buildUploadUrl(apiOrigin, p.url || p.filename);
                 return (
                 <div key={p.id} className="photo-item">
-                  <button
+                  <a
+                    href={photoSrc}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="photo-preview-btn"
-                    type="button"
-                    onClick={() => setSelectedPhoto({ src: photoSrc, alt: "Photo client" })}
+                    onClick={(event) =>
+                      openPhotoPreview(event, { src: photoSrc, alt: "Photo client" })
+                    }
+                    onTouchEnd={(event) =>
+                      openPhotoPreview(event, { src: photoSrc, alt: "Photo client" })
+                    }
                     aria-label="Agrandir la photo"
                   >
                     <img
                       src={photoSrc}
                       alt="client"
                     />
-                  </button>
+                  </a>
                   <button
                     className="photo-delete-btn"
                     type="button"
