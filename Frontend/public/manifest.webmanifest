@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "BouMatic Maintenance",
+  "short_name": "BouMatic",
+  "description": "Planning d'interventions et suivi mobile des visites BouMatic.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "background_color": "#08101d",
+  "theme_color": "#08101d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
