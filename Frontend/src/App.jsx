@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import DetailPanel from "./components/DetailPanel.jsx";
 import NewIntervention from "./components/NewIntervention.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
+import OnCallTechnicianControl from "./components/OnCallTechnicianControl.jsx";
 import { API_URL } from "./config/api.js";
 import { preparePhotoForUpload } from "./utils/images.js";
 
@@ -393,6 +394,7 @@ export default function App() {
           <span className="session-chip">
             {isAdmin ? "Admin" : loggedUser.name}
           </span>
+          <OnCallTechnicianControl apiUrl={API_URL} loggedUser={loggedUser} />
           <button className="btn small ghost" type="button" onClick={handleLogout}>
             Deconnexion
           </button>
@@ -433,6 +435,7 @@ export default function App() {
             setCurrentPage={navigateTo}
             isMobile={isMobile}
             loggedUser={loggedUser}
+            apiUrl={API_URL}
             isAdmin={isAdmin}
             onLogout={handleLogout}
           />

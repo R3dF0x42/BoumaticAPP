@@ -61,6 +61,14 @@ async function initDB() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
       ALTER TABLE technicians
         ADD COLUMN IF NOT EXISTS password_salt TEXT,
         ADD COLUMN IF NOT EXISTS password_hash TEXT;

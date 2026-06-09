@@ -144,6 +144,29 @@ const INTERVENTION_TECHNICIAN_SELECT = `
              WHERE it.intervention_id = i.id
            ), t.name) AS technician_name`;
 
+const ON_CALL_TECHNICIANS = ["Corentin", "Adrien", "Benjamin", "Alexandre"];
+const ON_CALL_SETTING_KEY = "on_call_technician";
+
+function normalizeName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function getAllowedOnCallTechnician(value) {
+  const normalized = normalizeName(value);
+  return ON_CALL_TECHNICIANS.find((name) => normalizeName(name) === normalized) || null;
+}
+
+async function isAdrienTechnician(technicianId) {
+  const id = Number(technicianId);
+  if (!Number.isInteger(id) || id <= 0) return false;
+  const result = await pool.query("SELECT name FROM technicians WHERE id = $1", [id]);
+  return normalizeName(result.rows[0]?.name) === "adrien";
+}
+
 function normalizeTechnicianIds(values) {
   const source = Array.isArray(values) ? values : values == null ? [] : [values];
   const ids = [];
@@ -184,6 +207,53 @@ async function syncInterventionTechnicians(dbClient, interventionId, technicianI
     );
   }
 }
+
+app.get("/api/on-call-technician", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT value FROM app_settings WHERE key = $1", [
+      ON_CALL_SETTING_KEY
+    ]);
+
+    res.json({
+      technician_name: result.rows[0]?.value || "",
+      options: ON_CALL_TECHNICIANS
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/on-call-technician", async (req, res) => {
+  const technicianName = getAllowedOnCallTechnician(req.body?.technician_name);
+
+  if (!technicianName) {
+    return res.status(400).json({ error: "Technicien d'astreinte invalide." });
+  }
+
+  try {
+    const canUpdate = await isAdrienTechnician(req.body?.updated_by_technician_id);
+    if (!canUpdate) {
+      return res.status(403).json({ error: "Seul Adrien peut modifier l'astreinte." });
+    }
+
+    await pool.query(
+      `
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES ($1, $2, CURRENT_TIMESTAMP)
+      ON CONFLICT (key)
+      DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+      `,
+      [ON_CALL_SETTING_KEY, technicianName]
+    );
+
+    res.json({
+      technician_name: technicianName,
+      options: ON_CALL_TECHNICIANS
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get("/api/clients", async (req, res) => {
   try {
