@@ -290,6 +290,18 @@ textarea {
   color: #d9e4ff;
 }
 
+.on-call-select--locked {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 10px;
+  pointer-events: none;
+}
+
+.on-call-select--locked::-ms-expand {
+  display: none;
+}
+
 .on-call-chip {
   display: inline-flex;
   align-items: center;
@@ -3287,9 +3299,26 @@ textarea {
   .mobile-topbar-main {
     width: 100%;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
+  }
+
+  .mobile-topbar-main > .on-call-control {
+    align-items: center;
+    flex: 0 1 132px;
+  }
+
+  .mobile-topbar-main > .on-call-control .on-call-label {
+    font-size: 9px;
+    text-align: center;
+  }
+
+  .mobile-topbar-main > .on-call-control .on-call-select,
+  .mobile-topbar-main > .on-call-control .on-call-chip {
+    width: 100%;
+    max-width: 132px;
+    min-height: 32px;
   }
 
   .mobile-topbar-actions {
@@ -3298,20 +3327,6 @@ textarea {
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 8px;
-  }
-
-  .mobile-topbar-actions .on-call-control {
-    align-items: flex-end;
-  }
-
-  .mobile-topbar-actions .on-call-label {
-    font-size: 9px;
-  }
-
-  .mobile-topbar-actions .on-call-select,
-  .mobile-topbar-actions .on-call-chip {
-    max-width: 132px;
-    min-height: 32px;
   }
 
   .mobile-topbar-actions .btn {

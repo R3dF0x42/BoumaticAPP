@@ -74,7 +74,7 @@ export default function OnCallTechnicianControl({ apiUrl, loggedUser }) {
     <div className="on-call-control">
       <span className="on-call-label">Technicien d'astreinte</span>
       <select
-        className="on-call-select"
+        className={`on-call-select ${!canEdit ? "on-call-select--locked" : ""}`}
         value={technicianName}
         onChange={(event) => updateOnCallTechnician(event.target.value)}
         disabled={!canEdit || saving}

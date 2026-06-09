@@ -390,11 +390,12 @@ export default function App() {
           <span className="brand-sub">Maintenance</span>
         </div>
 
+        <OnCallTechnicianControl apiUrl={API_URL} loggedUser={loggedUser} />
+
         <div className="mobile-topbar-actions">
           <span className="session-chip">
             {isAdmin ? "Admin" : loggedUser.name}
           </span>
-          <OnCallTechnicianControl apiUrl={API_URL} loggedUser={loggedUser} />
           <button className="btn small ghost" type="button" onClick={handleLogout}>
             Deconnexion
           </button>
