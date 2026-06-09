@@ -135,10 +135,12 @@ export default function GoogleCalendarFull({
             extendedProps: {
               client_id: inter.client_id,
               technician_name: inter.technician_name,
+              technician_names: inter.technician_names,
               description: inter.description,
               status: inter.status,
               priority: inter.priority,
               technician_id: inter.technician_id,
+              technician_ids: inter.technician_ids,
               duration_minutes: inter.duration_minutes,
               maintenance_kit_label: inter.maintenance_kit_label
             }
@@ -453,6 +455,11 @@ export default function GoogleCalendarFull({
                   priority: info.event.extendedProps.priority || "Normale",
                   client_id: info.event.extendedProps.client_id,
                   technician_id: info.event.extendedProps.technician_id || null,
+                  technician_ids:
+                    info.event.extendedProps.technician_ids ||
+                    (info.event.extendedProps.technician_id
+                      ? [info.event.extendedProps.technician_id]
+                      : []),
                   description: info.event.extendedProps.description || "",
                   scheduled_at: iso,
                   duration_minutes: info.event.extendedProps.duration_minutes || 60

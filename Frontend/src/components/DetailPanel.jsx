@@ -5,6 +5,34 @@ import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 import { buildUploadUrl } from "../utils/images.js";
 
+function normalizeTechnicianIdList(values) {
+  const ids = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const id = String(value || "");
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+function getInterventionTechnicianIds(intervention) {
+  const ids = normalizeTechnicianIdList(intervention?.technician_ids);
+  if (ids.length) return ids;
+  return intervention?.technician_id ? [String(intervention.technician_id)] : [];
+}
+
+function getTechnicianRows(selectedIds, technicians) {
+  const rows = normalizeTechnicianIdList(selectedIds);
+  if (rows.length < technicians.length) return [...rows, ""];
+  return rows.length ? rows : [""];
+}
+
+function getTechnicianLabel(intervention) {
+  if (Array.isArray(intervention?.technician_names) && intervention.technician_names.length) {
+    return intervention.technician_names.join(", ");
+  }
+  return intervention?.technician_name || "Technicien non assigne";
+}
+
 export default function DetailPanel({
   apiUrl,
   data,
@@ -24,7 +52,7 @@ export default function DetailPanel({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     client_id: "",
-    technician_id: "",
+    technician_ids: [],
     scheduled_at: "",
     duration_minutes: 60,
     status: "A FAIRE",
@@ -50,7 +78,7 @@ export default function DetailPanel({
     if (!intervention) return;
     setEditForm({
       client_id: intervention.client_id || "",
-      technician_id: intervention.technician_id || "",
+      technician_ids: getInterventionTechnicianIds(intervention),
       scheduled_at: intervention.scheduled_at?.slice(0, 16) || "",
       duration_minutes: intervention.duration_minutes || 60,
       status: intervention.status || "A FAIRE",
@@ -105,11 +133,25 @@ export default function DetailPanel({
     setEditForm((form) => ({ ...form, [field]: value }));
   };
 
+  const setEditTechnicianAt = (index, value) => {
+    setEditForm((form) => {
+      const nextIds = normalizeTechnicianIdList(form.technician_ids);
+      if (value) {
+        nextIds[index] = value;
+      } else if (index < nextIds.length) {
+        nextIds.splice(index, 1);
+      }
+      return { ...form, technician_ids: normalizeTechnicianIdList(nextIds) };
+    });
+  };
+
   const handleSaveEdit = async (e) => {
     e.preventDefault();
+    const technicianIds = normalizeTechnicianIdList(editForm.technician_ids).map(Number);
     await onUpdateIntervention?.({
       client_id: Number(editForm.client_id),
-      technician_id: editForm.technician_id ? Number(editForm.technician_id) : null,
+      technician_id: technicianIds[0] || null,
+      technician_ids: technicianIds,
       scheduled_at: editForm.scheduled_at.replace("T", " ") + ":00",
       duration_minutes: Number(editForm.duration_minutes) || 60,
       status: editForm.status,
@@ -119,9 +161,17 @@ export default function DetailPanel({
     setIsEditing(false);
   };
 
-  const handleQuickTechnicianChange = (value) => {
+  const handleQuickTechnicianChange = (index, value) => {
+    const nextIds = getInterventionTechnicianIds(intervention);
+    if (value) {
+      nextIds[index] = value;
+    } else if (index < nextIds.length) {
+      nextIds.splice(index, 1);
+    }
+    const technicianIds = normalizeTechnicianIdList(nextIds).map(Number);
     onUpdateIntervention?.({
-      technician_id: value ? Number(value) : null
+      technician_id: technicianIds[0] || null,
+      technician_ids: technicianIds
     });
   };
 
@@ -158,18 +208,37 @@ export default function DetailPanel({
               ))}
             </select>
 
-            <label>Technicien</label>
-            <select
-              value={editForm.technician_id}
-              onChange={(e) => setEditValue("technician_id", e.target.value)}
-            >
-              <option value="">Non assigne</option>
-              {technicians.map((tech) => (
-                <option key={tech.id} value={tech.id}>
-                  {tech.name}
-                </option>
-              ))}
-            </select>
+            <div className="technician-picker">
+              {getTechnicianRows(editForm.technician_ids, technicians).map((selectedId, index) => {
+                const selectedIds = normalizeTechnicianIdList(editForm.technician_ids);
+                return (
+                  <label key={`${index}-${selectedId || "new"}`}>
+                    {index === 0
+                      ? "Technicien principal"
+                      : selectedId
+                        ? `Technicien ${index + 1}`
+                        : "Ajouter un technicien"}
+                    <select
+                      value={selectedId}
+                      onChange={(e) => setEditTechnicianAt(index, e.target.value)}
+                    >
+                      <option value="">Non assigne</option>
+                      {technicians
+                        .filter(
+                          (tech) =>
+                            String(tech.id) === selectedId ||
+                            !selectedIds.includes(String(tech.id))
+                        )
+                        .map((tech) => (
+                          <option key={tech.id} value={tech.id}>
+                            {tech.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                );
+              })}
+            </div>
 
             <label>Date et heure</label>
             <input
@@ -250,19 +319,42 @@ export default function DetailPanel({
               <span className="badge badge-priority">{intervention.priority}</span>
             </div>
             <div className="quick-tech-row">
-              <label>Affectation rapide</label>
-              <select
-                value={intervention.technician_id || ""}
-                onChange={(e) => handleQuickTechnicianChange(e.target.value)}
-                disabled={updatingStatus}
-              >
-                <option value="">Non assigne</option>
-                {technicians.map((tech) => (
-                  <option key={tech.id} value={tech.id}>
-                    {tech.name}
-                  </option>
-                ))}
-              </select>
+              <label>Affectation</label>
+              <p className="muted-small">{getTechnicianLabel(intervention)}</p>
+              <div className="technician-picker technician-picker--compact">
+                {getTechnicianRows(getInterventionTechnicianIds(intervention), technicians).map(
+                  (selectedId, index) => {
+                    const selectedIds = getInterventionTechnicianIds(intervention);
+                    return (
+                      <label key={`${index}-${selectedId || "new"}`}>
+                        {index === 0
+                          ? "Principal"
+                          : selectedId
+                            ? `Tech ${index + 1}`
+                            : "Ajouter"}
+                        <select
+                          value={selectedId}
+                          onChange={(e) => handleQuickTechnicianChange(index, e.target.value)}
+                          disabled={updatingStatus}
+                        >
+                          <option value="">Non assigne</option>
+                          {technicians
+                            .filter(
+                              (tech) =>
+                                String(tech.id) === selectedId ||
+                                !selectedIds.includes(String(tech.id))
+                            )
+                            .map((tech) => (
+                              <option key={tech.id} value={tech.id}>
+                                {tech.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    );
+                  }
+                )}
+              </div>
             </div>
             <div className="intervention-edit-actions">
               <button

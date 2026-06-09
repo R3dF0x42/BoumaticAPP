@@ -180,6 +180,9 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
         body: JSON.stringify({
           client_id: next.client_id,
           technician_id: next.technician_id || null,
+          technician_ids:
+            next.technician_ids ||
+            (next.technician_id ? [next.technician_id] : []),
           status: next.status || "A FAIRE",
           priority: next.priority || "Normale",
           description: next.description || "",
@@ -288,6 +291,7 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
               onChange={(event) =>
                 updateIntervention(intervention, {
                   technician_id: event.target.value ? Number(event.target.value) : null,
+                  technician_ids: event.target.value ? [Number(event.target.value)] : [],
                   technician_name:
                     technicians.find((tech) => String(tech.id) === event.target.value)?.name ||
                     null

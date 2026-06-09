@@ -185,6 +185,11 @@ export default function App() {
       const payload = {
         client_id: intervention.client_id,
         technician_id: intervention.technician_id,
+        technician_ids: Array.isArray(intervention.technician_ids)
+          ? intervention.technician_ids
+          : intervention.technician_id
+            ? [intervention.technician_id]
+            : [],
         status: intervention.status,
         priority: intervention.priority,
         description: intervention.description,

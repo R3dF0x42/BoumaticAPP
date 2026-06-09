@@ -25,6 +25,21 @@ const TIME_MODES = {
   custom: { label: "Heure precise", start: getDefaultTime(), duration: 60 }
 };
 
+function normalizeTechnicianIdList(values) {
+  const ids = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const id = String(value || "");
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+function getTechnicianRows(selectedIds, technicians) {
+  const rows = normalizeTechnicianIdList(selectedIds);
+  if (rows.length < technicians.length) return [...rows, ""];
+  return rows.length ? rows : [""];
+}
+
 export default function NewIntervention({ loggedUser, onClose, onCreated }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
@@ -32,7 +47,7 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
   const defaultTechnicianId = canCreatePrivateIntervention ? String(loggedUser.id) : "";
   const [form, setForm] = useState({
     client_id: "",
-    technician_id: defaultTechnicianId,
+    technician_ids: defaultTechnicianId ? [defaultTechnicianId] : [],
     scheduled_date: getDefaultDate(),
     time_mode: "morning",
     scheduled_time: "07:00",
@@ -55,7 +70,9 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
   useEffect(() => {
     if (!defaultTechnicianId) return;
     setForm((current) =>
-      current.technician_id ? current : { ...current, technician_id: defaultTechnicianId }
+      current.technician_ids?.length
+        ? current
+        : { ...current, technician_ids: [defaultTechnicianId] }
     );
   }, [defaultTechnicianId]);
 
@@ -63,15 +80,29 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
     setForm((f) => ({ ...f, [field]: value }));
   };
 
+  const setTechnicianAt = (index, value) => {
+    setForm((current) => {
+      const nextIds = normalizeTechnicianIdList(current.technician_ids);
+      if (value) {
+        nextIds[index] = value;
+      } else if (index < nextIds.length) {
+        nextIds.splice(index, 1);
+      }
+      return { ...current, technician_ids: normalizeTechnicianIdList(nextIds) };
+    });
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     const mode = TIME_MODES[form.time_mode] || TIME_MODES.custom;
     const startTime = form.time_mode === "custom" ? form.scheduled_time : mode.start;
     const duration = form.time_mode === "custom" ? form.duration_minutes || 60 : mode.duration;
+    const technicianIds = normalizeTechnicianIdList(form.technician_ids).map(Number);
 
     const payload = {
       client_id: Number(form.client_id),
-      technician_id: form.technician_id ? Number(form.technician_id) : null,
+      technician_id: technicianIds[0] || null,
+      technician_ids: technicianIds,
       scheduled_at: `${form.scheduled_date} ${startTime}:00`,
       priority: form.priority,
       status: form.status,
@@ -131,18 +162,37 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
             ))}
           </select>
 
-          <label>Technicien</label>
-          <select
-            value={form.technician_id}
-            onChange={(e) => setValue("technician_id", e.target.value)}
-          >
-            <option value="">Affecter plus tard</option>
-            {techs.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+          <div className="technician-picker">
+            {getTechnicianRows(form.technician_ids, techs).map((selectedId, index) => {
+              const selectedIds = normalizeTechnicianIdList(form.technician_ids);
+              return (
+                <label key={`${index}-${selectedId || "new"}`}>
+                  {index === 0
+                    ? "Technicien principal"
+                    : selectedId
+                      ? `Technicien ${index + 1}`
+                      : "Ajouter un technicien"}
+                  <select
+                    value={selectedId}
+                    onChange={(e) => setTechnicianAt(index, e.target.value)}
+                  >
+                    <option value="">Affecter plus tard</option>
+                    {techs
+                      .filter(
+                        (t) =>
+                          String(t.id) === selectedId ||
+                          !selectedIds.includes(String(t.id))
+                      )
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              );
+            })}
+          </div>
 
           <label>Date</label>
           <input

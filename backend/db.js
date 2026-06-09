@@ -84,6 +84,15 @@ async function initDB() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS intervention_technicians (
+        intervention_id INTEGER NOT NULL REFERENCES interventions(id) ON DELETE CASCADE,
+        technician_id INTEGER NOT NULL REFERENCES technicians(id) ON DELETE CASCADE,
+        position INTEGER DEFAULT 0 NOT NULL,
+        PRIMARY KEY (intervention_id, technician_id)
+      );
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS notes (
         id SERIAL PRIMARY KEY,
         intervention_id INTEGER NOT NULL REFERENCES interventions(id) ON DELETE CASCADE,
@@ -224,6 +233,12 @@ async function initDB() {
         ALTER TABLE interventions DROP CONSTRAINT IF EXISTS interventions_maintenance_plan_id_fkey;
         ALTER TABLE interventions ADD CONSTRAINT interventions_maintenance_plan_id_fkey FOREIGN KEY (maintenance_plan_id) REFERENCES client_maintenance_plans(id) ON DELETE SET NULL;
 
+        ALTER TABLE intervention_technicians DROP CONSTRAINT IF EXISTS intervention_technicians_intervention_id_fkey;
+        ALTER TABLE intervention_technicians ADD CONSTRAINT intervention_technicians_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES interventions(id) ON DELETE CASCADE;
+
+        ALTER TABLE intervention_technicians DROP CONSTRAINT IF EXISTS intervention_technicians_technician_id_fkey;
+        ALTER TABLE intervention_technicians ADD CONSTRAINT intervention_technicians_technician_id_fkey FOREIGN KEY (technician_id) REFERENCES technicians(id) ON DELETE CASCADE;
+
         ALTER TABLE notes DROP CONSTRAINT IF EXISTS notes_intervention_id_fkey;
         ALTER TABLE notes ADD CONSTRAINT notes_intervention_id_fkey FOREIGN KEY (intervention_id) REFERENCES interventions(id) ON DELETE CASCADE;
 
@@ -290,12 +305,22 @@ async function initDB() {
     `);
 
     await client.query(`
+      INSERT INTO intervention_technicians (intervention_id, technician_id, position)
+      SELECT id, technician_id, 0
+      FROM interventions
+      WHERE technician_id IS NOT NULL
+      ON CONFLICT DO NOTHING;
+    `);
+
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_interventions_client_id ON interventions(client_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_technician_id ON interventions(technician_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_scheduled_at ON interventions(scheduled_at);
       CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_plan_id ON interventions(maintenance_plan_id);
       CREATE INDEX IF NOT EXISTS idx_interventions_maintenance_occurrence ON interventions(maintenance_plan_id, maintenance_occurrence_index);
       CREATE INDEX IF NOT EXISTS idx_interventions_private_to_technician_id ON interventions(private_to_technician_id);
+      CREATE INDEX IF NOT EXISTS idx_intervention_technicians_intervention_id ON intervention_technicians(intervention_id);
+      CREATE INDEX IF NOT EXISTS idx_intervention_technicians_technician_id ON intervention_technicians(technician_id);
       CREATE INDEX IF NOT EXISTS idx_client_maintenance_plans_client_id ON client_maintenance_plans(client_id);
       CREATE INDEX IF NOT EXISTS idx_notes_intervention_id ON notes(intervention_id);
       CREATE INDEX IF NOT EXISTS idx_photos_intervention_id ON photos(intervention_id);

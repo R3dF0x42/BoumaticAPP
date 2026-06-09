@@ -125,6 +125,66 @@ function getInterventionVisibilityFilter(query, params) {
   return "i.private_to_technician_id IS NULL";
 }
 
+const INTERVENTION_TECHNICIAN_SELECT = `
+           COALESCE((
+             SELECT array_agg(it.technician_id ORDER BY it.position, it.technician_id)
+             FROM intervention_technicians it
+             WHERE it.intervention_id = i.id
+           ), CASE WHEN i.technician_id IS NOT NULL THEN ARRAY[i.technician_id] ELSE ARRAY[]::integer[] END) AS technician_ids,
+           COALESCE((
+             SELECT array_agg(t2.name ORDER BY it.position, t2.name)
+             FROM intervention_technicians it
+             JOIN technicians t2 ON t2.id = it.technician_id
+             WHERE it.intervention_id = i.id
+           ), CASE WHEN t.name IS NOT NULL THEN ARRAY[t.name] ELSE ARRAY[]::text[] END) AS technician_names,
+           COALESCE((
+             SELECT string_agg(t2.name, ', ' ORDER BY it.position, t2.name)
+             FROM intervention_technicians it
+             JOIN technicians t2 ON t2.id = it.technician_id
+             WHERE it.intervention_id = i.id
+           ), t.name) AS technician_name`;
+
+function normalizeTechnicianIds(values) {
+  const source = Array.isArray(values) ? values : values == null ? [] : [values];
+  const ids = [];
+
+  for (const value of source) {
+    const id = Number(value);
+    if (Number.isInteger(id) && id > 0 && !ids.includes(id)) {
+      ids.push(id);
+    }
+  }
+
+  return ids;
+}
+
+function getRequestTechnicianIds(body) {
+  if (Array.isArray(body.technician_ids)) {
+    return normalizeTechnicianIds(body.technician_ids);
+  }
+
+  return normalizeTechnicianIds(body.technician_id);
+}
+
+async function syncInterventionTechnicians(dbClient, interventionId, technicianIds) {
+  const ids = normalizeTechnicianIds(technicianIds);
+  await dbClient.query("DELETE FROM intervention_technicians WHERE intervention_id = $1", [
+    interventionId
+  ]);
+
+  for (const [index, technicianId] of ids.entries()) {
+    await dbClient.query(
+      `
+      INSERT INTO intervention_technicians (intervention_id, technician_id, position)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (intervention_id, technician_id)
+      DO UPDATE SET position = EXCLUDED.position
+      `,
+      [interventionId, technicianId, index]
+    );
+  }
+}
+
 app.get("/api/clients", async (req, res) => {
   try {
     const params = [];
@@ -725,6 +785,7 @@ async function syncMaintenanceInterventions({
           existing.id
         ]
       );
+      await syncInterventionTechnicians(pool, existing.id, technicianId ? [technicianId] : []);
 
       if (existing.google_event_id) {
         try {
@@ -760,7 +821,9 @@ async function syncMaintenanceInterventions({
         index
       ]
     );
-    interventionIds.push(interventionResult.rows[0].id);
+    const newInterventionId = interventionResult.rows[0].id;
+    await syncInterventionTechnicians(pool, newInterventionId, technicianId ? [technicianId] : []);
+    interventionIds.push(newInterventionId);
   }
 
   await pool.query(
@@ -1342,7 +1405,7 @@ app.get("/api/interventions", async (req, res) => {
     SELECT i.*,
            to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
            c.name AS client_name,
-           t.name AS technician_name
+${INTERVENTION_TECHNICIAN_SELECT}
     FROM interventions i
     LEFT JOIN clients c ON i.client_id = c.id
     LEFT JOIN technicians t ON i.technician_id = t.id
@@ -1415,7 +1478,7 @@ app.get("/api/interventions/:id", async (req, res) => {
         c.gps_lat,
         c.gps_lng,
         c.robot_model,
-        t.name AS technician_name
+${INTERVENTION_TECHNICIAN_SELECT}
       FROM interventions i
       LEFT JOIN clients c ON i.client_id = c.id
       LEFT JOIN technicians t ON i.technician_id = t.id
@@ -1453,6 +1516,7 @@ app.post("/api/interventions", async (req, res) => {
   const {
   client_id,
   technician_id,
+  technician_ids,
   scheduled_at,
   status,
   priority,
@@ -1460,6 +1524,8 @@ app.post("/api/interventions", async (req, res) => {
   duration_minutes,
   private_to_technician_id
 } = req.body;
+  const interventionTechnicianIds = getRequestTechnicianIds({ technician_id, technician_ids });
+  const primaryTechnicianId = interventionTechnicianIds[0] || null;
   const safePrivateToTechnicianId = Number(private_to_technician_id);
   const privateToTechnicianId =
     Number.isInteger(safePrivateToTechnicianId) && safePrivateToTechnicianId > 0
@@ -1467,16 +1533,19 @@ app.post("/api/interventions", async (req, res) => {
       : null;
 
 
+  const dbClient = await pool.connect();
   try {
+    await dbClient.query("BEGIN");
+
     // 1) on insère l'intervention
-    const result = await pool.query(
+    const result = await dbClient.query(
       `INSERT INTO interventions
       (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, private_to_technician_id)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING id`,
       [
         client_id,
-        technician_id,
+        primaryTechnicianId,
         scheduled_at,
         status,
         priority,
@@ -1488,6 +1557,8 @@ app.post("/api/interventions", async (req, res) => {
     );
 
     const newId = result.rows[0].id;
+    await syncInterventionTechnicians(dbClient, newId, interventionTechnicianIds);
+    await dbClient.query("COMMIT");
 
     // 2) on récupère l'intervention + client pour créer l'event Google
     const detail = await pool.query(
@@ -1525,7 +1596,10 @@ app.post("/api/interventions", async (req, res) => {
     res.status(201).json({ id: newId });
 
   } catch (err) {
+    await dbClient.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
@@ -1535,16 +1609,22 @@ app.put("/api/interventions/:id", async (req, res) => {
   const {
     client_id,
     technician_id,
+    technician_ids,
     status,
     priority,
     description,
     scheduled_at,
     duration_minutes
   } = req.body;
+  const interventionTechnicianIds = getRequestTechnicianIds({ technician_id, technician_ids });
+  const primaryTechnicianId = interventionTechnicianIds[0] || null;
 
+  const dbClient = await pool.connect();
   try {
+    await dbClient.query("BEGIN");
+
     // récupérer l'intervention avant modif pour avoir google_event_id
-    const before = await pool.query(
+    const before = await dbClient.query(
       "SELECT google_event_id FROM interventions WHERE id = $1",
       [id]
     );
@@ -1552,7 +1632,7 @@ app.put("/api/interventions/:id", async (req, res) => {
     const googleEventId = before.rows[0]?.google_event_id || null;
 
     // mise à jour en base
-    await pool.query(
+    await dbClient.query(
       `UPDATE interventions
        SET client_id=$1,
            technician_id=$2,
@@ -1564,7 +1644,7 @@ app.put("/api/interventions/:id", async (req, res) => {
        WHERE id=$8`,
       [
         client_id,
-        technician_id || null,
+        primaryTechnicianId,
         status,
         priority,
         description,
@@ -1573,6 +1653,8 @@ app.put("/api/interventions/:id", async (req, res) => {
         id
       ]
     );
+    await syncInterventionTechnicians(dbClient, id, interventionTechnicianIds);
+    await dbClient.query("COMMIT");
 
     // mise à jour Google
     try {
@@ -1583,7 +1665,10 @@ app.put("/api/interventions/:id", async (req, res) => {
 
     res.json({ updated: true });
   } catch (err) {
+    await dbClient.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
