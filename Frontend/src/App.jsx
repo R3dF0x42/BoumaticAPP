@@ -35,8 +35,7 @@ function readNavigationFromLocation() {
     : VALID_PAGES.has(storedPage)
       ? storedPage
       : "planning";
-  const interventionId =
-    page === "planning" && detailPart === "intervention" ? Number(idPart) : null;
+  const interventionId = detailPart === "intervention" ? Number(idPart) : null;
 
   return {
     page,
@@ -46,7 +45,7 @@ function readNavigationFromLocation() {
 
 function buildNavigationHash(page, interventionId = null) {
   const safePage = VALID_PAGES.has(page) ? page : "planning";
-  if (safePage === "planning" && interventionId) {
+  if (interventionId) {
     return `#/${safePage}/intervention/${interventionId}`;
   }
   return `#/${safePage}`;
@@ -97,7 +96,7 @@ export default function App() {
 
   const applyNavigation = useCallback((navigation) => {
     const nextPage = VALID_PAGES.has(navigation.page) ? navigation.page : "planning";
-    const nextInterventionId = nextPage === "planning" ? navigation.interventionId : null;
+    const nextInterventionId = navigation.interventionId;
 
     setCurrentPage(nextPage);
     setSelectedId(nextInterventionId);
@@ -112,7 +111,7 @@ export default function App() {
 
     const nextPage = VALID_PAGES.has(page) ? page : "planning";
     const interventionId =
-      nextPage === "planning" && options.interventionId ? Number(options.interventionId) : null;
+      options.interventionId ? Number(options.interventionId) : null;
     const navigation = {
       page: nextPage,
       interventionId: Number.isInteger(interventionId) && interventionId > 0 ? interventionId : null
@@ -315,7 +314,7 @@ export default function App() {
       setSelectedId(null);
       setSelectedDetails(null);
       setShowDetailModal(false);
-      navigateTo("planning", { replace: true });
+      navigateTo(currentPage, { replace: true });
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch (e) {
       console.error("Erreur suppression intervention :", e);
@@ -324,7 +323,11 @@ export default function App() {
   };
 
   const handleSelectEvent = (ev) => {
-    navigateTo("planning", { interventionId: Number(ev.id) });
+    navigateTo(currentPage, { interventionId: Number(ev.id) });
+  };
+
+  const handleCloseInterventionDetails = () => {
+    navigateTo(currentPage, { replace: true });
   };
 
   const handleSelectInterventionId = useCallback((id) => {
@@ -535,7 +538,7 @@ export default function App() {
               </div>
               <button
                 className="modal-close modal-close--inline"
-                onClick={() => navigateTo("planning", { replace: true })}
+                onClick={handleCloseInterventionDetails}
                 type="button"
                 aria-label="Fermer"
               >

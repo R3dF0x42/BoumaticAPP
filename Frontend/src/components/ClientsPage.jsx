@@ -1378,9 +1378,6 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
               </div>
               <div className="client-tags">
                 {renderClientBadges(selectedClient, { showMissingRobot: true })}
-                <span className="client-badge client-badge--maintenance">
-                  {maintenancePlans.length} contrat(s)
-                </span>
               </div>
             </div>
             <div className="client-actions">
