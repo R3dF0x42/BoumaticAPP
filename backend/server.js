@@ -685,10 +685,13 @@ function getAllowedMaintenanceFrequencies(maintenanceType) {
   return maintenanceType === "compressor" ? [6, 12] : [3, 4, 6];
 }
 
-function getMaintenanceKitLabel(index, kitModel) {
+function getMaintenanceKitLabel(index, kitModel, startNumber = 1) {
   const modelKey = getMaintenanceKitModel(kitModel);
   const model = MAINTENANCE_KIT_MODELS[modelKey];
-  return `Maintenance ${model.label} Kit N°${(index % model.count) + 1}`;
+  const safeStartNumber = Number.isInteger(Number(startNumber))
+    ? Math.max(1, Math.min(model.count, Number(startNumber)))
+    : 1;
+  return `Maintenance ${model.label} Kit N°${((index + safeStartNumber - 1) % model.count) + 1}`;
 }
 
 async function syncMaintenanceInterventions({
@@ -701,6 +704,7 @@ async function syncMaintenanceInterventions({
   durationMinutes,
   maintenanceType,
   maintenanceKitModel,
+  maintenanceKitStartNumber = 1,
   preserveExistingDates = false
 }) {
   const interventionIds = [];
@@ -752,7 +756,7 @@ async function syncMaintenanceInterventions({
     const kitLabel =
       safeMaintenanceType === "compressor"
         ? null
-        : getMaintenanceKitLabel(index, maintenanceKitModel);
+        : getMaintenanceKitLabel(index, maintenanceKitModel, maintenanceKitStartNumber);
     const existing = existingByIndex.get(index);
 
     if (existing) {
@@ -942,6 +946,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     frequency_months,
     maintenance_type,
     maintenance_kit_model,
+    maintenance_kit_start_number,
     priority,
     deplacement_offert,
     description
@@ -955,6 +960,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
   const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
   const safeKitCount =
     safeMaintenanceType === "compressor" ? 0 : MAINTENANCE_KIT_MODELS[safeKitModel].count;
+  const safeKitStartNumber =
+    safeMaintenanceType === "compressor" ? 1 : Number(maintenance_kit_start_number ?? 1);
   const fullDayDurationMinutes = 660;
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
@@ -977,6 +984,15 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     return res.status(400).json({ error: "Fréquence de maintenance invalide." });
   }
 
+  if (
+    safeMaintenanceType === "robot" &&
+    (!Number.isInteger(safeKitStartNumber) ||
+      safeKitStartNumber < 1 ||
+      safeKitStartNumber > safeKitCount)
+  ) {
+    return res.status(400).json({ error: "Numero de kit de depart invalide." });
+  }
+
   const firstMaintenanceDate = setWorkdayStart(startDate);
   const dates = buildMaintenanceDatesUntil(firstMaintenanceDate, safeFrequency, endDate);
 
@@ -988,8 +1004,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     const planResult = await pool.query(
       `
       INSERT INTO client_maintenance_plans
-        (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, maintenance_type, maintenance_kit_model, maintenance_kit_count, priority, deplacement_offert, description)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, maintenance_type, maintenance_kit_model, maintenance_kit_count, maintenance_kit_start_number, priority, deplacement_offert, description)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
       RETURNING id
       `,
       [
@@ -1003,6 +1019,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
         safeMaintenanceType,
         safeKitModel,
         safeKitCount,
+        safeKitStartNumber,
         priority || "Normale",
         deplacement_offert === true,
         description || (safeMaintenanceType === "compressor" ? "Maintenance compresseur" : "Maintenance contrat")
@@ -1023,7 +1040,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
       description,
       durationMinutes: fullDayDurationMinutes,
       maintenanceType: safeMaintenanceType,
-      maintenanceKitModel: safeKitModel
+      maintenanceKitModel: safeKitModel,
+      maintenanceKitStartNumber: safeKitStartNumber
     });
 
     res.status(201).json({
@@ -1046,6 +1064,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
     frequency_months,
     maintenance_type,
     maintenance_kit_model,
+    maintenance_kit_start_number,
     priority,
     deplacement_offert,
     description
@@ -1059,6 +1078,8 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
   const safeKitModel = getMaintenanceKitModel(maintenance_kit_model);
   const safeKitCount =
     safeMaintenanceType === "compressor" ? 0 : MAINTENANCE_KIT_MODELS[safeKitModel].count;
+  const safeKitStartNumber =
+    safeMaintenanceType === "compressor" ? 1 : Number(maintenance_kit_start_number ?? 1);
   const fullDayDurationMinutes = 660;
 
   if (!Number.isInteger(clientId) || clientId <= 0 || !Number.isInteger(planId) || planId <= 0) {
@@ -1071,6 +1092,15 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
 
   if (!allowedFrequencies.includes(safeFrequency)) {
     return res.status(400).json({ error: "Fréquence de maintenance invalide." });
+  }
+
+  if (
+    safeMaintenanceType === "robot" &&
+    (!Number.isInteger(safeKitStartNumber) ||
+      safeKitStartNumber < 1 ||
+      safeKitStartNumber > safeKitCount)
+  ) {
+    return res.status(400).json({ error: "Numero de kit de depart invalide." });
   }
 
   const firstMaintenanceDate = setWorkdayStart(startDate);
@@ -1098,10 +1128,11 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
           maintenance_type=$7,
           maintenance_kit_model=$8,
           maintenance_kit_count=$9,
-          priority=$10,
-          deplacement_offert=$11,
-          description=$12
-      WHERE id=$13 AND client_id=$14
+          maintenance_kit_start_number=$10,
+          priority=$11,
+          deplacement_offert=$12,
+          description=$13
+      WHERE id=$14 AND client_id=$15
       `,
       [
         technician_id || null,
@@ -1113,6 +1144,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
         safeMaintenanceType,
         safeKitModel,
         safeKitCount,
+        safeKitStartNumber,
         priority || "Normale",
         deplacement_offert === true,
         description || (safeMaintenanceType === "compressor" ? "Maintenance compresseur" : "Maintenance contrat"),
@@ -1141,6 +1173,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
       durationMinutes: fullDayDurationMinutes,
       maintenanceType: safeMaintenanceType,
       maintenanceKitModel: safeKitModel,
+      maintenanceKitStartNumber: safeKitStartNumber,
       preserveExistingDates: true
     });
 

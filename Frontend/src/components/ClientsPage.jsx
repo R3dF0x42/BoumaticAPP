@@ -63,6 +63,10 @@ function getMaintenanceKitModelLabel(value) {
   return `${model.label} - ${model.count} kits`;
 }
 
+function getMaintenanceKitCount(value) {
+  return (MAINTENANCE_KIT_MODELS[value] || MAINTENANCE_KIT_MODELS.gemini_up).count;
+}
+
 function getMaintenanceTypeLabel(value) {
   return value === "compressor" ? "Compresseur" : "Robot de traite";
 }
@@ -150,6 +154,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
     maintenance_kit_model: "gemini_up",
+    maintenance_kit_start_number: 1,
     priority: "Normale",
     deplacement_offert: false,
     description: "Maintenance contrat"
@@ -161,6 +166,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     frequency_months: 6,
     end_at: getDefaultContractEndDate(),
     maintenance_kit_model: "gemini_up",
+    maintenance_kit_start_number: 1,
     priority: "Normale",
     deplacement_offert: false,
     description: "Maintenance contrat"
@@ -310,6 +316,28 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
   const setMaintenanceEditValue = (field, value) => {
     setMaintenanceEditForm((f) => ({ ...f, [field]: value }));
+  };
+
+  const setMaintenanceKitModel = (value) => {
+    setMaintenanceForm((f) => ({
+      ...f,
+      maintenance_kit_model: value,
+      maintenance_kit_start_number: Math.min(
+        Number(f.maintenance_kit_start_number) || 1,
+        getMaintenanceKitCount(value)
+      )
+    }));
+  };
+
+  const setMaintenanceEditKitModel = (value) => {
+    setMaintenanceEditForm((f) => ({
+      ...f,
+      maintenance_kit_model: value,
+      maintenance_kit_start_number: Math.min(
+        Number(f.maintenance_kit_start_number) || 1,
+        getMaintenanceKitCount(value)
+      )
+    }));
   };
 
   const getOfferedTravelUsedCount = (client) => {
@@ -822,6 +850,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
             ? Number(maintenanceForm.technician_id)
             : null,
           frequency_months: Number(maintenanceForm.frequency_months),
+          maintenance_kit_start_number: Number(maintenanceForm.maintenance_kit_start_number) || 1
         })
       });
 
@@ -855,6 +884,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       frequency_months: plan.frequency_months || 6,
       end_at: toDateInput(plan.end_at),
       maintenance_kit_model: plan.maintenance_kit_model || "gemini_up",
+      maintenance_kit_start_number: plan.maintenance_kit_start_number || 1,
       priority: plan.priority || "Normale",
       deplacement_offert: plan.deplacement_offert === true,
       description: plan.description || "Maintenance contrat"
@@ -885,7 +915,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
             technician_id: maintenanceEditForm.technician_id
               ? Number(maintenanceEditForm.technician_id)
               : null,
-            frequency_months: Number(maintenanceEditForm.frequency_months)
+            frequency_months: Number(maintenanceEditForm.frequency_months),
+            maintenance_kit_start_number:
+              Number(maintenanceEditForm.maintenance_kit_start_number) || 1
           })
         }
       );
@@ -1095,12 +1127,26 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                     <select
                       value={maintenanceEditForm.maintenance_kit_model}
                       onChange={(e) =>
-                        setMaintenanceEditValue("maintenance_kit_model", e.target.value)
+                        setMaintenanceEditKitModel(e.target.value)
                       }
                     >
                       <option value="gemini">Gemini - 8 kits</option>
                       <option value="gemini_up">Gemini UP - 6 kits</option>
                     </select>
+                    <label>Commencer au kit N°</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={getMaintenanceKitCount(maintenanceEditForm.maintenance_kit_model)}
+                      value={maintenanceEditForm.maintenance_kit_start_number}
+                      onChange={(e) =>
+                        setMaintenanceEditValue(
+                          "maintenance_kit_start_number",
+                          Number(e.target.value)
+                        )
+                      }
+                      required
+                    />
                   </>
                 )}
 
@@ -1172,6 +1218,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                   {plan.maintenance_type !== "compressor" && (
                     <p className="muted-small">
                       {getMaintenanceKitModelLabel(plan.maintenance_kit_model)}
+                      {` - depart Kit N°${plan.maintenance_kit_start_number || 1}`}
                     </p>
                   )}
                 </div>
@@ -1549,11 +1596,22 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
                 <label>Modele de kit</label>
                 <select
                   value={maintenanceForm.maintenance_kit_model}
-                  onChange={(e) => setMaintenanceValue("maintenance_kit_model", e.target.value)}
+                  onChange={(e) => setMaintenanceKitModel(e.target.value)}
                 >
                   <option value="gemini">Gemini - 8 kits</option>
                   <option value="gemini_up">Gemini UP - 6 kits</option>
                 </select>
+                <label>Commencer au kit N°</label>
+                <input
+                  type="number"
+                  min="1"
+                  max={getMaintenanceKitCount(maintenanceForm.maintenance_kit_model)}
+                  value={maintenanceForm.maintenance_kit_start_number}
+                  onChange={(e) =>
+                    setMaintenanceValue("maintenance_kit_start_number", Number(e.target.value))
+                  }
+                  required
+                />
               </>
             )}
 

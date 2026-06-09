@@ -124,6 +124,7 @@ async function initDB() {
         maintenance_type TEXT DEFAULT 'robot' NOT NULL,
         maintenance_kit_model TEXT DEFAULT 'gemini_up' NOT NULL,
         maintenance_kit_count INTEGER DEFAULT 6 NOT NULL,
+        maintenance_kit_start_number INTEGER DEFAULT 1 NOT NULL,
         priority TEXT DEFAULT 'Normale' NOT NULL,
         deplacement_offert BOOLEAN DEFAULT FALSE NOT NULL,
         description TEXT,
@@ -197,6 +198,7 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS maintenance_type TEXT,
         ADD COLUMN IF NOT EXISTS maintenance_kit_model TEXT,
         ADD COLUMN IF NOT EXISTS maintenance_kit_count INTEGER,
+        ADD COLUMN IF NOT EXISTS maintenance_kit_start_number INTEGER,
         ADD COLUMN IF NOT EXISTS priority TEXT,
         ADD COLUMN IF NOT EXISTS deplacement_offert BOOLEAN DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS description TEXT;
@@ -204,6 +206,7 @@ async function initDB() {
       UPDATE client_maintenance_plans SET maintenance_type = 'robot' WHERE maintenance_type IS NULL;
       UPDATE client_maintenance_plans SET maintenance_kit_model = 'gemini_up' WHERE maintenance_kit_model IS NULL;
       UPDATE client_maintenance_plans SET maintenance_kit_count = 6 WHERE maintenance_kit_count IS NULL;
+      UPDATE client_maintenance_plans SET maintenance_kit_start_number = 1 WHERE maintenance_kit_start_number IS NULL;
       UPDATE client_maintenance_plans SET priority = 'Normale' WHERE priority IS NULL;
       UPDATE client_maintenance_plans SET deplacement_offert = FALSE WHERE deplacement_offert IS NULL;
       ALTER TABLE client_maintenance_plans
@@ -215,6 +218,8 @@ async function initDB() {
         ALTER COLUMN maintenance_kit_model SET NOT NULL,
         ALTER COLUMN maintenance_kit_count SET DEFAULT 6,
         ALTER COLUMN maintenance_kit_count SET NOT NULL,
+        ALTER COLUMN maintenance_kit_start_number SET DEFAULT 1,
+        ALTER COLUMN maintenance_kit_start_number SET NOT NULL,
         ALTER COLUMN priority SET DEFAULT 'Normale',
         ALTER COLUMN priority SET NOT NULL,
         ALTER COLUMN deplacement_offert SET DEFAULT FALSE,
