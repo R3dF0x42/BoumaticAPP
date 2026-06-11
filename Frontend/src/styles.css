@@ -772,19 +772,6 @@ textarea {
   text-transform: capitalize;
 }
 
-.mobile-agenda-count {
-  min-width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(44, 125, 255, 0.18);
-  border: 1px solid rgba(93, 139, 231, 0.42);
-  color: #fff;
-  font-weight: 800;
-}
-
 .mobile-agenda-nav {
   display: grid;
   grid-template-columns: 44px 1fr 44px;

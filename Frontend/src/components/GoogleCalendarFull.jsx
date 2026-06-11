@@ -109,12 +109,48 @@ function buildViewerQuery(user) {
   return query ? `&${query}` : "";
 }
 
+function buildViewerOnlyQuery(user) {
+  const query = buildViewerQuery(user);
+  return query ? `?${query.slice(1)}` : "";
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isDoneStatus(status) {
+  return normalizeText(status).includes("termine");
+}
+
+function isUrgentPriority(priority) {
+  return normalizeText(priority).includes("urgent");
+}
+
+function isContractMaintenance(intervention) {
+  return Boolean(intervention?.maintenance_plan_id || intervention?.maintenance_kit_label);
+}
+
+function isPlannedMaintenance(intervention) {
+  const status = normalizeText(intervention?.status);
+  return (
+    isContractMaintenance(intervention) &&
+    Boolean(intervention?.scheduled_at) &&
+    status !== "a faire" &&
+    !isDoneStatus(status)
+  );
+}
+
 export default function GoogleCalendarFull({
   onSelectEvent,
   onInterventionsLoaded,
   loggedUser
 }) {
   const [events, setEvents] = useState([]);
+  const [summaryInterventions, setSummaryInterventions] = useState([]);
   const [currentStart, setCurrentStart] = useState(null);
   const [mobileFilter, setMobileFilter] = useState("all");
   const [isMobile, setIsMobile] = useState(() => {
@@ -181,15 +217,25 @@ export default function GoogleCalendarFull({
       .catch((err) => console.error("Erreur chargement interventions :", err));
   }, [loggedUser, onInterventionsLoaded]);
 
+  const loadSummaryInterventions = useCallback(() => {
+    fetch(`${API}/interventions${buildViewerOnlyQuery(loggedUser)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setSummaryInterventions(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => console.error("Erreur chargement compteurs :", err));
+  }, [loggedUser]);
+
   // ---- refresh du calendrier externe (nouvelle intervention) ----
   useEffect(() => {
     const handler = () => {
       loadWeek(currentStart || selectedDate);
+      if (isMobile) loadSummaryInterventions();
     };
 
     window.addEventListener("refreshCalendar", handler);
     return () => window.removeEventListener("refreshCalendar", handler);
-  }, [currentStart, loadWeek, selectedDate]);
+  }, [currentStart, isMobile, loadSummaryInterventions, loadWeek, selectedDate]);
 
   // ---- mode mobile ----
   useEffect(() => {
@@ -202,6 +248,10 @@ export default function GoogleCalendarFull({
   useEffect(() => {
     if (isMobile) loadWeek(selectedDate);
   }, [isMobile, loadWeek, selectedDate]);
+
+  useEffect(() => {
+    if (isMobile) loadSummaryInterventions();
+  }, [isMobile, loadSummaryInterventions]);
 
   const headerToolbar = useMemo(
     () => ({
@@ -249,19 +299,21 @@ export default function GoogleCalendarFull({
     });
   }, [mobileFilter, selectedDayEvents]);
 
-  const daySummary = useMemo(() => {
+  const globalSummary = useMemo(() => {
     let openCount = 0;
     let urgentCount = 0;
+    let maintenanceCount = 0;
 
-    for (const event of selectedDayEvents) {
-      const status = String(event.extendedProps.status || "").toLowerCase();
-      const priority = String(event.extendedProps.priority || "").toLowerCase();
-      if (!status.includes("termine")) openCount += 1;
-      if (priority.includes("urgent")) urgentCount += 1;
+    for (const intervention of summaryInterventions) {
+      if (!isDoneStatus(intervention.status)) openCount += 1;
+      if (!isDoneStatus(intervention.status) && isUrgentPriority(intervention.priority)) {
+        urgentCount += 1;
+      }
+      if (isPlannedMaintenance(intervention)) maintenanceCount += 1;
     }
 
-    return { openCount, urgentCount };
-  }, [selectedDayEvents]);
+    return { openCount, urgentCount, maintenanceCount };
+  }, [summaryInterventions]);
 
   const selectedDateLabel = selectedDate.toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -300,24 +352,21 @@ export default function GoogleCalendarFull({
               className="mobile-agenda-on-call"
               label="Astreinte"
             />
-            <span className="mobile-agenda-count">
-              {selectedDayEvents.length}
-            </span>
           </div>
         </div>
 
         <div className="mobile-agenda-summary">
           <span>
-            <strong>{daySummary.openCount}</strong>
+            <strong>{globalSummary.openCount}</strong>
             a faire
           </span>
           <span>
-            <strong>{daySummary.urgentCount}</strong>
+            <strong>{globalSummary.urgentCount}</strong>
             urgent
           </span>
           <span>
-            <strong>{selectedDayEvents.length}</strong>
-            total
+            <strong>{globalSummary.maintenanceCount}</strong>
+            maintenance
           </span>
         </div>
 
