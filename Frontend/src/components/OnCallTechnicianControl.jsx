@@ -10,7 +10,13 @@ function normalizeName(value) {
     .toLowerCase();
 }
 
-export default function OnCallTechnicianControl({ apiUrl, loggedUser }) {
+export default function OnCallTechnicianControl({
+  apiUrl,
+  loggedUser,
+  weekStart = "",
+  className = "",
+  label = "Technicien d'astreinte"
+}) {
   const [technicianName, setTechnicianName] = useState("");
   const [options, setOptions] = useState(FALLBACK_OPTIONS);
   const [saving, setSaving] = useState(false);
@@ -24,8 +30,11 @@ export default function OnCallTechnicianControl({ apiUrl, loggedUser }) {
   useEffect(() => {
     if (!apiUrl) return;
     let cancelled = false;
+    const suffix = weekStart ? `?week_start=${encodeURIComponent(weekStart)}` : "";
 
-    fetch(`${apiUrl}/on-call-technician`)
+    setError("");
+
+    fetch(`${apiUrl}/on-call-technician${suffix}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -39,7 +48,7 @@ export default function OnCallTechnicianControl({ apiUrl, loggedUser }) {
     return () => {
       cancelled = true;
     };
-  }, [apiUrl]);
+  }, [apiUrl, weekStart]);
 
   const updateOnCallTechnician = async (value) => {
     setTechnicianName(value);
@@ -52,6 +61,7 @@ export default function OnCallTechnicianControl({ apiUrl, loggedUser }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           technician_name: value,
+          week_start: weekStart || undefined,
           updated_by_technician_id: loggedUser?.id
         })
       });
@@ -71,8 +81,8 @@ export default function OnCallTechnicianControl({ apiUrl, loggedUser }) {
   };
 
   return (
-    <div className="on-call-control">
-      <span className="on-call-label">Technicien d'astreinte</span>
+    <div className={`on-call-control ${className}`.trim()}>
+      <span className="on-call-label">{label}</span>
       <select
         className={`on-call-select ${!canEdit ? "on-call-select--locked" : ""}`}
         value={technicianName}

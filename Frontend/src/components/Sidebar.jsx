@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import OnCallTechnicianControl from "./OnCallTechnicianControl.jsx";
 
 export default function Sidebar({
   date,
@@ -12,7 +11,6 @@ export default function Sidebar({
   urgentCount,
   isMobile,
   loggedUser,
-  apiUrl,
   isAdmin,
   onLogout
 }) {
@@ -130,7 +128,6 @@ export default function Sidebar({
       {loggedUser && (
         <div className="sidebar-section session-row">
           <div className="session-chip">{isAdmin ? "Admin" : loggedUser.name}</div>
-          <OnCallTechnicianControl apiUrl={apiUrl} loggedUser={loggedUser} />
           <button className="btn small ghost session-logout" onClick={onLogout}>
             Deconnexion
           </button>

@@ -318,6 +318,22 @@ textarea {
   font-weight: 700;
 }
 
+.planning-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.planning-header-actions .on-call-control {
+  align-items: flex-end;
+}
+
+.planning-header-actions .on-call-label,
+.planning-header-actions .on-call-error {
+  text-align: right;
+}
+
 .session-logout {
   width: 100%;
 }
@@ -691,6 +707,33 @@ textarea {
   justify-content: space-between;
   gap: 12px;
   padding: 16px 16px 0;
+}
+
+.mobile-agenda-title {
+  min-width: 0;
+}
+
+.mobile-agenda-header-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 46%;
+}
+
+.mobile-agenda-on-call {
+  align-items: flex-end;
+}
+
+.mobile-agenda-on-call .on-call-label,
+.mobile-agenda-on-call .on-call-error {
+  text-align: right;
+}
+
+.mobile-agenda-on-call .on-call-select {
+  width: 142px;
+  max-width: 100%;
 }
 
 .mobile-agenda-summary {

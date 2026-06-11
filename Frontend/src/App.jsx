@@ -3,7 +3,6 @@ import Sidebar from "./components/Sidebar.jsx";
 import DetailPanel from "./components/DetailPanel.jsx";
 import NewIntervention from "./components/NewIntervention.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
-import OnCallTechnicianControl from "./components/OnCallTechnicianControl.jsx";
 import { API_URL } from "./config/api.js";
 import { preparePhotoForUpload } from "./utils/images.js";
 
@@ -389,9 +388,6 @@ export default function App() {
           </div>
           <span className="brand-sub">Maintenance</span>
         </div>
-
-        <OnCallTechnicianControl apiUrl={API_URL} loggedUser={loggedUser} />
-
         <div className="mobile-topbar-actions">
           <span className="session-chip">
             {isAdmin ? "Admin" : loggedUser.name}
@@ -436,7 +432,6 @@ export default function App() {
             setCurrentPage={navigateTo}
             isMobile={isMobile}
             loggedUser={loggedUser}
-            apiUrl={API_URL}
             isAdmin={isAdmin}
             onLogout={handleLogout}
           />

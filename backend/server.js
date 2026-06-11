@@ -146,6 +146,7 @@ const INTERVENTION_TECHNICIAN_SELECT = `
 
 const ON_CALL_TECHNICIANS = ["Corentin", "Adrien", "Benjamin", "Alexandre"];
 const ON_CALL_SETTING_KEY = "on_call_technician";
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function normalizeName(value) {
   return String(value || "")
@@ -158,6 +159,25 @@ function normalizeName(value) {
 function getAllowedOnCallTechnician(value) {
   const normalized = normalizeName(value);
   return ON_CALL_TECHNICIANS.find((name) => normalizeName(name) === normalized) || null;
+}
+
+function normalizeDateKey(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (!DATE_KEY_PATTERN.test(text)) return null;
+
+  const [year, month, day] = text.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const isValid =
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day;
+
+  return isValid ? text : null;
+}
+
+function getOnCallSettingKey(weekStart) {
+  return weekStart ? `${ON_CALL_SETTING_KEY}:${weekStart}` : ON_CALL_SETTING_KEY;
 }
 
 async function isAdrienTechnician(technicianId) {
@@ -209,13 +229,31 @@ async function syncInterventionTechnicians(dbClient, interventionId, technicianI
 }
 
 app.get("/api/on-call-technician", async (req, res) => {
+  const weekStart = normalizeDateKey(req.query?.week_start);
+  if (weekStart === null) {
+    return res.status(400).json({ error: "Semaine d'astreinte invalide." });
+  }
+
   try {
-    const result = await pool.query("SELECT value FROM app_settings WHERE key = $1", [
-      ON_CALL_SETTING_KEY
-    ]);
+    const settingKey = getOnCallSettingKey(weekStart);
+    const result = weekStart
+      ? await pool.query(
+          `
+          SELECT value
+          FROM app_settings
+          WHERE key IN ($1, $2)
+          ORDER BY CASE WHEN key = $1 THEN 0 ELSE 1 END
+          LIMIT 1
+          `,
+          [settingKey, ON_CALL_SETTING_KEY]
+        )
+      : await pool.query("SELECT value FROM app_settings WHERE key = $1", [
+          ON_CALL_SETTING_KEY
+        ]);
 
     res.json({
       technician_name: result.rows[0]?.value || "",
+      week_start: weekStart || null,
       options: ON_CALL_TECHNICIANS
     });
   } catch (err) {
@@ -225,9 +263,14 @@ app.get("/api/on-call-technician", async (req, res) => {
 
 app.put("/api/on-call-technician", async (req, res) => {
   const technicianName = getAllowedOnCallTechnician(req.body?.technician_name);
+  const weekStart = normalizeDateKey(req.body?.week_start || req.query?.week_start);
 
   if (!technicianName) {
     return res.status(400).json({ error: "Technicien d'astreinte invalide." });
+  }
+
+  if (weekStart === null) {
+    return res.status(400).json({ error: "Semaine d'astreinte invalide." });
   }
 
   try {
@@ -236,6 +279,7 @@ app.put("/api/on-call-technician", async (req, res) => {
       return res.status(403).json({ error: "Seul Adrien peut modifier l'astreinte." });
     }
 
+    const settingKey = getOnCallSettingKey(weekStart);
     await pool.query(
       `
       INSERT INTO app_settings (key, value, updated_at)
@@ -243,11 +287,12 @@ app.put("/api/on-call-technician", async (req, res) => {
       ON CONFLICT (key)
       DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
       `,
-      [ON_CALL_SETTING_KEY, technicianName]
+      [settingKey, technicianName]
     );
 
     res.json({
       technician_name: technicianName,
+      week_start: weekStart || null,
       options: ON_CALL_TECHNICIANS
     });
   } catch (err) {

@@ -3,6 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import OnCallTechnicianControl from "./OnCallTechnicianControl.jsx";
 import { API_URL } from "../config/api.js";
 import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
 
@@ -212,6 +213,11 @@ export default function GoogleCalendarFull({
   );
 
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
+  const selectedWeekStart = useMemo(() => getWeekRange(selectedDate).start, [selectedDate]);
+  const calendarWeekStart = useMemo(
+    () => getWeekRange(currentStart || selectedDate).start,
+    [currentStart, selectedDate]
+  );
   const selectedDateKey = formatDateKey(selectedDate);
   const eventCountsByDay = useMemo(() => {
     const counts = new Map();
@@ -282,13 +288,22 @@ export default function GoogleCalendarFull({
     return (
       <div className="page calendar-shell calendar-shell--mobile mobile-agenda-shell">
         <div className="mobile-agenda-header">
-          <div>
+          <div className="mobile-agenda-title">
             <p className="muted-small">{selectedDateLabel}</p>
             <h2>{selectedMonthLabel}</h2>
           </div>
-          <span className="mobile-agenda-count">
-            {selectedDayEvents.length}
-          </span>
+          <div className="mobile-agenda-header-actions">
+            <OnCallTechnicianControl
+              apiUrl={API}
+              loggedUser={loggedUser}
+              weekStart={selectedWeekStart}
+              className="mobile-agenda-on-call"
+              label="Astreinte"
+            />
+            <span className="mobile-agenda-count">
+              {selectedDayEvents.length}
+            </span>
+          </div>
         </div>
 
         <div className="mobile-agenda-summary">
@@ -424,6 +439,14 @@ export default function GoogleCalendarFull({
         <div>
           <h2>Planning interventions</h2>
           <p className="muted-small">Synchro Google Calendar</p>
+        </div>
+        <div className="planning-header-actions">
+          <OnCallTechnicianControl
+            apiUrl={API}
+            loggedUser={loggedUser}
+            weekStart={calendarWeekStart}
+            label="Astreinte semaine"
+          />
         </div>
       </div>
 
