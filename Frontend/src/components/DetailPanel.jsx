@@ -74,6 +74,19 @@ function formatInterventionTiming(intervention) {
   return `${start.toLocaleString("fr-FR")} - ${durationLabel}`;
 }
 
+function buildInterventionEditForm(intervention) {
+  return {
+    client_id: intervention?.client_id || "",
+    technician_ids: getInterventionTechnicianIds(intervention),
+    scheduled_at: toDateTimeInput(intervention?.scheduled_at),
+    end_at: getInterventionEndInput(intervention),
+    duration_minutes: intervention?.duration_minutes || 60,
+    status: intervention?.status || "A FAIRE",
+    priority: intervention?.priority || "Normale",
+    description: intervention?.description || ""
+  };
+}
+
 export default function DetailPanel({
   apiUrl,
   data,
@@ -114,21 +127,6 @@ export default function DetailPanel({
       .then((data) => setTechnicians(Array.isArray(data) ? data : []))
       .catch(() => setTechnicians([]));
   }, [apiUrl]);
-
-  useEffect(() => {
-    const intervention = data?.intervention;
-    if (!intervention) return;
-    setEditForm({
-      client_id: intervention.client_id || "",
-      technician_ids: getInterventionTechnicianIds(intervention),
-      scheduled_at: toDateTimeInput(intervention.scheduled_at),
-      end_at: getInterventionEndInput(intervention),
-      duration_minutes: intervention.duration_minutes || 60,
-      status: intervention.status || "A FAIRE",
-      priority: intervention.priority || "Normale",
-      description: intervention.description || ""
-    });
-  }, [data?.intervention]);
 
   if (!data) {
     return (
@@ -171,6 +169,11 @@ export default function DetailPanel({
     const file = e.target.files[0];
     if (file) onUploadPhoto(file);
     e.target.value = "";
+  };
+
+  const beginEdit = () => {
+    setEditForm(buildInterventionEditForm(intervention));
+    setIsEditing(true);
   };
 
   const setEditValue = (field, value) => {
@@ -408,7 +411,7 @@ export default function DetailPanel({
               <button
                 className="btn small ghost"
                 type="button"
-                onClick={() => setIsEditing(true)}
+                onClick={beginEdit}
               >
                 Modifier intervention
               </button>

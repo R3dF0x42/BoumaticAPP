@@ -119,3 +119,15 @@ export async function updateGoogleEvent(googleEventId, newDateTime, durationMinu
     }
   });
 }
+
+export async function deleteGoogleEvent(googleEventId) {
+  if (!googleEventId) return;
+
+  const auth = getAuth();
+  const calendar = google.calendar({ version: "v3", auth });
+
+  await calendar.events.delete({
+    calendarId: process.env.GOOGLE_CALENDAR_ID || "primary",
+    eventId: googleEventId
+  });
+}

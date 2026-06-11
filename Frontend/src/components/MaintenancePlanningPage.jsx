@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => ({
@@ -80,7 +80,7 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setError("");
 
     try {
@@ -108,11 +108,11 @@ export default function MaintenancePlanningPage({ apiUrl, loggedUser }) {
     } catch (err) {
       setError(err.message || "Impossible de charger les maintenances.");
     }
-  };
+  }, [apiUrl, loggedUser, year]);
 
   useEffect(() => {
     loadData();
-  }, [apiUrl, loggedUser, year]);
+  }, [loadData]);
 
   const visibleInterventions = useMemo(
     () =>

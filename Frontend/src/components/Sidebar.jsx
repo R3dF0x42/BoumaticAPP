@@ -1,4 +1,61 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+
+function NavButtons({ currentPage, setCurrentPage, urgentCount = 0, isAdmin, onNavigate }) {
+  const navigate = (page) => {
+    setCurrentPage(page);
+    onNavigate?.();
+  };
+
+  return (
+    <>
+      <button
+        className={
+          "nav-item " + (currentPage === "planning" ? "nav-item--active" : "")
+        }
+        onClick={() => navigate("planning")}
+      >
+        Planning
+        {urgentCount > 0 && <span className="nav-badge">{urgentCount}</span>}
+      </button>
+
+      <button
+        className={
+          "nav-item " + (currentPage === "maintenance" ? "nav-item--active" : "")
+        }
+        onClick={() => navigate("maintenance")}
+      >
+        Maintenance a prevoir
+      </button>
+
+      <button
+        className={
+          "nav-item " + (currentPage === "notes" ? "nav-item--active" : "")
+        }
+        onClick={() => navigate("notes")}
+      >
+        Notes generales
+      </button>
+
+      <button
+        className={
+          "nav-item " + (currentPage === "clients" ? "nav-item--active" : "")
+        }
+        onClick={() => navigate("clients")}
+      >
+        Clients
+      </button>
+
+      {isAdmin && (
+        <button
+          className={"nav-item " + (currentPage === "admin" ? "nav-item--active" : "")}
+          onClick={() => navigate("admin")}
+        >
+          Administration
+        </button>
+      )}
+    </>
+  );
+}
 
 export default function Sidebar({
   date,
@@ -17,60 +74,6 @@ export default function Sidebar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const safeDate = date || "";
   const handleDateChange = typeof setDate === "function" ? setDate : () => {};
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [currentPage]);
-
-  const NavButtons = () => (
-    <>
-      <button
-        className={
-          "nav-item " + (currentPage === "planning" ? "nav-item--active" : "")
-        }
-        onClick={() => setCurrentPage("planning")}
-      >
-        Planning
-        {urgentCount > 0 && <span className="nav-badge">{urgentCount}</span>}
-      </button>
-
-      <button
-        className={
-          "nav-item " + (currentPage === "maintenance" ? "nav-item--active" : "")
-        }
-        onClick={() => setCurrentPage("maintenance")}
-      >
-        Maintenance a prevoir
-      </button>
-
-      <button
-        className={
-          "nav-item " + (currentPage === "notes" ? "nav-item--active" : "")
-        }
-        onClick={() => setCurrentPage("notes")}
-      >
-        Notes generales
-      </button>
-
-      <button
-        className={
-          "nav-item " + (currentPage === "clients" ? "nav-item--active" : "")
-        }
-        onClick={() => setCurrentPage("clients")}
-      >
-        Clients
-      </button>
-
-      {isAdmin && (
-        <button
-          className={"nav-item " + (currentPage === "admin" ? "nav-item--active" : "")}
-          onClick={() => setCurrentPage("admin")}
-        >
-          Administration
-        </button>
-      )}
-    </>
-  );
 
   if (isMobile) {
     return (
@@ -94,7 +97,13 @@ export default function Sidebar({
         {mobileOpen && (
           <div className="mobile-nav-panel">
             <nav className="nav-menu nav-menu--mobile">
-              <NavButtons />
+              <NavButtons
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                urgentCount={urgentCount}
+                isAdmin={isAdmin}
+                onNavigate={() => setMobileOpen(false)}
+              />
             </nav>
 
             {currentPage === "planning" && (
@@ -135,7 +144,12 @@ export default function Sidebar({
       )}
 
       <nav className="nav-menu">
-        <NavButtons />
+        <NavButtons
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          urgentCount={urgentCount}
+          isAdmin={isAdmin}
+        />
       </nav>
 
       {currentPage === "planning" && (

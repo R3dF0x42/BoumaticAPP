@@ -6,7 +6,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
 import pool from "./db.js";
-import { createGoogleEvent, updateGoogleEvent } from "./google.js";
+import { createGoogleEvent, deleteGoogleEvent, updateGoogleEvent } from "./google.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -107,6 +107,18 @@ async function deleteUploadedFiles(filenames = []) {
       if (err.code !== "ENOENT") {
         console.error("Impossible de supprimer le fichier upload:", err.message);
       }
+    }
+  }
+}
+
+async function deleteGoogleEvents(eventIds = []) {
+  const uniqueIds = [...new Set(eventIds.filter(Boolean))];
+
+  for (const eventId of uniqueIds) {
+    try {
+      await deleteGoogleEvent(eventId);
+    } catch (err) {
+      console.error("Impossible de supprimer l'event Google:", err.message);
     }
   }
 }
@@ -442,6 +454,7 @@ app.delete("/api/clients/:id", async (req, res) => {
   }
 
   const dbClient = await pool.connect();
+  let googleEventIds = [];
 
   try {
     await dbClient.query("BEGIN");
@@ -469,11 +482,17 @@ app.delete("/api/clients/:id", async (req, res) => {
       `,
       [id]
     );
+    const googleEvents = await dbClient.query(
+      "SELECT google_event_id FROM interventions WHERE client_id = $1",
+      [id]
+    );
+    googleEventIds = googleEvents.rows.map((row) => row.google_event_id);
 
     await dbClient.query("DELETE FROM clients WHERE id = $1", [id]);
     await dbClient.query("COMMIT");
 
     await deleteUploadedFiles(files.rows.map((row) => row.filename));
+    await deleteGoogleEvents(googleEventIds);
 
     res.json({ deleted: true });
   } catch (err) {
@@ -512,6 +531,7 @@ app.post("/api/clients/:id/photos", uploadPhoto, async (req, res) => {
   const filename = req.file?.filename;
 
   if (!Number.isInteger(id) || id <= 0) {
+    await deleteUploadedFiles([filename]);
     return res.status(400).json({ error: "Identifiant client invalide." });
   }
 
@@ -534,6 +554,7 @@ app.post("/api/clients/:id/photos", uploadPhoto, async (req, res) => {
       url: `/uploads/${filename}`
     });
   } catch (err) {
+    await deleteUploadedFiles([filename]);
     res.status(500).json({ error: err.message });
   }
 });
@@ -828,6 +849,7 @@ function getMaintenanceKitLabel(index, kitModel, startNumber = 1) {
 }
 
 async function syncMaintenanceInterventions({
+  dbClient = pool,
   planId,
   clientId,
   technicianId,
@@ -841,10 +863,11 @@ async function syncMaintenanceInterventions({
   preserveExistingDates = false
 }) {
   const interventionIds = [];
+  const deletedGoogleEventIds = [];
   const safeMaintenanceType = getMaintenanceType(maintenanceType);
   const baseDescription =
     description || (safeMaintenanceType === "compressor" ? "Maintenance compresseur" : "Maintenance contrat");
-  const existingResult = await pool.query(
+  const existingResult = await dbClient.query(
     `
     SELECT
       id,
@@ -868,7 +891,7 @@ async function syncMaintenanceInterventions({
     if (occurrenceIndex == null) {
       while (existingByIndex.has(fallbackIndex)) fallbackIndex += 1;
       occurrenceIndex = fallbackIndex;
-      await pool.query(
+      await dbClient.query(
         "UPDATE interventions SET maintenance_occurrence_index = $1 WHERE id = $2",
         [occurrenceIndex, row.id]
       );
@@ -882,7 +905,11 @@ async function syncMaintenanceInterventions({
   }
 
   if (duplicateIds.length) {
-    await pool.query("DELETE FROM interventions WHERE id = ANY($1::int[])", [duplicateIds]);
+    const duplicateResult = await dbClient.query(
+      "DELETE FROM interventions WHERE id = ANY($1::int[]) RETURNING google_event_id",
+      [duplicateIds]
+    );
+    deletedGoogleEventIds.push(...duplicateResult.rows.map((row) => row.google_event_id));
   }
 
   for (const [index, date] of dates.entries()) {
@@ -897,7 +924,7 @@ async function syncMaintenanceInterventions({
         ? existing.scheduled_at
         : formatDbDateTime(date);
 
-      await pool.query(
+      await dbClient.query(
         `
         UPDATE interventions
         SET client_id=$1,
@@ -922,23 +949,13 @@ async function syncMaintenanceInterventions({
           existing.id
         ]
       );
-      await syncInterventionTechnicians(pool, existing.id, technicianId ? [technicianId] : []);
-
-      if (existing.google_event_id) {
-        try {
-          await updateGoogleEvent(existing.google_event_id, scheduledAt, durationMinutes);
-        } catch (e) {
-          console.error("Erreur maj event Google:", e.message);
-        }
-      } else {
-        await attachGoogleEvent(existing.id);
-      }
+      await syncInterventionTechnicians(dbClient, existing.id, technicianId ? [technicianId] : []);
 
       interventionIds.push(existing.id);
       continue;
     }
 
-    const interventionResult = await pool.query(
+    const interventionResult = await dbClient.query(
       `
       INSERT INTO interventions
         (client_id, technician_id, scheduled_at, status, priority, description, duration_minutes, maintenance_plan_id, maintenance_kit_label, maintenance_occurrence_index)
@@ -959,31 +976,35 @@ async function syncMaintenanceInterventions({
       ]
     );
     const newInterventionId = interventionResult.rows[0].id;
-    await syncInterventionTechnicians(pool, newInterventionId, technicianId ? [technicianId] : []);
+    await syncInterventionTechnicians(dbClient, newInterventionId, technicianId ? [technicianId] : []);
     interventionIds.push(newInterventionId);
   }
 
-  await pool.query(
+  const deletedResult = await dbClient.query(
     `
     DELETE FROM interventions
     WHERE maintenance_plan_id = $1
       AND status <> 'TERMINE'
       AND maintenance_occurrence_index >= $2
+    RETURNING google_event_id
     `,
     [planId, dates.length]
   );
+  deletedGoogleEventIds.push(...deletedResult.rows.map((row) => row.google_event_id));
 
-  for (const interventionId of interventionIds) {
-    const wasExisting = existingResult.rows.some((row) => row.id === interventionId);
-    if (!wasExisting) {
-      await attachGoogleEvent(interventionId);
-    }
-  }
-
-  return interventionIds;
+  return { interventionIds, deletedGoogleEventIds };
 }
 
 async function attachGoogleEvent(interventionId) {
+  await syncGoogleEventsForInterventions([interventionId]);
+}
+
+async function syncGoogleEventsForInterventions(interventionIds = []) {
+  const uniqueIds = [...new Set(interventionIds.filter(Boolean).map(Number))];
+
+  for (const interventionId of uniqueIds) {
+    if (!Number.isInteger(interventionId) || interventionId <= 0) continue;
+
   const detail = await pool.query(
     `
     SELECT i.*,
@@ -997,11 +1018,18 @@ async function attachGoogleEvent(interventionId) {
   );
 
   const intervention = detail.rows[0];
-  if (!intervention) return;
+    if (!intervention) continue;
 
   try {
-    const googleEventId = await createGoogleEvent(intervention);
-    if (googleEventId) {
+      if (intervention.google_event_id) {
+        await updateGoogleEvent(
+          intervention.google_event_id,
+          intervention.scheduled_at,
+          intervention.duration_minutes || 60
+        );
+      } else {
+        const googleEventId = await createGoogleEvent(intervention);
+        if (googleEventId) {
       await pool.query(
         `UPDATE interventions
          SET google_event_id = $1
@@ -1009,20 +1037,22 @@ async function attachGoogleEvent(interventionId) {
         [googleEventId, interventionId]
       );
     }
+      }
   } catch (e) {
-    console.error("Erreur création event Google:", e.message);
+      console.error("Erreur synchro event Google:", e.message);
+    }
   }
 }
 
-async function resetOfferedTravelCount(clientId) {
-  await pool.query(
+async function resetOfferedTravelCount(clientId, dbClient = pool) {
+  await dbClient.query(
     "UPDATE clients SET deplacements_offerts_utilises = 0 WHERE id = $1",
     [clientId]
   );
 }
 
-async function resetOfferedTravelCountIfNoActiveContract(clientId) {
-  await pool.query(
+async function resetOfferedTravelCountIfNoActiveContract(clientId, dbClient = pool) {
+  await dbClient.query(
     `
     UPDATE clients c
     SET deplacements_offerts_utilises = 0
@@ -1133,8 +1163,14 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     return res.status(400).json({ error: "Aucune maintenance à créer sur cette période." });
   }
 
+  const dbClient = await pool.connect();
+  let interventionIds = [];
+  let deletedGoogleEventIds = [];
+
   try {
-    const planResult = await pool.query(
+    await dbClient.query("BEGIN");
+
+    const planResult = await dbClient.query(
       `
       INSERT INTO client_maintenance_plans
         (client_id, technician_id, start_at, end_at, frequency_months, occurrences, duration_minutes, maintenance_type, maintenance_kit_model, maintenance_kit_count, maintenance_kit_start_number, priority, deplacement_offert, description)
@@ -1161,10 +1197,11 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
 
     const planId = planResult.rows[0].id;
     if (deplacement_offert === true) {
-      await resetOfferedTravelCount(clientId);
+      await resetOfferedTravelCount(clientId, dbClient);
     }
 
-    const interventionIds = await syncMaintenanceInterventions({
+    const syncResult = await syncMaintenanceInterventions({
+      dbClient,
       planId,
       clientId,
       technicianId: technician_id,
@@ -1176,6 +1213,13 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
       maintenanceKitModel: safeKitModel,
       maintenanceKitStartNumber: safeKitStartNumber
     });
+    interventionIds = syncResult.interventionIds;
+    deletedGoogleEventIds = syncResult.deletedGoogleEventIds;
+
+    await dbClient.query("COMMIT");
+
+    await deleteGoogleEvents(deletedGoogleEventIds);
+    await syncGoogleEventsForInterventions(interventionIds);
 
     res.status(201).json({
       id: planId,
@@ -1183,7 +1227,10 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
       count: interventionIds.length
     });
   } catch (err) {
+    await dbClient.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
@@ -1239,17 +1286,24 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
   const firstMaintenanceDate = setWorkdayStart(startDate);
   const dates = buildMaintenanceDatesUntil(firstMaintenanceDate, safeFrequency, endDate);
 
+  const dbClient = await pool.connect();
+  let interventionIds = [];
+  let deletedGoogleEventIds = [];
+
   try {
-    const plan = await pool.query(
+    await dbClient.query("BEGIN");
+
+    const plan = await dbClient.query(
       "SELECT id, deplacement_offert, end_at FROM client_maintenance_plans WHERE id = $1 AND client_id = $2",
       [planId, clientId]
     );
 
     if (!plan.rows.length) {
+      await dbClient.query("ROLLBACK");
       return res.status(404).json({ error: "Contrat de maintenance introuvable." });
     }
 
-    await pool.query(
+    await dbClient.query(
       `
       UPDATE client_maintenance_plans
       SET technician_id=$1,
@@ -1291,12 +1345,13 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
     const wasExpired = previousEndDate ? previousEndDate < new Date() : false;
 
     if (deplacement_offert === true && (!previousPlan.deplacement_offert || wasExpired)) {
-      await resetOfferedTravelCount(clientId);
+      await resetOfferedTravelCount(clientId, dbClient);
     } else if (deplacement_offert !== true) {
-      await resetOfferedTravelCountIfNoActiveContract(clientId);
+      await resetOfferedTravelCountIfNoActiveContract(clientId, dbClient);
     }
 
-    const interventionIds = await syncMaintenanceInterventions({
+    const syncResult = await syncMaintenanceInterventions({
+      dbClient,
       planId,
       clientId,
       technicianId: technician_id,
@@ -1309,10 +1364,20 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
       maintenanceKitStartNumber: safeKitStartNumber,
       preserveExistingDates: true
     });
+    interventionIds = syncResult.interventionIds;
+    deletedGoogleEventIds = syncResult.deletedGoogleEventIds;
+
+    await dbClient.query("COMMIT");
+
+    await deleteGoogleEvents(deletedGoogleEventIds);
+    await syncGoogleEventsForInterventions(interventionIds);
 
     res.json({ updated: true, intervention_ids: interventionIds, count: interventionIds.length });
   } catch (err) {
+    await dbClient.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
@@ -1324,35 +1389,49 @@ app.delete("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) 
     return res.status(400).json({ error: "Identifiant contrat invalide." });
   }
 
+  const dbClient = await pool.connect();
+  let deletedGoogleEventIds = [];
+
   try {
-    const plan = await pool.query(
+    await dbClient.query("BEGIN");
+
+    const plan = await dbClient.query(
       "SELECT id FROM client_maintenance_plans WHERE id = $1 AND client_id = $2",
       [planId, clientId]
     );
 
     if (!plan.rows.length) {
+      await dbClient.query("ROLLBACK");
       return res.status(404).json({ error: "Contrat de maintenance introuvable." });
     }
 
-    await pool.query(
+    const deletedResult = await dbClient.query(
       `
       DELETE FROM interventions
       WHERE maintenance_plan_id = $1
         AND status <> 'TERMINE'
+      RETURNING google_event_id
       `,
       [planId]
     );
+    deletedGoogleEventIds = deletedResult.rows.map((row) => row.google_event_id);
 
-    await pool.query("DELETE FROM client_maintenance_plans WHERE id = $1 AND client_id = $2", [
+    await dbClient.query("DELETE FROM client_maintenance_plans WHERE id = $1 AND client_id = $2", [
       planId,
       clientId
     ]);
 
-    await resetOfferedTravelCount(clientId);
+    await resetOfferedTravelCount(clientId, dbClient);
+    await dbClient.query("COMMIT");
+
+    await deleteGoogleEvents(deletedGoogleEventIds);
 
     res.json({ deleted: true });
   } catch (err) {
+    await dbClient.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
@@ -1779,7 +1858,7 @@ app.post("/api/interventions", async (req, res) => {
 
 
 app.put("/api/interventions/:id", async (req, res) => {
-  const id = req.params.id;
+  const id = Number(req.params.id);
   const {
     client_id,
     technician_id,
@@ -1793,6 +1872,10 @@ app.put("/api/interventions/:id", async (req, res) => {
   const interventionTechnicianIds = getRequestTechnicianIds({ technician_id, technician_ids });
   const primaryTechnicianId = interventionTechnicianIds[0] || null;
 
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant intervention invalide." });
+  }
+
   const dbClient = await pool.connect();
   try {
     await dbClient.query("BEGIN");
@@ -1802,6 +1885,11 @@ app.put("/api/interventions/:id", async (req, res) => {
       "SELECT google_event_id FROM interventions WHERE id = $1",
       [id]
     );
+
+    if (!before.rows.length) {
+      await dbClient.query("ROLLBACK");
+      return res.status(404).json({ error: "Intervention introuvable." });
+    }
 
     const googleEventId = before.rows[0]?.google_event_id || null;
 
@@ -1855,7 +1943,7 @@ app.delete("/api/interventions/:id", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "DELETE FROM interventions WHERE id = $1 RETURNING id",
+      "DELETE FROM interventions WHERE id = $1 RETURNING id, google_event_id",
       [id]
     );
 
@@ -1863,6 +1951,7 @@ app.delete("/api/interventions/:id", async (req, res) => {
       return res.status(404).json({ error: "Intervention introuvable." });
     }
 
+    await deleteGoogleEvents([result.rows[0].google_event_id]);
     res.json({ deleted: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1890,8 +1979,13 @@ app.post("/api/interventions/:id/notes", async (req, res) => {
 });
 
 app.post("/api/interventions/:id/photos", uploadPhoto, async (req, res) => {
-  const intervention_id = req.params.id;
+  const intervention_id = Number(req.params.id);
   const filename = req.file?.filename;
+
+  if (!Number.isInteger(intervention_id) || intervention_id <= 0) {
+    await deleteUploadedFiles([filename]);
+    return res.status(400).json({ error: "Identifiant intervention invalide." });
+  }
 
   if (!filename) {
     return res.status(400).json({ error: "Aucun fichier recu." });
@@ -1910,6 +2004,7 @@ app.post("/api/interventions/:id/photos", uploadPhoto, async (req, res) => {
     });
 
   } catch (err) {
+    await deleteUploadedFiles([filename]);
     res.status(500).json({ error: err.message });
   }
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function formatDateTime(value) {
   if (!value) return "";
@@ -60,13 +60,13 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
   const [info, setInfo] = useState("");
   const noteTextareaRef = useRef(null);
 
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     const res = await fetch(`${apiUrl}/clients`);
     const data = await res.json();
     setClients(Array.isArray(data) ? data : []);
-  };
+  }, [apiUrl]);
 
-  const loadNotes = async (clientId = selectedClientId) => {
+  const loadNotes = useCallback(async (clientId = selectedClientId) => {
     setLoading(true);
     setError("");
 
@@ -85,17 +85,17 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiUrl, selectedClientId]);
 
   useEffect(() => {
     loadClients().catch(() => {
       setError("Impossible de charger les clients.");
     });
-  }, [apiUrl]);
+  }, [loadClients]);
 
   useEffect(() => {
     loadNotes(selectedClientId);
-  }, [apiUrl, selectedClientId]);
+  }, [loadNotes, selectedClientId]);
 
   useEffect(() => {
     if (!clients.length) {

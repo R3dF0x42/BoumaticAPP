@@ -84,6 +84,21 @@ function formatEventTime(date) {
   });
 }
 
+function formatLocalDateTimeForApi(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+async function parseApiResponse(res, fallbackMessage) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || fallbackMessage);
+  }
+  return data;
+}
+
 function formatMobileEventTime(event, selectedDate) {
   const eventEnd = event.end || event.start;
   const startsBeforeDay = event.start < startOfDay(selectedDate);
@@ -167,12 +182,10 @@ export default function GoogleCalendarFull({
 
     const { start, end } = getWeekRange(dateObj);
 
-    fetch(
-      `${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59${buildViewerQuery(loggedUser)}`
-    )
-      .then((r) => r.json())
+    fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59${buildViewerQuery(loggedUser)}`)
+      .then((r) => parseApiResponse(r, "Impossible de charger les interventions."))
       .then((data) => {
-        const visibleInterventions = data.filter((inter) => {
+        const visibleInterventions = (Array.isArray(data) ? data : []).filter((inter) => {
           const isContractMaintenance = Boolean(
             inter.maintenance_plan_id || inter.maintenance_kit_label
           );
@@ -219,7 +232,7 @@ export default function GoogleCalendarFull({
 
   const loadSummaryInterventions = useCallback(() => {
     fetch(`${API}/interventions${buildViewerOnlyQuery(loggedUser)}`)
-      .then((r) => r.json())
+      .then((r) => parseApiResponse(r, "Impossible de charger les compteurs."))
       .then((data) => {
         setSummaryInterventions(Array.isArray(data) ? data : []);
       })
@@ -246,11 +259,15 @@ export default function GoogleCalendarFull({
   }, []);
 
   useEffect(() => {
-    if (isMobile) loadWeek(selectedDate);
+    if (!isMobile) return undefined;
+    const timer = window.setTimeout(() => loadWeek(selectedDate), 0);
+    return () => window.clearTimeout(timer);
   }, [isMobile, loadWeek, selectedDate]);
 
   useEffect(() => {
-    if (isMobile) loadSummaryInterventions();
+    if (!isMobile) return undefined;
+    const timer = window.setTimeout(() => loadSummaryInterventions(), 0);
+    return () => window.clearTimeout(timer);
   }, [isMobile, loadSummaryInterventions]);
 
   const headerToolbar = useMemo(
@@ -554,7 +571,7 @@ export default function GoogleCalendarFull({
             );
 
             try {
-              await fetch(`${API}/interventions/${info.event.id}`, {
+              const res = await fetch(`${API}/interventions/${info.event.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -564,10 +581,14 @@ export default function GoogleCalendarFull({
                   status: info.event.extendedProps.status,
                   priority: info.event.extendedProps.priority,
                   description: info.event.extendedProps.description,
-                  scheduled_at: info.event.start.toISOString().slice(0, 19).replace("T", " "),
+                  scheduled_at: formatLocalDateTimeForApi(info.event.start),
                   duration_minutes: durationMinutes
                 })
               });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                throw new Error(data.error || "Impossible de modifier l'intervention.");
+              }
               window.dispatchEvent(new Event("refreshCalendar"));
             } catch (e) {
               console.error("Erreur resize event :", e);
@@ -575,11 +596,10 @@ export default function GoogleCalendarFull({
             }
           }}
           eventDrop={async (info) => {
-            const newDate = info.event.start;
-            const iso = newDate.toISOString().slice(0, 19).replace("T", " ");
+            const iso = formatLocalDateTimeForApi(info.event.start);
 
             try {
-              await fetch(`${API}/interventions/${info.event.id}`, {
+              const res = await fetch(`${API}/interventions/${info.event.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -597,6 +617,11 @@ export default function GoogleCalendarFull({
                   duration_minutes: info.event.extendedProps.duration_minutes || 60
                 })
               });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                throw new Error(data.error || "Impossible de modifier l'intervention.");
+              }
+              window.dispatchEvent(new Event("refreshCalendar"));
             } catch (e) {
               console.error("Erreur maj intervention drag & drop :", e);
               info.revert();

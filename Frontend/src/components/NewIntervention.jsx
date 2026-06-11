@@ -76,15 +76,6 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
       .then(setTechs);
   }, []);
 
-  useEffect(() => {
-    if (!defaultTechnicianId) return;
-    setForm((current) =>
-      current.technician_ids?.length
-        ? current
-        : { ...current, technician_ids: [defaultTechnicianId] }
-    );
-  }, [defaultTechnicianId]);
-
   const setValue = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
   };

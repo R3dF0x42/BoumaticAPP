@@ -43,11 +43,7 @@ export default function CalendarWeek({
 
     // 1️⃣ Split la date brute (PAS de new Date() direct !)
     const [dayPart, timePart] = inter.scheduled_at.split("T");
-    const [year, month, day] = dayPart.split("-").map(Number);
-    const [hour, minute] = timePart.split(":").map(Number);
-
-    // 2️⃣ Construire date locale (sans UTC)
-    const d = new Date(year, month - 1, day, hour, minute);
+    const [hour] = timePart.split(":").map(Number);
 
     // 3️⃣ Déduire jour + heure (sans transformation)
     const dayStr = dayPart;

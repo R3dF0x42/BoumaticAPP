@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
@@ -229,12 +229,20 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     window.open(links.google, "_blank", "noopener,noreferrer");
   };
 
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     const res = await fetch(`${apiUrl}/clients${buildViewerQuery(loggedUser)}`);
-    setClients(await res.json());
-  };
+    const data = await res.json().catch(() => []);
 
-  const loadInterventions = async (clientId = selectedClientId) => {
+    if (!res.ok) {
+      setClients([]);
+      setClientError(data.error || "Impossible de charger les clients.");
+      return;
+    }
+
+    setClients(Array.isArray(data) ? data : []);
+  }, [apiUrl, loggedUser]);
+
+  const loadInterventions = useCallback(async (clientId = selectedClientId) => {
     if (!clientId) {
       setInterventions([]);
       return;
@@ -245,18 +253,27 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
       const res = await fetch(
         `${apiUrl}/interventions${buildInterventionsQuery(loggedUser, { client_id: clientId })}`
       );
-      setInterventions(await res.json());
+      const data = await res.json().catch(() => []);
+
+      if (!res.ok) {
+        setInterventions([]);
+        setClientError(data.error || "Impossible de charger l'historique.");
+        return;
+      }
+
+      setInterventions(Array.isArray(data) ? data : []);
     } finally {
       setLoadingHistory(false);
     }
-  };
+  }, [apiUrl, loggedUser, selectedClientId]);
 
-  const loadTechnicians = async () => {
+  const loadTechnicians = useCallback(async () => {
     const res = await fetch(`${apiUrl}/technicians`);
-    setTechnicians(await res.json());
-  };
+    const data = await res.json().catch(() => []);
+    setTechnicians(res.ok && Array.isArray(data) ? data : []);
+  }, [apiUrl]);
 
-  const loadClientPhotos = async (clientId) => {
+  const loadClientPhotos = useCallback(async (clientId) => {
     if (!clientId) {
       setClientPhotos([]);
       return;
@@ -280,9 +297,9 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     } finally {
       setLoadingPhotos(false);
     }
-  };
+  }, [apiUrl]);
 
-  const loadMaintenancePlans = async (clientId) => {
+  const loadMaintenancePlans = useCallback(async (clientId) => {
     if (!clientId) {
       setMaintenancePlans([]);
       return;
@@ -306,12 +323,12 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     } finally {
       setLoadingMaintenance(false);
     }
-  };
+  }, [apiUrl]);
 
   useEffect(() => {
     loadClients();
     loadTechnicians();
-  }, []);
+  }, [loadClients, loadTechnicians]);
 
   useEffect(() => {
     const refresh = () => {
@@ -324,7 +341,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
 
     window.addEventListener("refreshCalendar", refresh);
     return () => window.removeEventListener("refreshCalendar", refresh);
-  }, [selectedClientId]);
+  }, [loadClients, loadInterventions, loadMaintenancePlans, selectedClientId]);
 
   const setValue = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -534,7 +551,7 @@ export default function ClientsPage({ apiUrl, onSelectIntervention, isAdmin = fa
     loadInterventions(selectedClientId);
     loadClientPhotos(selectedClientId);
     loadMaintenancePlans(selectedClientId);
-  }, [selectedClientId]);
+  }, [loadClientPhotos, loadInterventions, loadMaintenancePlans, selectedClientId]);
 
   const historyForClient = useMemo(() => {
     if (!selectedClientId) return [];

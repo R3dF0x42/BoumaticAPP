@@ -160,9 +160,18 @@ export default function App() {
     if (!selectedId) return;
 
     fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`)
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Erreur chargement intervention");
+        }
+        return data;
+      })
       .then(setSelectedDetails)
-      .catch(console.error);
+      .catch((err) => {
+        console.error(err);
+        setSelectedDetails(null);
+      });
   }, [selectedId, viewerQuery]);
 
   useEffect(() => {
@@ -196,14 +205,21 @@ export default function App() {
         duration_minutes: intervention.duration_minutes || 60,
         ...updates
       };
-      await fetch(`${API_URL}/interventions/${selectedId}`, {
+      const res = await fetch(`${API_URL}/interventions/${selectedId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
-        (r) => r.json()
-      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Erreur mise a jour intervention");
+      }
+
+      const refreshedRes = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`);
+      const refreshed = await refreshedRes.json().catch(() => ({}));
+      if (!refreshedRes.ok) {
+        throw new Error(refreshed.error || "Erreur rechargement intervention");
+      }
       setSelectedDetails(refreshed);
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch (e) {

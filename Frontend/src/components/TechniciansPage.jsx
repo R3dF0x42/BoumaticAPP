@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 export default function TechniciansPage({ apiUrl, canManage = false }) {
   const [techs, setTechs] = useState([]);
@@ -21,14 +21,14 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
   });
   const [editLoading, setEditLoading] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch(`${apiUrl}/technicians`);
     setTechs(await res.json());
-  };
+  }, [apiUrl]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const setValue = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
