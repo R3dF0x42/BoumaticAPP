@@ -216,6 +216,9 @@ export default function GeneralNotesPage({ apiUrl, loggedUser }) {
   };
 
   const completeNote = async (noteId) => {
+    const confirmed = window.confirm("Valider cette note comme faite ?");
+    if (!confirmed) return;
+
     setCompletingId(noteId);
     setError("");
     setInfo("");
