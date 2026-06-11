@@ -145,6 +145,15 @@ function isUrgentPriority(priority) {
   return normalizeText(priority).includes("urgent");
 }
 
+function isDueByToday(intervention) {
+  if (!intervention?.scheduled_at) return false;
+
+  const scheduledAt = new Date(intervention.scheduled_at);
+  if (Number.isNaN(scheduledAt.getTime())) return false;
+
+  return scheduledAt <= endOfDay(new Date());
+}
+
 function isContractMaintenance(intervention) {
   return Boolean(intervention?.maintenance_plan_id || intervention?.maintenance_kit_label);
 }
@@ -322,8 +331,9 @@ export default function GoogleCalendarFull({
     let maintenanceCount = 0;
 
     for (const intervention of summaryInterventions) {
-      if (!isDoneStatus(intervention.status)) openCount += 1;
-      if (!isDoneStatus(intervention.status) && isUrgentPriority(intervention.priority)) {
+      const isOpenDue = !isDoneStatus(intervention.status) && isDueByToday(intervention);
+      if (isOpenDue) openCount += 1;
+      if (isOpenDue && isUrgentPriority(intervention.priority)) {
         urgentCount += 1;
       }
       if (isPlannedMaintenance(intervention)) maintenanceCount += 1;

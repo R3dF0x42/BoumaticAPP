@@ -1084,7 +1084,10 @@ app.get("/api/clients/:id/maintenance-plans", async (req, res) => {
       SELECT mp.*,
              t.name AS technician_name,
              COUNT(i.id)::int AS generated_count,
-             MIN(i.scheduled_at) FILTER (WHERE i.scheduled_at >= NOW()) AS next_scheduled_at
+             MIN(i.scheduled_at) FILTER (
+               WHERE i.status <> 'TERMINE'
+                 AND i.scheduled_at IS NOT NULL
+             ) AS next_scheduled_at
       FROM client_maintenance_plans mp
       LEFT JOIN technicians t ON mp.technician_id = t.id
       LEFT JOIN interventions i ON i.maintenance_plan_id = mp.id
