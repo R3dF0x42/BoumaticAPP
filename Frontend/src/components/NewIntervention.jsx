@@ -35,6 +35,13 @@ function getDefaultTime() {
   return getDefaultDateTime().slice(11, 16);
 }
 
+function getDefaultStartTime(defaultTime) {
+  if (typeof defaultTime === "string" && /^\d{2}:\d{2}$/.test(defaultTime)) {
+    return defaultTime;
+  }
+  return "07:00";
+}
+
 const TIME_MODES = {
   full_day: { label: "Journee entiere", start: "07:00", duration: 660 },
   morning: { label: "Matin", start: "07:00", duration: 300 },
@@ -65,19 +72,26 @@ function getDurationBetweenDates(startDate, startTime, endDate, endTime) {
   return Math.round((end.getTime() - start.getTime()) / 60000);
 }
 
-export default function NewIntervention({ loggedUser, defaultDate, onClose, onCreated }) {
+export default function NewIntervention({
+  loggedUser,
+  defaultDate,
+  defaultTime,
+  onClose,
+  onCreated
+}) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
   const canCreatePrivateIntervention = loggedUser?.role === "technician" && loggedUser?.id;
   const defaultTechnicianId = canCreatePrivateIntervention ? String(loggedUser.id) : "";
   const initialDate = getDefaultDate(defaultDate);
+  const initialTime = getDefaultStartTime(defaultTime);
   const [form, setForm] = useState({
     client_id: "",
     technician_ids: defaultTechnicianId ? [defaultTechnicianId] : [],
     scheduled_date: initialDate,
     scheduled_end_date: initialDate,
-    time_mode: "morning",
-    scheduled_time: "07:00",
+    time_mode: defaultTime ? "custom" : "morning",
+    scheduled_time: initialTime,
     priority: "Normale",
     status: "A FAIRE",
     description: "",
