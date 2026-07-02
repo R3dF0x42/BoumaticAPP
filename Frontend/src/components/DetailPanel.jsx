@@ -5,6 +5,7 @@ import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 import { buildUploadUrl } from "../utils/images.js";
 import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
+import ClientSearchSelect from "./ClientSearchSelect.jsx";
 
 function normalizeTechnicianIdList(values) {
   const ids = [];
@@ -255,18 +256,12 @@ export default function DetailPanel({
         {isEditing ? (
           <form className="intervention-edit-form" onSubmit={handleSaveEdit}>
             <label>Client</label>
-            <select
+            <ClientSearchSelect
+              clients={clients}
               value={editForm.client_id}
-              onChange={(e) => setEditValue("client_id", e.target.value)}
+              onChange={(clientId) => setEditValue("client_id", clientId)}
               required
-            >
-              <option value="">Selectionner</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
+            />
 
             <div className="technician-picker">
               {getTechnicianRows(editForm.technician_ids, technicians).map((selectedId, index) => {

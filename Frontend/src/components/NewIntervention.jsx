@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { API_URL } from "../config/api.js";
+import ClientSearchSelect from "./ClientSearchSelect.jsx";
 
 const API = API_URL;
 
@@ -172,18 +173,12 @@ export default function NewIntervention({ loggedUser, onClose, onCreated }) {
 
         <form className="modal-form" onSubmit={submit}>
           <label>Client</label>
-          <select
+          <ClientSearchSelect
+            clients={clients}
             value={form.client_id}
-            onChange={(e) => setValue("client_id", e.target.value)}
+            onChange={(clientId) => setValue("client_id", clientId)}
             required
-          >
-            <option value="">Selectionner</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          />
 
           <div className="technician-picker">
             {getTechnicianRows(form.technician_ids, techs).map((selectedId, index) => {
