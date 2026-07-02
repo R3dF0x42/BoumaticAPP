@@ -51,6 +51,20 @@ function formatDateKey(date) {
   );
 }
 
+function getDefaultDateForCalendarView(dateInfo) {
+  const rangeStart = dateInfo?.view?.currentStart || dateInfo?.start;
+  const rangeEnd = dateInfo?.view?.currentEnd || dateInfo?.end;
+  const today = startOfDay(new Date());
+
+  if (rangeStart && rangeEnd) {
+    const start = startOfDay(new Date(rangeStart));
+    const end = startOfDay(new Date(rangeEnd));
+    if (today >= start && today < end) return today;
+  }
+
+  return rangeStart ? new Date(rangeStart) : new Date();
+}
+
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
 }
@@ -171,6 +185,7 @@ function isPlannedMaintenance(intervention) {
 export default function GoogleCalendarFull({
   onSelectEvent,
   onInterventionsLoaded,
+  onActiveDateChange,
   loggedUser
 }) {
   const [events, setEvents] = useState([]);
@@ -272,6 +287,11 @@ export default function GoogleCalendarFull({
     const timer = window.setTimeout(() => loadWeek(selectedDate), 0);
     return () => window.clearTimeout(timer);
   }, [isMobile, loadWeek, selectedDate]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    onActiveDateChange && onActiveDateChange(formatDateKey(selectedDate));
+  }, [isMobile, onActiveDateChange, selectedDate]);
 
   useEffect(() => {
     if (!isMobile) return undefined;
@@ -566,7 +586,14 @@ export default function GoogleCalendarFull({
           editable
           datesSet={(arg) => {
             if (!arg.start) return;
+            if (!isMobile) {
+              onActiveDateChange &&
+                onActiveDateChange(formatDateKey(getDefaultDateForCalendarView(arg)));
+            }
             loadWeek(arg.start);
+          }}
+          dateClick={(info) => {
+            onActiveDateChange && onActiveDateChange(formatDateKey(info.date));
           }}
           eventClick={(info) => {
             onSelectEvent && onSelectEvent(info.event);

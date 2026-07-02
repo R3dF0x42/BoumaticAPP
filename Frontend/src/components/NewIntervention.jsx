@@ -11,7 +11,23 @@ function getDefaultDateTime() {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
-function getDefaultDate() {
+function formatDateInput(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function getDefaultDate(defaultDate) {
+  if (typeof defaultDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(defaultDate)) {
+    return defaultDate;
+  }
+
+  if (defaultDate) {
+    const parsedDate = new Date(defaultDate);
+    const formattedDate = formatDateInput(parsedDate);
+    if (formattedDate) return formattedDate;
+  }
+
   return getDefaultDateTime().slice(0, 10);
 }
 
@@ -49,16 +65,17 @@ function getDurationBetweenDates(startDate, startTime, endDate, endTime) {
   return Math.round((end.getTime() - start.getTime()) / 60000);
 }
 
-export default function NewIntervention({ loggedUser, onClose, onCreated }) {
+export default function NewIntervention({ loggedUser, defaultDate, onClose, onCreated }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
   const canCreatePrivateIntervention = loggedUser?.role === "technician" && loggedUser?.id;
   const defaultTechnicianId = canCreatePrivateIntervention ? String(loggedUser.id) : "";
+  const initialDate = getDefaultDate(defaultDate);
   const [form, setForm] = useState({
     client_id: "",
     technician_ids: defaultTechnicianId ? [defaultTechnicianId] : [],
-    scheduled_date: getDefaultDate(),
-    scheduled_end_date: getDefaultDate(),
+    scheduled_date: initialDate,
+    scheduled_end_date: initialDate,
     time_mode: "morning",
     scheduled_time: "07:00",
     priority: "Normale",

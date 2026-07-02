@@ -71,6 +71,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(initialNavigation.interventionId);
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [showNewIntervention, setShowNewIntervention] = useState(false);
+  const [newInterventionDate, setNewInterventionDate] = useState(null);
   const [currentPage, setCurrentPage] = useState(initialNavigation.page);
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -124,7 +125,12 @@ export default function App() {
   }, [applyNavigation]);
 
   useEffect(() => {
-    const open = () => setShowNewIntervention(true);
+    const open = (event) => {
+      if (event?.detail?.date) {
+        setNewInterventionDate(event.detail.date);
+      }
+      setShowNewIntervention(true);
+    };
 
     window.addEventListener("openNewIntervention", open);
     return () => window.removeEventListener("openNewIntervention", open);
@@ -354,6 +360,10 @@ export default function App() {
     setInterventions(list);
   }, []);
 
+  const handleActiveCalendarDateChange = useCallback((date) => {
+    if (date) setNewInterventionDate(date);
+  }, []);
+
   const renderPageFallback = () => (
     <main className="page">
       <p className="muted">Chargement...</p>
@@ -458,6 +468,7 @@ export default function App() {
             <GoogleCalendarFull
               onSelectEvent={handleSelectEvent}
               onInterventionsLoaded={handleInterventionsLoaded}
+              onActiveDateChange={handleActiveCalendarDateChange}
               loggedUser={loggedUser}
             />
           )}
@@ -534,6 +545,7 @@ export default function App() {
       {showNewIntervention && (
         <NewIntervention
           loggedUser={loggedUser}
+          defaultDate={newInterventionDate}
           onClose={() => setShowNewIntervention(false)}
           onCreated={() => {
             window.dispatchEvent(new Event("refreshCalendar"));
