@@ -5,6 +5,7 @@ import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
 import { buildUploadUrl } from "../utils/images.js";
 import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
+import CalendarDatePicker from "./CalendarDatePicker.jsx";
 import ClientSearchSelect from "./ClientSearchSelect.jsx";
 
 function normalizeTechnicianIdList(values) {
@@ -41,6 +42,19 @@ function toDateTimeInput(value) {
   if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
   const offsetMs = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function getDateInputPart(value) {
+  return value ? String(value).slice(0, 10) : "";
+}
+
+function getTimeInputPart(value) {
+  return value ? String(value).slice(11, 16) : "";
+}
+
+function buildDateTimeInput(datePart, timePart) {
+  if (!datePart) return "";
+  return `${datePart}T${timePart || "07:00"}`;
 }
 
 function getInterventionEndInput(intervention) {
@@ -181,6 +195,20 @@ export default function DetailPanel({
     setEditForm((form) => ({ ...form, [field]: value }));
   };
 
+  const setEditDatePart = (field, value) => {
+    setEditForm((form) => {
+      const timePart = getTimeInputPart(form[field]) || (field === "end_at" ? "18:00" : "07:00");
+      return { ...form, [field]: buildDateTimeInput(value, timePart) };
+    });
+  };
+
+  const setEditTimePart = (field, value) => {
+    setEditForm((form) => {
+      const datePart = getDateInputPart(form[field]);
+      return { ...form, [field]: buildDateTimeInput(datePart, value) };
+    });
+  };
+
   const setEditTechnicianAt = (index, value) => {
     setEditForm((form) => {
       const nextIds = normalizeTechnicianIdList(form.technician_ids);
@@ -295,20 +323,34 @@ export default function DetailPanel({
               })}
             </div>
 
-            <label>Debut</label>
-            <input
-              type="datetime-local"
-              value={editForm.scheduled_at}
-              onChange={(e) => setEditValue("scheduled_at", e.target.value)}
+            <label>Date debut</label>
+            <CalendarDatePicker
+              value={getDateInputPart(editForm.scheduled_at)}
+              onChange={(date) => setEditDatePart("scheduled_at", date)}
               required
             />
 
-            <label>Fin</label>
+            <label>Heure debut</label>
             <input
-              type="datetime-local"
-              min={editForm.scheduled_at}
-              value={editForm.end_at}
-              onChange={(e) => setEditValue("end_at", e.target.value)}
+              type="time"
+              value={getTimeInputPart(editForm.scheduled_at)}
+              onChange={(e) => setEditTimePart("scheduled_at", e.target.value)}
+              required
+            />
+
+            <label>Date fin</label>
+            <CalendarDatePicker
+              min={getDateInputPart(editForm.scheduled_at)}
+              value={getDateInputPart(editForm.end_at)}
+              onChange={(date) => setEditDatePart("end_at", date)}
+              required
+            />
+
+            <label>Heure fin</label>
+            <input
+              type="time"
+              value={getTimeInputPart(editForm.end_at)}
+              onChange={(e) => setEditTimePart("end_at", e.target.value)}
               required
             />
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { API_URL } from "../config/api.js";
+import CalendarDatePicker from "./CalendarDatePicker.jsx";
 import ClientSearchSelect from "./ClientSearchSelect.jsx";
 
 const API = API_URL;
@@ -35,13 +36,6 @@ function getDefaultTime() {
   return getDefaultDateTime().slice(11, 16);
 }
 
-function getDefaultStartTime(defaultTime) {
-  if (typeof defaultTime === "string" && /^\d{2}:\d{2}$/.test(defaultTime)) {
-    return defaultTime;
-  }
-  return "07:00";
-}
-
 const TIME_MODES = {
   full_day: { label: "Journee entiere", start: "07:00", duration: 660 },
   morning: { label: "Matin", start: "07:00", duration: 300 },
@@ -75,7 +69,6 @@ function getDurationBetweenDates(startDate, startTime, endDate, endTime) {
 export default function NewIntervention({
   loggedUser,
   defaultDate,
-  defaultTime,
   onClose,
   onCreated
 }) {
@@ -84,14 +77,13 @@ export default function NewIntervention({
   const canCreatePrivateIntervention = loggedUser?.role === "technician" && loggedUser?.id;
   const defaultTechnicianId = canCreatePrivateIntervention ? String(loggedUser.id) : "";
   const initialDate = getDefaultDate(defaultDate);
-  const initialTime = getDefaultStartTime(defaultTime);
   const [form, setForm] = useState({
     client_id: "",
     technician_ids: defaultTechnicianId ? [defaultTechnicianId] : [],
     scheduled_date: initialDate,
     scheduled_end_date: initialDate,
-    time_mode: defaultTime ? "custom" : "morning",
-    scheduled_time: initialTime,
+    time_mode: "morning",
+    scheduled_time: "07:00",
     priority: "Normale",
     status: "A FAIRE",
     description: "",
@@ -244,10 +236,9 @@ export default function NewIntervention({
           </div>
 
           <label>Date</label>
-          <input
-            type="date"
+          <CalendarDatePicker
             value={form.scheduled_date}
-            onChange={(e) => setScheduledDate(e.target.value)}
+            onChange={setScheduledDate}
             required
           />
 
@@ -268,11 +259,10 @@ export default function NewIntervention({
           {form.time_mode === "multi_day" && (
             <>
               <label>Date de fin</label>
-              <input
-                type="date"
+              <CalendarDatePicker
                 min={form.scheduled_date}
                 value={form.scheduled_end_date}
-                onChange={(e) => setValue("scheduled_end_date", e.target.value)}
+                onChange={(date) => setValue("scheduled_end_date", date)}
                 required
               />
               <p className="muted-small">

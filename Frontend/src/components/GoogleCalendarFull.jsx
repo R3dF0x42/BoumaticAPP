@@ -51,11 +51,6 @@ function formatDateKey(date) {
   );
 }
 
-function formatTimeKey(date) {
-  const pad = (value) => String(value).padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 function getDefaultDateForCalendarView(dateInfo) {
   const rangeStart = dateInfo?.view?.currentStart || dateInfo?.start;
   const rangeEnd = dateInfo?.view?.currentEnd || dateInfo?.end;
@@ -598,14 +593,7 @@ export default function GoogleCalendarFull({
             loadWeek(arg.start);
           }}
           dateClick={(info) => {
-            const date = formatDateKey(info.date);
-            const time = info.allDay ? null : formatTimeKey(info.date);
-            onActiveDateChange && onActiveDateChange(date);
-            window.dispatchEvent(
-              new CustomEvent("openNewIntervention", {
-                detail: { date, time }
-              })
-            );
+            onActiveDateChange && onActiveDateChange(formatDateKey(info.date));
           }}
           eventClick={(info) => {
             onSelectEvent && onSelectEvent(info.event);

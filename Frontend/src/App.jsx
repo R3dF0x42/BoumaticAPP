@@ -71,10 +71,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(initialNavigation.interventionId);
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [showNewIntervention, setShowNewIntervention] = useState(false);
-  const [newInterventionDefaults, setNewInterventionDefaults] = useState({
-    date: null,
-    time: null
-  });
+  const [newInterventionDate, setNewInterventionDate] = useState(null);
   const [currentPage, setCurrentPage] = useState(initialNavigation.page);
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -129,11 +126,9 @@ export default function App() {
 
   useEffect(() => {
     const open = (event) => {
-      const detail = event?.detail || {};
-      setNewInterventionDefaults((current) => ({
-        date: detail.date || current.date,
-        time: detail.time || null
-      }));
+      if (event?.detail?.date) {
+        setNewInterventionDate(event.detail.date);
+      }
       setShowNewIntervention(true);
     };
 
@@ -366,11 +361,7 @@ export default function App() {
   }, []);
 
   const handleActiveCalendarDateChange = useCallback((date) => {
-    if (!date) return;
-    setNewInterventionDefaults({
-      date,
-      time: null
-    });
+    if (date) setNewInterventionDate(date);
   }, []);
 
   const renderPageFallback = () => (
@@ -554,8 +545,7 @@ export default function App() {
       {showNewIntervention && (
         <NewIntervention
           loggedUser={loggedUser}
-          defaultDate={newInterventionDefaults.date}
-          defaultTime={newInterventionDefaults.time}
+          defaultDate={newInterventionDate}
           onClose={() => setShowNewIntervention(false)}
           onCreated={() => {
             window.dispatchEvent(new Event("refreshCalendar"));
