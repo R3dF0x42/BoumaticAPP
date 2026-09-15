@@ -1,5 +1,5 @@
-import React, { useEffect, useId, useState } from "react";
-import { getApiOrigin } from "../config/api.js";
+import React, { useEffect, useId, useRef, useState } from "react";
+import { apiFetch as fetch, getApiOrigin } from "../config/api.js";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";
@@ -113,6 +113,8 @@ export default function DetailPanel({
   updatingStatus
 }) {
   const [note, setNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const notePending = useRef(false);
   const [mapChooser, setMapChooser] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const photoInputId = useId();
@@ -173,11 +175,18 @@ export default function DetailPanel({
     window.open(mapLinks.google, "_blank", "noopener,noreferrer");
   };
 
-  const handleSubmitNote = (e) => {
+  const handleSubmitNote = async (e) => {
     e.preventDefault();
-    if (!note.trim()) return;
-    onAddNote(note);
-    setNote("");
+    if (!note.trim() || notePending.current) return;
+    notePending.current = true;
+    setSavingNote(true);
+    try {
+      const saved = await onAddNote(note);
+      if (saved) setNote("");
+    } finally {
+      notePending.current = false;
+      setSavingNote(false);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -223,6 +232,7 @@ export default function DetailPanel({
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
+    if (updatingStatus) return;
     const technicianIds = normalizeTechnicianIdList(editForm.technician_ids).map(Number);
     const durationMinutes = getDurationBetweenDateTimes(editForm.scheduled_at, editForm.end_at);
 
@@ -231,7 +241,7 @@ export default function DetailPanel({
       return;
     }
 
-    await onUpdateIntervention?.({
+    const saved = await onUpdateIntervention?.({
       client_id: Number(editForm.client_id),
       technician_id: technicianIds[0] || null,
       technician_ids: technicianIds,
@@ -241,7 +251,7 @@ export default function DetailPanel({
       priority: editForm.priority,
       description: editForm.description
     });
-    setIsEditing(false);
+    if (saved) setIsEditing(false);
   };
 
   const handleQuickTechnicianChange = (index, value) => {
@@ -490,11 +500,12 @@ export default function DetailPanel({
         <form onSubmit={handleSubmitNote} className="note-form">
           <textarea
             value={note}
+            disabled={savingNote}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Ajouter une note…"
           />
-          <button className="btn small" type="submit">
-            Enregistrer
+          <button className="btn small" type="submit" disabled={savingNote || !note.trim()}>
+            {savingNote ? "Enregistrement..." : "Enregistrer"}
           </button>
         </form>
         <ul className="notes-list">

@@ -29,10 +29,11 @@ export default function ClientSearchSelect({
     () => (Array.isArray(clients) ? clients : []).find((client) => String(client.id) === String(value)),
     [clients, value]
   );
+  const displayedQuery = selectedClient ? getClientLabel(selectedClient) : query;
 
   const filteredClients = useMemo(() => {
     const list = Array.isArray(clients) ? clients : [];
-    const term = normalizeText(query);
+    const term = normalizeText(displayedQuery);
     if (!term) return list.slice(0, 10);
 
     return list
@@ -41,15 +42,7 @@ export default function ClientSearchSelect({
           .some((field) => normalizeText(field).includes(term))
       )
       .slice(0, 10);
-  }, [clients, query]);
-
-  useEffect(() => {
-    setQuery(selectedClient ? getClientLabel(selectedClient) : "");
-  }, [selectedClient]);
-
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
+  }, [clients, displayedQuery]);
 
   useEffect(() => {
     if (!inputRef.current) return;
@@ -60,13 +53,15 @@ export default function ClientSearchSelect({
 
   const selectClient = (client) => {
     onChange(String(client.id));
-    setQuery(getClientLabel(client));
+    setQuery("");
+    setActiveIndex(0);
     setIsOpen(false);
   };
 
   const handleInputChange = (event) => {
     const nextQuery = event.target.value;
     setQuery(nextQuery);
+    setActiveIndex(0);
     setIsOpen(true);
 
     if (selectedClient && nextQuery !== getClientLabel(selectedClient)) {
@@ -104,7 +99,7 @@ export default function ClientSearchSelect({
       <input
         ref={inputRef}
         type="search"
-        value={query}
+        value={displayedQuery}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
         onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
@@ -128,8 +123,10 @@ export default function ClientSearchSelect({
                   "client-search-select__option " +
                   (index === activeIndex ? "client-search-select__option--active" : "")
                 }
-                onMouseDown={(event) => {
+                onPointerDown={(event) => {
                   event.preventDefault();
+                }}
+                onClick={() => {
                   selectClient(client);
                 }}
                 role="option"

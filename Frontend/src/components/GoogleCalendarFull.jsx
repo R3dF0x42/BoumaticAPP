@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import OnCallTechnicianControl from "./OnCallTechnicianControl.jsx";
-import { API_URL } from "../config/api.js";
+import { apiFetch as fetch, API_URL } from "../config/api.js";
 import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
 
 const API = API_URL;
@@ -197,18 +197,29 @@ export default function GoogleCalendarFull({
     return window.innerWidth <= 768;
   });
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [loadError, setLoadError] = useState("");
+  const activeRange = useRef(null);
+  const activeRequest = useRef(null);
 
   // ---- charge la semaine ----
-  const loadWeek = useCallback((dateObj) => {
+  const loadWeek = useCallback((dateObj, rangeEnd = null) => {
     if (!dateObj) return;
 
     setCurrentStart(dateObj);
 
-    const { start, end } = getWeekRange(dateObj);
+    const week = getWeekRange(dateObj);
+    const start = rangeEnd ? formatDateKey(dateObj) : week.start;
+    const end = rangeEnd ? formatDateKey(rangeEnd) : formatDateKey(addDays(new Date(`${week.end}T00:00:00`), 1));
+    activeRange.current = { start: dateObj, end: rangeEnd };
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    setLoadError("");
 
-    fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 23:59:59${buildViewerQuery(loggedUser)}`)
+    fetch(`${API}/interventions?start=${start} 00:00:00&end=${end} 00:00:00${buildViewerQuery(loggedUser)}`, { signal: controller.signal })
       .then((r) => parseApiResponse(r, "Impossible de charger les interventions."))
       .then((data) => {
+        if (controller.signal.aborted) return;
         const visibleInterventions = (Array.isArray(data) ? data : []).filter((inter) => {
           const isContractMaintenance = Boolean(
             inter.maintenance_plan_id || inter.maintenance_kit_label
@@ -251,7 +262,11 @@ export default function GoogleCalendarFull({
         setEvents(formatted);
         onInterventionsLoaded && onInterventionsLoaded(visibleInterventions);
       })
-      .catch((err) => console.error("Erreur chargement interventions :", err));
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setLoadError(err.message || "Planning indisponible. Verifiez la connexion.");
+        }
+      });
   }, [loggedUser, onInterventionsLoaded]);
 
   const loadSummaryInterventions = useCallback(() => {
@@ -266,13 +281,15 @@ export default function GoogleCalendarFull({
   // ---- refresh du calendrier externe (nouvelle intervention) ----
   useEffect(() => {
     const handler = () => {
-      loadWeek(currentStart || selectedDate);
+      loadWeek(currentStart || selectedDate, isMobile ? null : activeRange.current?.end);
       if (isMobile) loadSummaryInterventions();
     };
 
     window.addEventListener("refreshCalendar", handler);
     return () => window.removeEventListener("refreshCalendar", handler);
   }, [currentStart, isMobile, loadSummaryInterventions, loadWeek, selectedDate]);
+
+  useEffect(() => () => activeRequest.current?.abort(), []);
 
   // ---- mode mobile ----
   useEffect(() => {
@@ -386,6 +403,7 @@ export default function GoogleCalendarFull({
   if (isMobile) {
     return (
       <div className="page calendar-shell calendar-shell--mobile mobile-agenda-shell">
+        {loadError && <p className="login-error" role="alert">{loadError}</p>}
         <div className="mobile-agenda-header">
           <div className="mobile-agenda-title">
             <p className="muted-small">{selectedDateLabel}</p>
@@ -531,6 +549,7 @@ export default function GoogleCalendarFull({
 
   return (
     <div className="page calendar-shell">
+      {loadError && <p className="login-error" role="alert">{loadError}</p>}
       <div className="page-header">
         <div>
           <h2>Planning interventions</h2>
@@ -590,7 +609,7 @@ export default function GoogleCalendarFull({
               onActiveDateChange &&
                 onActiveDateChange(formatDateKey(getDefaultDateForCalendarView(arg)));
             }
-            loadWeek(arg.start);
+            loadWeek(arg.start, arg.end);
           }}
           dateClick={(info) => {
             onActiveDateChange && onActiveDateChange(formatDateKey(info.date));

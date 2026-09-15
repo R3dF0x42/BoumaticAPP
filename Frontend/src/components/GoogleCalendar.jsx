@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { API_URL } from "../config/api.js";
+import { apiFetch as fetch, API_URL } from "../config/api.js";
 
 export default function GoogleCalendar() {
   const [events, setEvents] = useState([]);

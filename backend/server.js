@@ -5,8 +5,9 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
-import pool from "./db.js";
+import pool, { dbReady } from "./db.js";
 import { createGoogleEvent, deleteGoogleEvent, updateGoogleEvent } from "./google.js";
+import { asyncHandler, createLoginLimiter, createSessionAuth, isAllowedOrigin, requireAdmin } from "./auth.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,10 +15,48 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "coco";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const { issueSession, requireSession, logout } = createSessionAuth(pool, ADMIN_PASSWORD);
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
 
-app.use(cors());
+app.use(cors((req, callback) => callback(null, {
+  origin: isAllowedOrigin(req) ? req.get("Origin") || false : false,
+  credentials: true
+})));
+app.use((req, res, next) => {
+  if (!isAllowedOrigin(req) && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    return res.status(403).json({ error: "Origine de la requete non autorisee." });
+  }
+  next();
+});
 app.use(express.json());
+app.post(["/api/auth/admin/login", "/api/auth/technician/login"], createLoginLimiter());
+app.use("/api", (req, res, next) => {
+  if (req.method === "POST" && ["/auth/admin/login", "/auth/technician/login"].includes(req.path)) {
+    return next();
+  }
+  return requireSession(req, res, next);
+});
+app.use("/api/technicians", (req, res, next) => {
+  if (["GET", "HEAD"].includes(req.method)) return next();
+  return requireAdmin(req, res, next);
+});
+app.get("/api/auth/session", (req, res) => res.json({ user: req.user }));
+app.post("/api/auth/logout", logout);
+app.use("/api/interventions/:id", asyncHandler(async (req, res, next) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant intervention invalide." });
+  }
+  const params = [id];
+  const visibility = getInterventionVisibilityFilter(req.user, params);
+  const result = await pool.query(
+    `SELECT i.id FROM interventions i WHERE i.id = $1 ${visibility ? `AND ${visibility}` : ""}`,
+    params
+  );
+  if (!result.rows.length) return res.status(404).json({ error: "Intervention introuvable." });
+  next();
+}));
 
 /* ----------------------- AUTH HELPERS ----------------------- */
 
@@ -77,7 +116,21 @@ const upload = multer({
     cb(null, true);
   }
 });
-app.use("/uploads", express.static(uploadsDir));
+app.use("/uploads", requireSession, asyncHandler(async (req, res, next) => {
+  const filename = path.basename(decodeURIComponent(req.path));
+  const params = [filename];
+  const visibility = getInterventionVisibilityFilter(req.user, params);
+  const result = await pool.query(
+    `SELECT 1 FROM client_photos WHERE filename = $1
+     UNION ALL
+     SELECT 1 FROM photos p JOIN interventions i ON i.id = p.intervention_id
+     WHERE p.filename = $1 ${visibility ? `AND ${visibility}` : ""}
+     LIMIT 1`,
+    params
+  );
+  if (!result.rows.length) return res.status(404).end();
+  next();
+}), express.static(uploadsDir, { cacheControl: false }));
 
 function uploadPhoto(req, res, next) {
   upload.single("photo")(req, res, (err) => {
@@ -125,10 +178,10 @@ async function deleteGoogleEvents(eventIds = []) {
 
 /* ----------------------- CLIENTS ----------------------- */
 
-function getInterventionVisibilityFilter(query, params) {
-  if (query.viewer_role === "admin") return "";
+function getInterventionVisibilityFilter(user, params) {
+  if (user?.role === "admin") return "";
 
-  const viewerTechnicianId = Number(query.viewer_technician_id);
+  const viewerTechnicianId = Number(user?.id);
   if (Number.isInteger(viewerTechnicianId) && viewerTechnicianId > 0) {
     params.push(viewerTechnicianId);
     return `(i.private_to_technician_id IS NULL OR i.private_to_technician_id = $${params.length})`;
@@ -240,7 +293,7 @@ async function syncInterventionTechnicians(dbClient, interventionId, technicianI
   }
 }
 
-app.get("/api/on-call-technician", async (req, res) => {
+app.get("/api/on-call-technician", asyncHandler(async (req, res) => {
   const weekStart = normalizeDateKey(req.query?.week_start);
   if (weekStart === null) {
     return res.status(400).json({ error: "Semaine d'astreinte invalide." });
@@ -271,9 +324,9 @@ app.get("/api/on-call-technician", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.put("/api/on-call-technician", async (req, res) => {
+app.put("/api/on-call-technician", asyncHandler(async (req, res) => {
   const technicianName = getAllowedOnCallTechnician(req.body?.technician_name);
   const weekStart = normalizeDateKey(req.body?.week_start || req.query?.week_start);
 
@@ -286,7 +339,7 @@ app.put("/api/on-call-technician", async (req, res) => {
   }
 
   try {
-    const canUpdate = await isAdrienTechnician(req.body?.updated_by_technician_id);
+    const canUpdate = await isAdrienTechnician(req.user.id);
     if (!canUpdate) {
       return res.status(403).json({ error: "Seul Adrien peut modifier l'astreinte." });
     }
@@ -310,12 +363,12 @@ app.put("/api/on-call-technician", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.get("/api/clients", async (req, res) => {
+app.get("/api/clients", asyncHandler(async (req, res) => {
   try {
     const params = [];
-    const visibilityFilter = getInterventionVisibilityFilter(req.query, params);
+    const visibilityFilter = getInterventionVisibilityFilter(req.user, params);
     const result = await pool.query(
       `
       SELECT
@@ -335,9 +388,9 @@ app.get("/api/clients", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/clients", async (req, res) => {
+app.post("/api/clients", asyncHandler(async (req, res) => {
   const { name, address, gps_lat, gps_lng, phone, robot_model, commissioning_date } = req.body;
   try {
     const result = await pool.query(
@@ -349,9 +402,9 @@ app.post("/api/clients", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.put("/api/clients/:id", async (req, res) => {
+app.put("/api/clients/:id", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const { name, address, gps_lat, gps_lng, phone, robot_model, commissioning_date } = req.body;
   const safeName = name?.trim();
@@ -398,12 +451,12 @@ app.put("/api/clients/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.put("/api/clients/:id/deplacements-offerts", async (req, res) => {
+app.put("/api/clients/:id/deplacements-offerts", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const usedCount = Number(req.body?.used_count);
-  const isAdmin = req.body?.is_admin === true;
+  const isAdmin = req.user.role === "admin";
 
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Identifiant client invalide." });
@@ -444,16 +497,16 @@ app.put("/api/clients/:id/deplacements-offerts", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.delete("/api/clients/:id", async (req, res) => {
+app.delete("/api/clients/:id", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Identifiant client invalide." });
   }
 
-  const dbClient = await pool.connect();
+  let dbClient = await pool.connect();
   let googleEventIds = [];
 
   try {
@@ -465,7 +518,7 @@ app.delete("/api/clients/:id", async (req, res) => {
     );
 
     if (!existing.rows.length) {
-      await dbClient.query("ROLLBACK");
+      await dbClient?.query("ROLLBACK");
       return res.status(404).json({ error: "Client introuvable." });
     }
 
@@ -490,20 +543,22 @@ app.delete("/api/clients/:id", async (req, res) => {
 
     await dbClient.query("DELETE FROM clients WHERE id = $1", [id]);
     await dbClient.query("COMMIT");
+    dbClient.release();
+    dbClient = null;
 
     await deleteUploadedFiles(files.rows.map((row) => row.filename));
     await deleteGoogleEvents(googleEventIds);
 
     res.json({ deleted: true });
   } catch (err) {
-    await dbClient.query("ROLLBACK");
+    await dbClient?.query("ROLLBACK");
     res.status(500).json({ error: err.message });
   } finally {
-    dbClient.release();
+    dbClient?.release();
   }
-});
+}));
 
-app.get("/api/clients/:id/photos", async (req, res) => {
+app.get("/api/clients/:id/photos", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -524,9 +579,9 @@ app.get("/api/clients/:id/photos", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/clients/:id/photos", uploadPhoto, async (req, res) => {
+app.post("/api/clients/:id/photos", uploadPhoto, asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const filename = req.file?.filename;
 
@@ -557,9 +612,9 @@ app.post("/api/clients/:id/photos", uploadPhoto, async (req, res) => {
     await deleteUploadedFiles([filename]);
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.delete("/api/clients/:clientId/photos/:photoId", async (req, res) => {
+app.delete("/api/clients/:clientId/photos/:photoId", asyncHandler(async (req, res) => {
   const clientId = Number(req.params.clientId);
   const photoId = Number(req.params.photoId);
 
@@ -601,11 +656,11 @@ app.delete("/api/clients/:clientId/photos/:photoId", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 /* ----------------------- CLIENT NOTES ----------------------- */
 
-app.get("/api/client-notes", async (req, res) => {
+app.get("/api/client-notes", asyncHandler(async (req, res) => {
   const clientId = req.query.client_id ? Number(req.query.client_id) : null;
   const params = [];
 
@@ -638,11 +693,11 @@ app.get("/api/client-notes", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/client-notes", async (req, res) => {
+app.post("/api/client-notes", asyncHandler(async (req, res) => {
   const clientId = Number(req.body?.client_id);
-  const author = req.body?.author?.trim() || "Utilisateur";
+  const author = req.user.name;
   const content = req.body?.content?.trim();
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
@@ -667,9 +722,9 @@ app.post("/api/client-notes", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.patch("/api/client-notes/:id/complete", async (req, res) => {
+app.patch("/api/client-notes/:id/complete", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -695,9 +750,9 @@ app.patch("/api/client-notes/:id/complete", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.patch("/api/client-notes/:id/content", async (req, res) => {
+app.patch("/api/client-notes/:id/content", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const content = req.body?.content?.trim();
 
@@ -728,9 +783,9 @@ app.patch("/api/client-notes/:id/content", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.delete("/api/client-notes/:id", async (req, res) => {
+app.delete("/api/client-notes/:id", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -751,7 +806,7 @@ app.delete("/api/client-notes/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 /* ----------------------- MAINTENANCE PLANS ----------------------- */
 
@@ -878,6 +933,7 @@ async function syncMaintenanceInterventions({
     FROM interventions
     WHERE maintenance_plan_id = $1
     ORDER BY maintenance_occurrence_index NULLS LAST, scheduled_at, id
+    FOR UPDATE
     `,
     [planId]
   );
@@ -918,6 +974,8 @@ async function syncMaintenanceInterventions({
         ? null
         : getMaintenanceKitLabel(index, maintenanceKitModel, maintenanceKitStartNumber);
     const existing = existingByIndex.get(index);
+
+    if (existing?.status === "TERMINE") continue;
 
     if (existing) {
       const scheduledAt = preserveExistingDates
@@ -1025,7 +1083,8 @@ async function syncGoogleEventsForInterventions(interventionIds = []) {
         await updateGoogleEvent(
           intervention.google_event_id,
           intervention.scheduled_at,
-          intervention.duration_minutes || 60
+          intervention.duration_minutes || 60,
+          intervention
         );
       } else {
         const googleEventId = await createGoogleEvent(intervention);
@@ -1069,7 +1128,7 @@ async function resetOfferedTravelCountIfNoActiveContract(clientId, dbClient = po
   );
 }
 
-app.get("/api/clients/:id/maintenance-plans", async (req, res) => {
+app.get("/api/clients/:id/maintenance-plans", asyncHandler(async (req, res) => {
   const clientId = Number(req.params.id);
 
   if (!Number.isInteger(clientId) || clientId <= 0) {
@@ -1101,9 +1160,9 @@ app.get("/api/clients/:id/maintenance-plans", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
+app.post("/api/clients/:id/maintenance-plans", asyncHandler(async (req, res) => {
   const clientId = Number(req.params.id);
   const {
     technician_id,
@@ -1166,7 +1225,7 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     return res.status(400).json({ error: "Aucune maintenance à créer sur cette période." });
   }
 
-  const dbClient = await pool.connect();
+  let dbClient = await pool.connect();
   let interventionIds = [];
   let deletedGoogleEventIds = [];
 
@@ -1220,6 +1279,8 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
     deletedGoogleEventIds = syncResult.deletedGoogleEventIds;
 
     await dbClient.query("COMMIT");
+    dbClient.release();
+    dbClient = null;
 
     await deleteGoogleEvents(deletedGoogleEventIds);
     await syncGoogleEventsForInterventions(interventionIds);
@@ -1230,14 +1291,14 @@ app.post("/api/clients/:id/maintenance-plans", async (req, res) => {
       count: interventionIds.length
     });
   } catch (err) {
-    await dbClient.query("ROLLBACK").catch(() => {});
+    await dbClient?.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
   } finally {
-    dbClient.release();
+    dbClient?.release();
   }
-});
+}));
 
-app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => {
+app.put("/api/clients/:clientId/maintenance-plans/:planId", asyncHandler(async (req, res) => {
   const clientId = Number(req.params.clientId);
   const planId = Number(req.params.planId);
   const {
@@ -1289,7 +1350,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
   const firstMaintenanceDate = setWorkdayStart(startDate);
   const dates = buildMaintenanceDatesUntil(firstMaintenanceDate, safeFrequency, endDate);
 
-  const dbClient = await pool.connect();
+  let dbClient = await pool.connect();
   let interventionIds = [];
   let deletedGoogleEventIds = [];
 
@@ -1302,7 +1363,7 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
     );
 
     if (!plan.rows.length) {
-      await dbClient.query("ROLLBACK");
+      await dbClient?.query("ROLLBACK");
       return res.status(404).json({ error: "Contrat de maintenance introuvable." });
     }
 
@@ -1371,20 +1432,22 @@ app.put("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => 
     deletedGoogleEventIds = syncResult.deletedGoogleEventIds;
 
     await dbClient.query("COMMIT");
+    dbClient.release();
+    dbClient = null;
 
     await deleteGoogleEvents(deletedGoogleEventIds);
     await syncGoogleEventsForInterventions(interventionIds);
 
     res.json({ updated: true, intervention_ids: interventionIds, count: interventionIds.length });
   } catch (err) {
-    await dbClient.query("ROLLBACK").catch(() => {});
+    await dbClient?.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
   } finally {
-    dbClient.release();
+    dbClient?.release();
   }
-});
+}));
 
-app.delete("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) => {
+app.delete("/api/clients/:clientId/maintenance-plans/:planId", asyncHandler(async (req, res) => {
   const clientId = Number(req.params.clientId);
   const planId = Number(req.params.planId);
 
@@ -1392,7 +1455,7 @@ app.delete("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) 
     return res.status(400).json({ error: "Identifiant contrat invalide." });
   }
 
-  const dbClient = await pool.connect();
+  let dbClient = await pool.connect();
   let deletedGoogleEventIds = [];
 
   try {
@@ -1404,7 +1467,7 @@ app.delete("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) 
     );
 
     if (!plan.rows.length) {
-      await dbClient.query("ROLLBACK");
+      await dbClient?.query("ROLLBACK");
       return res.status(404).json({ error: "Contrat de maintenance introuvable." });
     }
 
@@ -1426,21 +1489,23 @@ app.delete("/api/clients/:clientId/maintenance-plans/:planId", async (req, res) 
 
     await resetOfferedTravelCount(clientId, dbClient);
     await dbClient.query("COMMIT");
+    dbClient.release();
+    dbClient = null;
 
     await deleteGoogleEvents(deletedGoogleEventIds);
 
     res.json({ deleted: true });
   } catch (err) {
-    await dbClient.query("ROLLBACK").catch(() => {});
+    await dbClient?.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
   } finally {
-    dbClient.release();
+    dbClient?.release();
   }
-});
+}));
 
 /* ----------------------- TECHNICIANS ----------------------- */
 
-app.get("/api/technicians", async (req, res) => {
+app.get("/api/technicians", asyncHandler(async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT id, name, phone, email FROM technicians ORDER BY name"
@@ -1449,9 +1514,9 @@ app.get("/api/technicians", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/technicians", async (req, res) => {
+app.post("/api/technicians", asyncHandler(async (req, res) => {
   const { name, phone, email, password } = req.body;
   const safeName = name?.trim();
   const safeEmail = email?.trim();
@@ -1478,9 +1543,9 @@ app.post("/api/technicians", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.put("/api/technicians/:id", async (req, res) => {
+app.put("/api/technicians/:id", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const { name, phone, email } = req.body;
   const safeName = name?.trim();
@@ -1515,9 +1580,32 @@ app.put("/api/technicians/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.put("/api/technicians/:id/password", async (req, res) => {
+app.delete("/api/technicians/:id", asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant technicien invalide." });
+  }
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM technicians WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Technicien introuvable." });
+    }
+
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}));
+
+app.put("/api/technicians/:id/password", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const password = req.body?.password;
 
@@ -1553,33 +1641,33 @@ app.put("/api/technicians/:id/password", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/auth/admin/login", async (req, res) => {
+app.post("/api/auth/admin/login", asyncHandler(async (req, res) => {
   const password = req.body?.password;
 
-  if (!password) {
+  if (typeof password !== "string" || !password) {
     return res.status(400).json({ error: "Mot de passe admin requis." });
+  }
+
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({ error: "La connexion admin doit etre configuree sur le serveur." });
   }
 
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Mot de passe admin invalide." });
   }
 
-  res.json({
-    user: {
-      id: "admin",
-      name: "Admin",
-      role: "admin"
-    }
-  });
-});
+  const user = { id: "admin", name: "Admin", role: "admin" };
+  await issueSession(req, res, user, ADMIN_PASSWORD);
+  res.json({ user });
+}));
 
-app.post("/api/auth/technician/login", async (req, res) => {
-  const identifier = req.body?.identifier?.trim();
+app.post("/api/auth/technician/login", asyncHandler(async (req, res) => {
+  const identifier = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
   const password = req.body?.password;
 
-  if (!identifier || !password) {
+  if (!identifier || typeof password !== "string" || !password) {
     return res
       .status(400)
       .json({ error: "Identifiant et mot de passe requis." });
@@ -1618,6 +1706,7 @@ app.post("/api/auth/technician/login", async (req, res) => {
           `,
           [salt, hash, technician.id]
         );
+        technician.password_hash = hash;
       }
     } else {
       valid = verifyPassword(
@@ -1631,22 +1720,22 @@ app.post("/api/auth/technician/login", async (req, res) => {
       return res.status(401).json({ error: "Identifiants invalides." });
     }
 
-    res.json({
-      user: {
-        id: technician.id,
-        name: technician.name,
-        email: technician.email,
-        role: "technician"
-      }
-    });
+    const user = {
+      id: technician.id,
+      name: technician.name,
+      email: technician.email,
+      role: "technician"
+    };
+    await issueSession(req, res, user, technician.password_hash);
+    res.json({ user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 /* ----------------------- INTERVENTIONS ----------------------- */
 
-app.get("/api/interventions", async (req, res) => {
+app.get("/api/interventions", asyncHandler(async (req, res) => {
   const { start, end, client_id, maintenance_only, year } = req.query;
 
   let sql = `
@@ -1688,7 +1777,7 @@ ${INTERVENTION_TECHNICIAN_SELECT}
     );
   }
 
-  const visibilityFilter = getInterventionVisibilityFilter(req.query, params);
+  const visibilityFilter = getInterventionVisibilityFilter(req.user, params);
   if (visibilityFilter) {
     where.push(visibilityFilter);
   }
@@ -1705,15 +1794,15 @@ ${INTERVENTION_TECHNICIAN_SELECT}
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 
-app.get("/api/interventions/:id", async (req, res) => {
+app.get("/api/interventions/:id", asyncHandler(async (req, res) => {
   const id = req.params.id;
 
   try {
     const params = [id];
-    const visibilityFilter = getInterventionVisibilityFilter(req.query, params);
+    const visibilityFilter = getInterventionVisibilityFilter(req.user, params);
     const inter = await pool.query(
       `
       SELECT 
@@ -1766,9 +1855,9 @@ ${INTERVENTION_TECHNICIAN_SELECT}
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/interventions", async (req, res) => {
+app.post("/api/interventions", asyncHandler(async (req, res) => {
   const {
   client_id,
   technician_id,
@@ -1788,8 +1877,11 @@ app.post("/api/interventions", async (req, res) => {
       ? safePrivateToTechnicianId
       : null;
 
+  if (privateToTechnicianId && req.user.role !== "admin" && privateToTechnicianId !== req.user.id) {
+    return res.status(403).json({ error: "Vous ne pouvez creer une intervention privee que pour vous-meme." });
+  }
 
-  const dbClient = await pool.connect();
+  let dbClient = await pool.connect();
   try {
     await dbClient.query("BEGIN");
 
@@ -1815,52 +1907,23 @@ app.post("/api/interventions", async (req, res) => {
     const newId = result.rows[0].id;
     await syncInterventionTechnicians(dbClient, newId, interventionTechnicianIds);
     await dbClient.query("COMMIT");
+    dbClient.release();
+    dbClient = null;
 
-    // 2) on récupère l'intervention + client pour créer l'event Google
-    const detail = await pool.query(
-      `
-        SELECT i.*,
-               to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
-               c.name AS client_name
-        FROM interventions i
-        LEFT JOIN clients c ON i.client_id = c.id
-        WHERE i.id = $1
-      `,
-      [newId]
-    );
-
-    const intervention = detail.rows[0];
-
-    // 3) on crée l'event Google
-    let googleEventId = null;
-    try {
-      googleEventId = await createGoogleEvent(intervention);
-    } catch (e) {
-      console.error("Erreur création event Google:", e.message);
-    }
-
-    // 4) on stocke l'id de l'event Google si dispo
-    if (googleEventId) {
-      await pool.query(
-        `UPDATE interventions
-         SET google_event_id = $1
-         WHERE id = $2`,
-        [googleEventId, newId]
-      );
-    }
+    await attachGoogleEvent(newId).catch((err) => console.error("Erreur synchro Google:", err.message));
 
     res.status(201).json({ id: newId });
 
   } catch (err) {
-    await dbClient.query("ROLLBACK").catch(() => {});
+    await dbClient?.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
   } finally {
-    dbClient.release();
+    dbClient?.release();
   }
-});
+}));
 
 
-app.put("/api/interventions/:id", async (req, res) => {
+app.put("/api/interventions/:id", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const {
     client_id,
@@ -1879,7 +1942,7 @@ app.put("/api/interventions/:id", async (req, res) => {
     return res.status(400).json({ error: "Identifiant intervention invalide." });
   }
 
-  const dbClient = await pool.connect();
+  let dbClient = await pool.connect();
   try {
     await dbClient.query("BEGIN");
 
@@ -1890,11 +1953,9 @@ app.put("/api/interventions/:id", async (req, res) => {
     );
 
     if (!before.rows.length) {
-      await dbClient.query("ROLLBACK");
+      await dbClient?.query("ROLLBACK");
       return res.status(404).json({ error: "Intervention introuvable." });
     }
-
-    const googleEventId = before.rows[0]?.google_event_id || null;
 
     // mise à jour en base
     await dbClient.query(
@@ -1920,24 +1981,26 @@ app.put("/api/interventions/:id", async (req, res) => {
     );
     await syncInterventionTechnicians(dbClient, id, interventionTechnicianIds);
     await dbClient.query("COMMIT");
+    dbClient.release();
+    dbClient = null;
 
     // mise à jour Google
     try {
-      await updateGoogleEvent(googleEventId, scheduled_at, duration_minutes || 60);
+      await attachGoogleEvent(id);
     } catch (e) {
       console.error("Erreur maj event Google:", e.message);
     }
 
     res.json({ updated: true });
   } catch (err) {
-    await dbClient.query("ROLLBACK").catch(() => {});
+    await dbClient?.query("ROLLBACK").catch(() => {});
     res.status(500).json({ error: err.message });
   } finally {
-    dbClient.release();
+    dbClient?.release();
   }
-});
+}));
 
-app.delete("/api/interventions/:id", async (req, res) => {
+app.delete("/api/interventions/:id", asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -1959,14 +2022,16 @@ app.delete("/api/interventions/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 
 /* ----------------------- NOTES & PHOTOS ----------------------- */
 
-app.post("/api/interventions/:id/notes", async (req, res) => {
+app.post("/api/interventions/:id/notes", asyncHandler(async (req, res) => {
   const intervention_id = req.params.id;
-  const { author, content } = req.body;
+  const author = req.user.name;
+  const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
+  if (!content) return res.status(400).json({ error: "Le contenu de la note est requis." });
 
   try {
     const result = await pool.query(
@@ -1979,9 +2044,9 @@ app.post("/api/interventions/:id/notes", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.post("/api/interventions/:id/photos", uploadPhoto, async (req, res) => {
+app.post("/api/interventions/:id/photos", uploadPhoto, asyncHandler(async (req, res) => {
   const intervention_id = Number(req.params.id);
   const filename = req.file?.filename;
 
@@ -2010,9 +2075,9 @@ app.post("/api/interventions/:id/photos", uploadPhoto, async (req, res) => {
     await deleteUploadedFiles([filename]);
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-app.delete("/api/interventions/:interventionId/photos/:photoId", async (req, res) => {
+app.delete("/api/interventions/:interventionId/photos/:photoId", asyncHandler(async (req, res) => {
   const interventionId = Number(req.params.interventionId);
   const photoId = Number(req.params.photoId);
 
@@ -2054,7 +2119,7 @@ app.delete("/api/interventions/:interventionId/photos/:photoId", async (req, res
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 /* ----------------------- ROOT ----------------------- */
 
@@ -2064,6 +2129,18 @@ app.get("/", (req, res) => {
 
 /* ----------------------- START SERVER ----------------------- */
 
-app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
+app.use((err, req, res, next) => {
+  console.error("Erreur API:", err.message);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({ error: "Une erreur est survenue. Veuillez reessayer." });
+});
+
+dbReady.then(() => {
+  app.listen(PORT, process.env.HOST || "0.0.0.0", () => {
+    console.log(`Backend running on port ${PORT}`);
+  });
+}).catch(async (err) => {
+  console.error("Initialisation PostgreSQL impossible:", err.message);
+  await pool.end();
+  process.exitCode = 1;
 });

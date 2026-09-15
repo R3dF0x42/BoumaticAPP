@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch as fetch } from "../config/api.js";
 import { formatMaintenanceKitLabel } from "../utils/maintenance.js";
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => ({

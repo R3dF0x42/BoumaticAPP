@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { apiFetch as fetch } from "../config/api.js";
 
 export default function TechnicianLogin({ apiUrl, onLogin }) {
   const [mode, setMode] = useState("technician");
@@ -7,14 +8,6 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
   const [adminPassword, setAdminPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [bootstrapMode, setBootstrapMode] = useState(false);
-  const [checkingBootstrap, setCheckingBootstrap] = useState(true);
-  const [createForm, setCreateForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    password: ""
-  });
 
   const mapFetchError = (err, fallbackMessage) => {
     const msg = String(err?.message || "");
@@ -23,22 +16,6 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
     }
     return fallbackMessage;
   };
-
-  useEffect(() => {
-    const checkBootstrap = async () => {
-      try {
-        const res = await fetch(`${apiUrl}/technicians`);
-        const techs = await res.json().catch(() => []);
-        setBootstrapMode(Array.isArray(techs) && techs.length === 0);
-      } catch {
-        setBootstrapMode(false);
-      } finally {
-        setCheckingBootstrap(false);
-      }
-    };
-
-    checkBootstrap();
-  }, [apiUrl]);
 
   const loginTechnician = async (loginIdentifier, loginPassword) => {
     const res = await fetch(`${apiUrl}/auth/technician/login`, {
@@ -103,49 +80,6 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
     }
   };
 
-  const submitCreate = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await fetch(`${apiUrl}/technicians`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: createForm.name,
-          phone: createForm.phone,
-          email: createForm.email,
-          password: createForm.password
-        })
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data.error || "Creation du technicien impossible.");
-      }
-
-      await loginTechnician(createForm.name, createForm.password);
-    } catch (err) {
-      setError(mapFetchError(err, err.message || "Creation du technicien impossible."));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const setCreateValue = (field, value) => {
-    setCreateForm((f) => ({ ...f, [field]: value }));
-  };
-
-  if (checkingBootstrap) {
-    return (
-      <main className="login-shell">
-        <section className="login-card">
-          <p className="muted">Chargement...</p>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <main className="login-shell">
@@ -207,58 +141,6 @@ export default function TechnicianLogin({ apiUrl, onLogin }) {
                 disabled={loading}
               >
                 {loading ? "Connexion..." : "Se connecter (admin)"}
-              </button>
-            </form>
-          </>
-        ) : bootstrapMode ? (
-          <>
-            <h1>Premier technicien</h1>
-            <p className="muted">Aucun compte detecte. Cree le premier acces.</p>
-
-            <form className="login-form" onSubmit={submitCreate}>
-              <label htmlFor="bootstrap-name">Nom</label>
-              <input
-                id="bootstrap-name"
-                type="text"
-                value={createForm.name}
-                onChange={(e) => setCreateValue("name", e.target.value)}
-                required
-              />
-
-              <label htmlFor="bootstrap-phone">Telephone</label>
-              <input
-                id="bootstrap-phone"
-                type="text"
-                value={createForm.phone}
-                onChange={(e) => setCreateValue("phone", e.target.value)}
-              />
-
-              <label htmlFor="bootstrap-email">Email (optionnel)</label>
-              <input
-                id="bootstrap-email"
-                type="email"
-                value={createForm.email}
-                onChange={(e) => setCreateValue("email", e.target.value)}
-              />
-
-              <label htmlFor="bootstrap-password">Mot de passe</label>
-              <input
-                id="bootstrap-password"
-                type="password"
-                value={createForm.password}
-                onChange={(e) => setCreateValue("password", e.target.value)}
-                minLength={4}
-                required
-              />
-
-              {error && <p className="login-error">{error}</p>}
-
-              <button
-                className="btn new-intervention"
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? "Creation..." : "Creer et se connecter"}
               </button>
             </form>
           </>

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import pool from "../db.js";
+import pool, { dbReady } from "../db.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,6 +124,7 @@ function buildHistoryDescription(item) {
 }
 
 async function main() {
+  await dbReady;
   const data = JSON.parse(fs.readFileSync(DATA_PATH, "utf8"));
   let clientsImported = 0;
   let historyImported = 0;

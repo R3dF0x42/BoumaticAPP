@@ -1,9 +1,9 @@
-import React, { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Sidebar from "./components/Sidebar.jsx";
 import DetailPanel from "./components/DetailPanel.jsx";
 import NewIntervention from "./components/NewIntervention.jsx";
 import TechnicianLogin from "./components/TechnicianLogin.jsx";
-import { API_URL } from "./config/api.js";
+import { apiFetch as fetch, API_URL } from "./config/api.js";
 import { preparePhotoForUpload } from "./utils/images.js";
 
 const GoogleCalendarFull = lazy(() => import("./components/GoogleCalendarFull.jsx"));
@@ -70,6 +70,8 @@ export default function App() {
   const [interventions, setInterventions] = useState([]);
   const [selectedId, setSelectedId] = useState(initialNavigation.interventionId);
   const [selectedDetails, setSelectedDetails] = useState(null);
+  const selectedIdRef = useRef(initialNavigation.interventionId);
+  const pendingUpdates = useRef(new Set());
   const [showNewIntervention, setShowNewIntervention] = useState(false);
   const [newInterventionDate, setNewInterventionDate] = useState(null);
   const [currentPage, setCurrentPage] = useState(initialNavigation.page);
@@ -81,6 +83,9 @@ export default function App() {
     Boolean(initialNavigation.interventionId && typeof window !== "undefined" && window.innerWidth < 900)
   );
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [sessionError, setSessionError] = useState("");
+  const [sessionCheckAttempt, setSessionCheckAttempt] = useState(0);
   const [loggedUser, setLoggedUser] = useState(() => {
     if (typeof window === "undefined") return null;
     const raw = window.localStorage.getItem(SESSION_KEY);
@@ -100,6 +105,10 @@ export default function App() {
     const nextInterventionId = navigation.interventionId;
 
     setCurrentPage(nextPage);
+    if (selectedIdRef.current !== nextInterventionId) {
+      setSelectedDetails(null);
+    }
+    selectedIdRef.current = nextInterventionId;
     setSelectedId(nextInterventionId);
     setShowDetailModal(Boolean(nextInterventionId && window.innerWidth < 900));
     if (!nextInterventionId) {
@@ -164,8 +173,9 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedId) return;
+    const controller = new AbortController();
 
-    fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`)
+    fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`, { signal: controller.signal })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -173,11 +183,18 @@ export default function App() {
         }
         return data;
       })
-      .then(setSelectedDetails)
+      .then((details) => {
+        if (!controller.signal.aborted && selectedIdRef.current === selectedId) {
+          setSelectedDetails(details);
+        }
+      })
       .catch((err) => {
+        if (controller.signal.aborted || selectedIdRef.current !== selectedId) return;
         console.error(err);
         setSelectedDetails(null);
       });
+
+    return () => controller.abort();
   }, [selectedId, viewerQuery]);
 
   useEffect(() => {
@@ -191,8 +208,17 @@ export default function App() {
     window.localStorage.setItem(PAGE_KEY, currentPage);
   }, [currentPage]);
 
+  const refreshInterventionDetails = async (interventionId) => {
+    const res = await fetch(`${API_URL}/interventions/${interventionId}${viewerQuery}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Erreur rechargement intervention");
+    if (selectedIdRef.current === interventionId) setSelectedDetails(data);
+  };
+
   const handleUpdateIntervention = async (updates) => {
-    if (!selectedId || !selectedDetails?.intervention) return;
+    if (!selectedId || selectedDetails?.intervention?.id !== selectedId) return false;
+    if (pendingUpdates.current.has(selectedId)) return false;
+    pendingUpdates.current.add(selectedId);
     const { intervention } = selectedDetails;
     setUpdatingStatus(true);
     try {
@@ -221,23 +247,21 @@ export default function App() {
         throw new Error(data.error || "Erreur mise a jour intervention");
       }
 
-      const refreshedRes = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`);
-      const refreshed = await refreshedRes.json().catch(() => ({}));
-      if (!refreshedRes.ok) {
-        throw new Error(refreshed.error || "Erreur rechargement intervention");
-      }
-      setSelectedDetails(refreshed);
+      await refreshInterventionDetails(selectedId).catch(console.error);
       window.dispatchEvent(new Event("refreshCalendar"));
+      return true;
     } catch (e) {
       console.error("Erreur mise a jour statut :", e);
       alert("Impossible de mettre a jour le statut pour le moment.");
+      return false;
     } finally {
+      pendingUpdates.current.delete(selectedId);
       setUpdatingStatus(false);
     }
   };
 
   const handleAddNote = async (content) => {
-    if (!selectedId || !content?.trim()) return;
+    if (!selectedId || selectedDetails?.intervention?.id !== selectedId || !content?.trim()) return false;
     try {
       const res = await fetch(`${API_URL}/interventions/${selectedId}/notes`, {
         method: "POST",
@@ -252,13 +276,12 @@ export default function App() {
         throw new Error("Erreur ajout note");
       }
 
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
-        (r) => r.json()
-      );
-      setSelectedDetails(refreshed);
+      await refreshInterventionDetails(selectedId).catch(console.error);
+      return true;
     } catch (e) {
       console.error("Erreur ajout note :", e);
       alert("Impossible d'ajouter la note pour le moment.");
+      return false;
     }
   };
 
@@ -280,10 +303,7 @@ export default function App() {
         throw new Error(data.error || "Erreur upload photo");
       }
 
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
-        (r) => r.json()
-      );
-      setSelectedDetails(refreshed);
+      await refreshInterventionDetails(selectedId).catch(console.error);
     } catch (e) {
       console.error("Erreur upload photo intervention :", e);
       alert(`Impossible d'ajouter la photo pour le moment.\n${e.message || ""}`);
@@ -308,10 +328,7 @@ export default function App() {
         throw new Error("Erreur suppression photo");
       }
 
-      const refreshed = await fetch(`${API_URL}/interventions/${selectedId}${viewerQuery}`).then(
-        (r) => r.json()
-      );
-      setSelectedDetails(refreshed);
+      await refreshInterventionDetails(selectedId).catch(console.error);
     } catch (e) {
       console.error("Erreur suppression photo intervention :", e);
       alert("Impossible de supprimer la photo pour le moment.");
@@ -333,10 +350,9 @@ export default function App() {
         throw new Error("Erreur suppression intervention");
       }
 
-      setSelectedId(null);
-      setSelectedDetails(null);
-      setShowDetailModal(false);
-      navigateTo(currentPage, { replace: true });
+      if (selectedIdRef.current === selectedId) {
+        navigateTo(currentPage, { replace: true });
+      }
       window.dispatchEvent(new Event("refreshCalendar"));
     } catch (e) {
       console.error("Erreur suppression intervention :", e);
@@ -379,7 +395,8 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const clearSession = useCallback(() => {
+    selectedIdRef.current = null;
     setLoggedUser(null);
     setSelectedId(null);
     setSelectedDetails(null);
@@ -390,7 +407,69 @@ export default function App() {
       window.localStorage.removeItem(SESSION_KEY);
       window.localStorage.removeItem(PAGE_KEY);
     }
+  }, [navigateTo]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_URL}/auth/session`, { signal: controller.signal })
+      .then(async (res) => {
+        if (controller.signal.aborted) return;
+        if (res.status === 401) {
+          clearSession();
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Connexion au serveur impossible.");
+        if (controller.signal.aborted) return;
+        setLoggedUser(data.user);
+        window.localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setSessionError(err.message || "Connexion au serveur impossible.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCheckingSession(false);
+      });
+    return () => controller.abort();
+  }, [clearSession, sessionCheckAttempt]);
+
+  useEffect(() => {
+    window.addEventListener("sessionExpired", clearSession);
+    return () => window.removeEventListener("sessionExpired", clearSession);
+  }, [clearSession]);
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/logout`, { method: "POST" });
+      if (!res.ok && res.status !== 401) throw new Error("Deconnexion impossible.");
+      clearSession();
+    } catch {
+      alert("Deconnexion impossible. Verifiez la connexion et reessayez.");
+    }
   };
+
+  if (checkingSession || sessionError) {
+    return (
+      <main className="login-shell">
+        <section className="login-card">
+          <p className={sessionError ? "login-error" : "muted"}>
+            {sessionError ? "Connexion au serveur impossible. Verifiez votre connexion." : "Chargement..."}
+          </p>
+          {sessionError && (
+            <button className="btn" type="button" onClick={() => {
+              setSessionError("");
+              setCheckingSession(true);
+              setSessionCheckAttempt((attempt) => attempt + 1);
+            }}>
+              Reessayer
+            </button>
+          )}
+        </section>
+      </main>
+    );
+  }
 
   if (!loggedUser) {
     return <TechnicianLogin apiUrl={API_URL} onLogin={handleLogin} />;
@@ -497,6 +576,7 @@ export default function App() {
                 currentPage !== "notes" &&
                 currentPage !== "maintenance" && (
                 <DetailPanel
+                  key={selectedDetails?.intervention?.id || "empty"}
                   apiUrl={API_URL}
                   data={selectedDetails}
                   onAddNote={handleAddNote}
@@ -572,7 +652,8 @@ export default function App() {
                 X
               </button>
             </div>
-            <DetailPanel
+          <DetailPanel
+            key={selectedDetails?.intervention?.id || "empty"}
               apiUrl={API_URL}
               data={selectedDetails}
               onAddNote={handleAddNote}

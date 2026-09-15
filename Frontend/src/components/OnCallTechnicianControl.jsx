@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { apiFetch as fetch } from "../config/api.js";
 
 const FALLBACK_OPTIONS = ["Corentin", "Adrien", "Benjamin", "Alexandre"];
 

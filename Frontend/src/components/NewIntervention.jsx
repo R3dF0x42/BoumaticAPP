@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { API_URL } from "../config/api.js";
+import React, { useState, useEffect, useRef } from "react";
+import { apiFetch as fetch, API_URL } from "../config/api.js";
 import CalendarDatePicker from "./CalendarDatePicker.jsx";
 import ClientSearchSelect from "./ClientSearchSelect.jsx";
 
@@ -74,6 +74,9 @@ export default function NewIntervention({
 }) {
   const [clients, setClients] = useState([]);
   const [techs, setTechs] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const savingRef = useRef(false);
   const canCreatePrivateIntervention = loggedUser?.role === "technician" && loggedUser?.id;
   const defaultTechnicianId = canCreatePrivateIntervention ? String(loggedUser.id) : "";
   const initialDate = getDefaultDate(defaultDate);
@@ -92,13 +95,25 @@ export default function NewIntervention({
   });
 
   useEffect(() => {
-    fetch(API + "/clients")
-      .then((r) => r.json())
-      .then(setClients);
-    fetch(API + "/technicians")
-      .then((r) => r.json())
-      .then(setTechs);
+    const controller = new AbortController();
+    const loadList = async (resource, setList) => {
+      try {
+        const res = await fetch(`${API}/${resource}`, { signal: controller.signal });
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data)) throw new Error("Chargement impossible.");
+        if (!controller.signal.aborted) setList(data);
+      } catch {
+        if (!controller.signal.aborted) setError("Impossible de charger les clients ou les techniciens. Verifiez la connexion.");
+      }
+    };
+    loadList("clients", setClients);
+    loadList("technicians", setTechs);
+    return () => controller.abort();
   }, []);
+
+  const close = () => {
+    if (!savingRef.current) onClose();
+  };
 
   const setValue = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -126,6 +141,7 @@ export default function NewIntervention({
 
   const submit = async (e) => {
     e.preventDefault();
+    if (savingRef.current) return;
     const mode = TIME_MODES[form.time_mode] || TIME_MODES.custom;
     const startTime = form.time_mode === "custom" ? form.scheduled_time : mode.start;
     const duration =
@@ -159,23 +175,29 @@ export default function NewIntervention({
         canCreatePrivateIntervention && form.private_to_me ? Number(loggedUser.id) : null
     };
 
-    const res = await fetch(API + "/interventions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (res.ok) {
+    savingRef.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(API + "/interventions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Impossible de creer l'intervention.");
       onCreated();
       onClose();
-    } else {
-      console.error("Erreur API :", await res.text());
-      alert("Erreur lors de la creation de l'intervention.");
+    } catch (err) {
+      setError(err.message || "Creation impossible. Verifiez la connexion et reessayez.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
   return (
-    <div className="modal" onClick={onClose}>
+    <div className="modal" onClick={close}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-block">
@@ -187,7 +209,8 @@ export default function NewIntervention({
           <button
             className="modal-close modal-close--inline"
             type="button"
-            onClick={onClose}
+            onClick={close}
+            disabled={saving}
             aria-label="Fermer"
           >
             X
@@ -345,13 +368,14 @@ export default function NewIntervention({
           )}
 
           <div className="modal-actions">
-            <button className="btn new-intervention" type="submit">
-              Creer
+            <button className="btn new-intervention" type="submit" disabled={saving}>
+              {saving ? "Creation..." : "Creer"}
             </button>
-            <button className="btn small ghost" onClick={onClose} type="button">
+            <button className="btn small ghost" onClick={close} type="button" disabled={saving}>
               Annuler
             </button>
           </div>
+          {error && <p className="login-error" role="alert">{error}</p>}
         </form>
       </div>
     </div>

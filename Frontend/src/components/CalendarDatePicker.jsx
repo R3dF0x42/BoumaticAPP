@@ -82,12 +82,6 @@ export default function CalendarDatePicker({
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(selectedDate || new Date()));
 
   useEffect(() => {
-    if (selectedDate) {
-      setVisibleMonth(startOfMonth(selectedDate));
-    }
-  }, [value]);
-
-  useEffect(() => {
     if (!isOpen) return undefined;
 
     const handlePointerDown = (event) => {
@@ -122,21 +116,26 @@ export default function CalendarDatePicker({
     setIsOpen(false);
   };
 
+  const openCalendar = () => {
+    if (!isOpen) setVisibleMonth(startOfMonth(selectedDate || new Date()));
+    setIsOpen(true);
+  };
+
   return (
     <div className="calendar-date-picker" ref={rootRef}>
       <div className="calendar-date-picker__control">
         <input
           type="text"
           value={formatDisplayDate(value)}
-          onClick={() => setIsOpen(true)}
-          onFocus={() => setIsOpen(true)}
+          onClick={openCalendar}
+          onFocus={openCalendar}
           placeholder={placeholder}
           required={required}
           readOnly
         />
         <button
           type="button"
-          onClick={() => setIsOpen((open) => !open)}
+          onClick={() => isOpen ? setIsOpen(false) : openCalendar()}
           aria-expanded={isOpen}
           aria-label="Ouvrir le calendrier"
         >

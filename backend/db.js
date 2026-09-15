@@ -69,6 +69,18 @@ async function initDB() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        token_hash TEXT PRIMARY KEY,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'technician')),
+        technician_id INTEGER REFERENCES technicians(id) ON DELETE CASCADE,
+        credential_hash TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        CHECK ((role = 'admin' AND technician_id IS NULL) OR (role = 'technician' AND technician_id IS NOT NULL))
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
+    `);
+
+    await client.query(`
       ALTER TABLE technicians
         ADD COLUMN IF NOT EXISTS password_salt TEXT,
         ADD COLUMN IF NOT EXISTS password_hash TEXT;
@@ -352,6 +364,6 @@ async function initDB() {
   }
 }
 
-initDB().catch(console.error);
+export const dbReady = initDB();
 
 export default pool;

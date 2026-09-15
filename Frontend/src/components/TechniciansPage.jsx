@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { apiFetch as fetch } from "../config/api.js";
 
 export default function TechniciansPage({ apiUrl, canManage = false }) {
   const [techs, setTechs] = useState([]);
@@ -20,10 +21,22 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
     email: ""
   });
   const [editLoading, setEditLoading] = useState(false);
+  const [deletingTechId, setDeletingTechId] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const createPending = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch(`${apiUrl}/technicians`);
-    setTechs(await res.json());
+    try {
+      const res = await fetch(`${apiUrl}/technicians`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(data)) {
+        setError(data.error || "Impossible de charger les techniciens.");
+        return;
+      }
+      setTechs(data);
+    } catch {
+      setError("Impossible de charger les techniciens. Verifiez la connexion.");
+    }
   }, [apiUrl]);
 
   useEffect(() => {
@@ -36,24 +49,32 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!canManage || createPending.current) return;
+    createPending.current = true;
+    setCreating(true);
     setError("");
     setInfo("");
 
-    const res = await fetch(`${apiUrl}/technicians`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || "Impossible de creer le technicien.");
-      return;
+    try {
+      const res = await fetch(`${apiUrl}/technicians`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Impossible de creer le technicien.");
+        return;
+      }
+      setForm({ name: "", phone: "", email: "", password: "" });
+      setInfo("Technicien cree.");
+      await load();
+    } catch {
+      setError("Impossible de creer le technicien. Verifiez la connexion.");
+    } finally {
+      createPending.current = false;
+      setCreating(false);
     }
-
-    setForm({ name: "", phone: "", email: "", password: "" });
-    setInfo("Technicien cree.");
-    load();
   };
 
   const startReset = (techId) => {
@@ -94,6 +115,8 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
 
       setInfo("Mot de passe reinitialise.");
       cancelReset();
+    } catch {
+      setError("Impossible de reinitialiser le mot de passe. Verifiez la connexion.");
     } finally {
       setResetLoading(false);
     }
@@ -146,8 +169,45 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
       setInfo("Technicien mis a jour.");
       cancelEdit();
       load();
+    } catch {
+      setError("Impossible de modifier le technicien. Verifiez la connexion.");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const deleteTechnician = async (tech) => {
+    if (!canManage || deletingTechId !== null || editLoading || resetLoading) return;
+
+    const confirmed = window.confirm(
+      `Supprimer definitivement le technicien "${tech.name}" ? Il ne pourra plus se connecter. Ses interventions et contrats seront conserves, mais il n'y sera plus affecte.`
+    );
+    if (!confirmed) return;
+
+    setError("");
+    setInfo("");
+    setDeletingTechId(tech.id);
+
+    try {
+      const res = await fetch(`${apiUrl}/technicians/${tech.id}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Impossible de supprimer le technicien.");
+        return;
+      }
+
+      setTechs((currentTechs) => currentTechs.filter((technician) => technician.id !== tech.id));
+      if (editForId === tech.id) cancelEdit();
+      if (resetForId === tech.id) cancelReset();
+      setInfo("Technicien supprime.");
+      window.dispatchEvent(new Event("refreshCalendar"));
+    } catch {
+      setError("Impossible de supprimer le technicien.");
+    } finally {
+      setDeletingTechId(null);
     }
   };
 
@@ -191,8 +251,8 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
               {error && <p className="login-error">{error}</p>}
               {info && <p className="ok-message">{info}</p>}
 
-              <button className="btn small" type="submit">
-                Enregistrer
+              <button className="btn small" type="submit" disabled={creating}>
+                {creating ? "Enregistrement..." : "Enregistrer"}
               </button>
             </form>
           </div>
@@ -224,6 +284,7 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
                           className="btn small ghost"
                           type="button"
                           onClick={() => startEdit(t)}
+                          disabled={deletingTechId !== null}
                         >
                           Modifier
                         </button>
@@ -231,8 +292,17 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
                           className="btn small ghost"
                           type="button"
                           onClick={() => startReset(t.id)}
+                          disabled={deletingTechId !== null}
                         >
                           Reinitialiser MDP
+                        </button>
+                        <button
+                          className="btn small danger"
+                          type="button"
+                          onClick={() => deleteTechnician(t)}
+                          disabled={deletingTechId !== null || editLoading || resetLoading}
+                        >
+                          {deletingTechId === t.id ? "Suppression..." : "Supprimer"}
                         </button>
                       </div>
                     )}
@@ -269,7 +339,7 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
                       className="btn small"
                       type="button"
                       onClick={() => submitEdit(t.id)}
-                      disabled={editLoading}
+                      disabled={editLoading || deletingTechId !== null}
                     >
                       {editLoading ? "En cours..." : "Sauvegarder"}
                     </button>
@@ -297,7 +367,7 @@ export default function TechniciansPage({ apiUrl, canManage = false }) {
                       className="btn small"
                       type="button"
                       onClick={() => submitReset(t.id)}
-                      disabled={resetLoading}
+                      disabled={resetLoading || deletingTechId !== null}
                     >
                       {resetLoading ? "En cours..." : "Valider"}
                     </button>

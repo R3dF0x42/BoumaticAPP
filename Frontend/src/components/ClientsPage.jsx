@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { apiFetch as fetch } from "../config/api.js";
 import MapAppChooserModal from "./MapAppChooserModal.jsx";
 import PhotoLightbox from "./PhotoLightbox.jsx";
 import { buildMapAppLinks, isMobileDevice } from "../utils/maps.js";

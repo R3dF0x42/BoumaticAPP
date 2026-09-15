@@ -3,14 +3,19 @@ import { google } from "googleapis";
 const GOOGLE_TIME_ZONE = "Europe/Paris";
 
 function getAuth() {
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT) {
+    throw new Error("La synchronisation Google n'est pas configuree.");
+  }
   const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+  if (!creds.client_email || !creds.private_key) {
+    throw new Error("La configuration du compte Google est incomplete.");
+  }
 
-  return new google.auth.JWT(
-    creds.client_email,
-    null,
-    creds.private_key,
-    ["https://www.googleapis.com/auth/calendar"]
-  );
+  return new google.auth.JWT({
+    email: creds.client_email,
+    key: creds.private_key,
+    scopes: ["https://www.googleapis.com/auth/calendar"]
+  });
 }
 
 function parseLocalDateTimeParts(value) {
@@ -77,6 +82,7 @@ function addMinutesLocal(value, minutes) {
 }
 
 export async function createGoogleEvent(intervention) {
+  if (!intervention.scheduled_at || !process.env.GOOGLE_SERVICE_ACCOUNT) return null;
   const auth = getAuth();
   const calendar = google.calendar({ version: "v3", auth });
 
@@ -100,8 +106,8 @@ export async function createGoogleEvent(intervention) {
   return res.data.id; // google_event_id
 }
 
-export async function updateGoogleEvent(googleEventId, newDateTime, durationMinutes = 60) {
-  if (!googleEventId) return;
+export async function updateGoogleEvent(googleEventId, newDateTime, durationMinutes = 60, intervention = null) {
+  if (!googleEventId || !newDateTime || !process.env.GOOGLE_SERVICE_ACCOUNT) return;
 
   const auth = getAuth();
   const calendar = google.calendar({ version: "v3", auth });
@@ -114,6 +120,10 @@ export async function updateGoogleEvent(googleEventId, newDateTime, durationMinu
     calendarId: process.env.GOOGLE_CALENDAR_ID || "primary",
     eventId: googleEventId,
     requestBody: {
+      ...(intervention ? {
+        summary: `Intervention - ${intervention.client_name || "Client"}`,
+        description: intervention.description || ""
+      } : {}),
       start: { dateTime: start, timeZone: GOOGLE_TIME_ZONE },
       end: { dateTime: end, timeZone: GOOGLE_TIME_ZONE }
     }
