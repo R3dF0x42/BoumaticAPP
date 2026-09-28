@@ -249,6 +249,7 @@ export default function GoogleCalendarFull({
               technician_names: inter.technician_names,
               description: inter.description,
               status: inter.status,
+              invoiced_at: inter.invoiced_at,
               priority: inter.priority,
               technician_id: inter.technician_id,
               technician_ids: inter.technician_ids,
@@ -353,10 +354,11 @@ export default function GoogleCalendarFull({
   const visibleDayEvents = useMemo(() => {
     if (mobileFilter === "all") return selectedDayEvents;
     return selectedDayEvents.filter((event) => {
-      const status = String(event.extendedProps.status || "").toLowerCase();
+      const status = normalizeText(event.extendedProps.status);
       const priority = String(event.extendedProps.priority || "").toLowerCase();
       if (mobileFilter === "urgent") return priority.includes("urgent");
       if (mobileFilter === "done") return status.includes("termine");
+      if (mobileFilter === "billing") return status.includes("termine") && !event.extendedProps.invoiced_at;
       if (mobileFilter === "open") return !status.includes("termine");
       return true;
     });
@@ -491,7 +493,8 @@ export default function GoogleCalendarFull({
             ["all", "Tout"],
             ["open", "A faire"],
             ["urgent", "Urgent"],
-            ["done", "Termine"]
+            ["done", "Termine"],
+            ["billing", "À facturer"]
           ].map(([value, label]) => (
             <button
               key={value}
@@ -531,7 +534,11 @@ export default function GoogleCalendarFull({
                 )}
               </span>
               <span className="mobile-agenda-status">
-                {event.extendedProps.status || "A FAIRE"} · {event.extendedProps.priority || "Normale"}
+                {event.extendedProps.status || "A FAIRE"}
+                {event.extendedProps.status === "TERMINE" && (
+                  <> · {event.extendedProps.invoiced_at ? "Facturé" : "À facturer"}</>
+                )}
+                {" · "}{event.extendedProps.priority || "Normale"}
               </span>
             </button>
           ))}

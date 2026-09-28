@@ -260,6 +260,38 @@ export default function App() {
     }
   };
 
+  const handleUpdateInvoicing = async (invoiced) => {
+    if (!selectedId || selectedDetails?.intervention?.id !== selectedId) return false;
+    if (pendingUpdates.current.has(selectedId)) return false;
+    pendingUpdates.current.add(selectedId);
+    setUpdatingStatus(true);
+    try {
+      const res = await fetch(`${API_URL}/interventions/${selectedId}/invoicing`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiced })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Erreur mise a jour facturation");
+      }
+      setSelectedDetails((current) =>
+        current?.intervention?.id === selectedId
+          ? { ...current, intervention: { ...current.intervention, invoiced_at: data.invoiced_at } }
+          : current
+      );
+      window.dispatchEvent(new Event("refreshCalendar"));
+      return true;
+    } catch (error) {
+      console.error("Erreur mise a jour facturation :", error);
+      alert(error.message || "Impossible de mettre a jour la facturation.");
+      return false;
+    } finally {
+      pendingUpdates.current.delete(selectedId);
+      setUpdatingStatus(false);
+    }
+  };
+
   const handleAddNote = async (content) => {
     if (!selectedId || selectedDetails?.intervention?.id !== selectedId || !content?.trim()) return false;
     try {
@@ -583,6 +615,7 @@ export default function App() {
                   onUploadPhoto={handleUploadPhoto}
                   onDeletePhoto={handleDeletePhoto}
                   onUpdateIntervention={handleUpdateIntervention}
+                  onUpdateInvoicing={handleUpdateInvoicing}
                   onDeleteIntervention={handleDeleteIntervention}
                   updatingStatus={updatingStatus}
                 />
@@ -660,6 +693,7 @@ export default function App() {
               onUploadPhoto={handleUploadPhoto}
               onDeletePhoto={handleDeletePhoto}
               onUpdateIntervention={handleUpdateIntervention}
+              onUpdateInvoicing={handleUpdateInvoicing}
               onDeleteIntervention={handleDeleteIntervention}
               updatingStatus={updatingStatus}
             />

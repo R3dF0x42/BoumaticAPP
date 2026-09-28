@@ -1811,6 +1811,7 @@ app.get("/api/interventions/:id", asyncHandler(async (req, res) => {
         i.technician_id,
         to_char(i.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
         i.status,
+        i.invoiced_at,
         i.priority,
         i.description,
         i.duration_minutes,
@@ -1998,6 +1999,36 @@ app.put("/api/interventions/:id", asyncHandler(async (req, res) => {
   } finally {
     dbClient?.release();
   }
+}));
+
+app.patch("/api/interventions/:id/invoicing", asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Identifiant intervention invalide." });
+  }
+
+  const invoiced = req.body?.invoiced;
+  if (typeof invoiced !== "boolean") {
+    return res.status(400).json({ error: "Etat de facturation invalide." });
+  }
+
+  const result = await pool.query(
+    `UPDATE interventions
+     SET invoiced_at = CASE WHEN $2::boolean THEN COALESCE(invoiced_at, CURRENT_TIMESTAMP) ELSE NULL END
+     WHERE id = $1 AND status = 'TERMINE'
+     RETURNING invoiced_at`,
+    [id, invoiced]
+  );
+
+  if (result.rows.length) {
+    return res.json(result.rows[0]);
+  }
+
+  const existing = await pool.query("SELECT id FROM interventions WHERE id = $1", [id]);
+  if (!existing.rows.length) {
+    return res.status(404).json({ error: "Intervention introuvable." });
+  }
+  return res.status(409).json({ error: "Terminez l'intervention avant de la facturer." });
 }));
 
 app.delete("/api/interventions/:id", asyncHandler(async (req, res) => {

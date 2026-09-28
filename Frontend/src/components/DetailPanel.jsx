@@ -109,6 +109,7 @@ export default function DetailPanel({
   onUploadPhoto,
   onDeletePhoto,
   onUpdateIntervention,
+  onUpdateInvoicing,
   onDeleteIntervention,
   updatingStatus
 }) {
@@ -414,6 +415,11 @@ export default function DetailPanel({
             <p>{intervention.description}</p>
             <div className="badge-row">
               <span className="badge badge-status">{intervention.status}</span>
+              {intervention.status === "TERMINE" && (
+                <span className="badge badge-status">
+                  {intervention.invoiced_at ? "Facturé" : "À facturer"}
+                </span>
+              )}
               <span className="badge badge-priority">{intervention.priority}</span>
             </div>
             <div className="quick-tech-row">
@@ -479,6 +485,20 @@ export default function DetailPanel({
                   disabled={updatingStatus}
                 >
                   {updatingStatus ? "Mise a jour..." : "Marquer comme termine"}
+                </button>
+              )}
+              {intervention.status === "TERMINE" && onUpdateInvoicing && (
+                <button
+                  className="btn small"
+                  type="button"
+                  onClick={() => onUpdateInvoicing(!intervention.invoiced_at)}
+                  disabled={updatingStatus}
+                >
+                  {updatingStatus
+                    ? "Sauvegarde..."
+                    : intervention.invoiced_at
+                      ? "Marquer non facturé"
+                      : "Marquer comme facturé"}
                 </button>
               )}
               {onDeleteIntervention && (

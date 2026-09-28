@@ -96,6 +96,7 @@ async function initDB() {
         priority TEXT DEFAULT 'normal' NOT NULL,
         description TEXT,
         duration_minutes INTEGER DEFAULT 60 NOT NULL,
+        invoiced_at TIMESTAMP,
         maintenance_kit_label TEXT,
         maintenance_occurrence_index INTEGER,
         private_to_technician_id INTEGER,
@@ -198,6 +199,7 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS maintenance_plan_id INTEGER,
         ADD COLUMN IF NOT EXISTS maintenance_occurrence_index INTEGER,
         ADD COLUMN IF NOT EXISTS private_to_technician_id INTEGER,
+        ADD COLUMN IF NOT EXISTS invoiced_at TIMESTAMP,
         ALTER COLUMN status SET DEFAULT 'pending',
         ALTER COLUMN priority SET DEFAULT 'normal';
       UPDATE interventions SET duration_minutes = 60 WHERE duration_minutes IS NULL;
