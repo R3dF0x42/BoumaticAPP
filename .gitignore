@@ -15,6 +15,10 @@ logs/
 
 # Env
 .env
+.env.*
+!.env.*.example
+
+backups/
 
 # OS
 .DS_Store
