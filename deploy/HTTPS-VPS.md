@@ -30,8 +30,10 @@ statique, React, Express et PostgreSQL. Ne pas installer Caddy ni arreter Nginx.
 
 `docker-compose.https.yml` est maintenant une **surcharge**, jamais un fichier
 autonome. Toujours charger d'abord `docker-compose.yml`, puis cette surcharge.
-Elle ne change que les ports, l'URL de l'API et deux reglages de session : la base,
-les volumes, les identifiants et Google Calendar restent ceux du fichier actuel.
+Elle explicite les ports locaux, l'URL relative de l'API et les reglages de
+session HTTPS. Ces valeurs sont aussi les valeurs par defaut du Compose de base
+pour eviter une regression si la surcharge est oubliee. La base, les volumes,
+les identifiants et Google Calendar restent inchanges.
 `!override` remplace les ports au lieu de les cumuler (Compose >= 2.24.4,
 compatible avec la version 5.0.2 du VPS).
 
@@ -215,17 +217,26 @@ test et le rechargement Nginx. Surveiller la validite du certificat.
 
 ## 6. Prochains deploiements et retour en arriere
 
-Toujours utiliser les deux fichiers, puis republier le build statique :
+Apres avoir recupere les changements Git sur le VPS, lancer depuis
+`/home/ubuntu/BoumaticAPP` :
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build --no-deps backend frontend
-docker cp boumaticapp-frontend-1:/app/dist/. /home/ubuntu/BoumaticAPP/Frontend/dist/
+bash deploy/redeploy-vps.sh
 ```
 
-Ne pas utiliser le fichier HTTPS seul. Utiliser seulement le fichier de base
-remettrait notamment l'API sur un port public et le build frontend en HTTP.
-En cas d'echec, reprendre les images, fichiers Compose, fichiers statiques et
-configuration Nginx sauvegardes, sans reinitialiser la base. Tester Nginx avant
+Ce script charge les deux fichiers Compose, reconstruit et relance uniquement
+backend et frontend sans redemarrer PostgreSQL, copie le build dans le dossier
+servi par Nginx et restaure les droits de lecture de ces fichiers statiques.
+Il verifie ensuite le site (`200`), l'API sans session (`401`) et le controle
+d'origine HTTPS sans session (`401`). Les anciens fichiers hashes restent en
+place pour les onglets deja ouverts. Un simple `docker compose up` ne publie
+pas le build statique dans le dossier utilise par Nginx.
+
+Ne pas utiliser le fichier HTTPS seul. En cas d'echec, lire le message du script
+avant de reessayer : ne pas contourner un `403` en ouvrant le port 4000 ou en
+desactivant le controle d'origine. Pour un retour en arriere, reprendre les
+images, fichiers Compose, fichiers statiques et configuration Nginx sauvegardes,
+sans reinitialiser la base. Tester Nginx avant
 de le recharger. Un retour HTTP est temporaire et moins sur. Ne pas utiliser
 `down -v`, `prune`, ni supprimer `data/`.
 

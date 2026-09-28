@@ -17,6 +17,8 @@ services:
       NODE_ENV: production
       DB_SSL: "false"
       PORT: 4000
+      TRUST_PROXY: "true"
+      SESSION_COOKIE_SECURE: "true"
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Definir ADMIN_PASSWORD dans le fichier .env}
       DATABASE_URL: postgres://boumatic:MotDePasseFort123@db:5432/boumatic
     depends_on:
@@ -24,15 +26,15 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
 
   frontend:
     build:
       context: ./Frontend
       args:
-        VITE_API_URL: "http://135.125.199.51:4000/api"
+        VITE_API_URL: "/api"
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "80:8080"
+      - "127.0.0.1:8080:8080"
