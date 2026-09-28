@@ -4,6 +4,7 @@ npm-debug.log
 
 # Build frontend
 Frontend/dist/
+Android/
 
 # Docker volumes
 data/

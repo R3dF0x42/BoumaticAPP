@@ -12,7 +12,7 @@ Les etapes ci-dessous documentent l'installation initiale et le retour en arrier
 **Ne pas recopier le modele HTTP Nginx sur le site maintenant configure par
 Certbot : cela supprimerait sa configuration HTTPS.** Pour les prochaines
 mises a jour de l'application, conserver le Nginx actif et utiliser les deux
-fichiers Compose. La preparation Android est decrite dans `Android/README.md`.
+fichiers Compose. La version mobile reste le site installable depuis Chrome.
 
 - Projet : `/home/ubuntu/BoumaticAPP`, nom Compose `boumaticapp`, Compose 5.0.2.
 - Nginx avec HTTPS et redirection HTTP, site `/etc/nginx/sites-enabled/boumatic`.
@@ -203,8 +203,7 @@ HTTP ou le port 4000 public. Sans session, `/api/auth/session` et les photos
 protegees doivent renvoyer 401, pas la page React.
 
 Il faudra se reconnecter sur le nouveau domaine et recreer les anciens
-raccourcis. La preparation Android vient apres ces controles ; HTTPS ne fournit
-pas de mode hors connexion pour les donnees metier.
+raccourcis. HTTPS ne fournit pas de mode hors connexion pour les donnees metier.
 
 ```sh
 sudo certbot renew --dry-run
