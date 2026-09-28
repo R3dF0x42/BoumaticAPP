@@ -352,7 +352,7 @@ export default function NewIntervention({
           <textarea
             value={form.description}
             onChange={(e) => setValue("description", e.target.value)}
-            placeholder="Maintenance, panne, action a effectuer..."
+            placeholder="Une idée par ligne : panne, action…"
             required
           />
 

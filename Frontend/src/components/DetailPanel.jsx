@@ -102,18 +102,18 @@ function buildInterventionEditForm(intervention) {
   };
 }
 
-function InterventionNoteContent({ content }) {
+function InterventionTextContent({ content }) {
   const lines = String(content || "")
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
   if (lines.length < 2) {
-    return <p className="intervention-note-content">{lines[0] || ""}</p>;
+    return <p className="intervention-text-content">{lines[0] || ""}</p>;
   }
 
   return (
-    <ul className="intervention-note-content intervention-note-points">
+    <ul className="intervention-text-content intervention-text-points">
       {lines.map((line, index) => <li key={index}>{line}</li>)}
     </ul>
   );
@@ -406,6 +406,7 @@ export default function DetailPanel({
             <textarea
               value={editForm.description}
               onChange={(e) => setEditValue("description", e.target.value)}
+              placeholder="Une idée par ligne…"
               required
             />
 
@@ -429,7 +430,7 @@ export default function DetailPanel({
               {formatInterventionTiming(intervention)}
             </p>
             {maintenanceKitLabel && <p className="muted-small">{maintenanceKitLabel}</p>}
-            <p>{intervention.description}</p>
+            <InterventionTextContent content={intervention.description} />
             <div className="badge-row">
               <span className="badge badge-status">{intervention.status}</span>
               {intervention.status === "TERMINE" && (
@@ -554,7 +555,7 @@ export default function DetailPanel({
                   {new Date(n.created_at).toLocaleString("fr-FR")}
                 </span>
               </div>
-              <InterventionNoteContent content={n.content} />
+              <InterventionTextContent content={n.content} />
             </li>
           ))}
           {!notes.length && (

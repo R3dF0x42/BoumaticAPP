@@ -1428,22 +1428,22 @@ textarea {
   justify-content: space-between;
 }
 
-.intervention-note-content {
+.intervention-text-content {
   margin: 8px 0 0;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
-.intervention-note-points {
+.intervention-text-points {
   padding-left: 20px;
   list-style: disc;
 }
 
-.intervention-note-points li {
+.intervention-text-points li {
   padding: 2px 0;
 }
 
-.intervention-note-points li::marker {
+.intervention-text-points li::marker {
   color: var(--warn);
   font-size: 0.85em;
 }
