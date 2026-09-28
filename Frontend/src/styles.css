@@ -1418,7 +1418,7 @@ textarea {
   overflow-y: auto;
 }
 
-.notes-list li {
+.notes-list > li {
   padding: 6px 0;
   border-bottom: 1px solid #202338;
 }
@@ -1426,6 +1426,26 @@ textarea {
 .note-meta {
   display: flex;
   justify-content: space-between;
+}
+
+.intervention-note-content {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.intervention-note-points {
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.intervention-note-points li {
+  padding: 2px 0;
+}
+
+.intervention-note-points li::marker {
+  color: var(--warn);
+  font-size: 0.85em;
 }
 
 /* Photos */

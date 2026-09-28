@@ -102,6 +102,23 @@ function buildInterventionEditForm(intervention) {
   };
 }
 
+function InterventionNoteContent({ content }) {
+  const lines = String(content || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    return <p className="intervention-note-content">{lines[0] || ""}</p>;
+  }
+
+  return (
+    <ul className="intervention-note-content intervention-note-points">
+      {lines.map((line, index) => <li key={index}>{line}</li>)}
+    </ul>
+  );
+}
+
 export default function DetailPanel({
   apiUrl,
   data,
@@ -522,7 +539,7 @@ export default function DetailPanel({
             value={note}
             disabled={savingNote}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Ajouter une note…"
+            placeholder="Ajouter une note (une idée par ligne)…"
           />
           <button className="btn small" type="submit" disabled={savingNote || !note.trim()}>
             {savingNote ? "Enregistrement..." : "Enregistrer"}
@@ -537,7 +554,7 @@ export default function DetailPanel({
                   {new Date(n.created_at).toLocaleString("fr-FR")}
                 </span>
               </div>
-              <div>{n.content}</div>
+              <InterventionNoteContent content={n.content} />
             </li>
           ))}
           {!notes.length && (
