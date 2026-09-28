@@ -21,6 +21,25 @@ const TECH_COLORS = [
 
 const CALENDAR_PLUGINS = [timeGridPlugin, dayGridPlugin, interactionPlugin];
 
+function MobileAgendaDescription({ description }) {
+  const lines = String(description || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) return null;
+
+  return (
+    <span className={`mobile-agenda-description${lines.length > 1 ? " mobile-agenda-description--list" : ""}`}>
+      {lines.length === 1
+        ? lines[0]
+        : lines.map((line, index) => (
+          <span className="mobile-agenda-description-line" key={index}>{line}</span>
+        ))}
+    </span>
+  );
+}
+
 function getTechColor(techId) {
   if (!techId) return "#1d6fff";
   return TECH_COLORS[techId % TECH_COLORS.length];
@@ -528,9 +547,7 @@ export default function GoogleCalendarFull({
                 <span>
                   {event.extendedProps.technician_name || "Technicien non assigne"}
                 </span>
-                {event.extendedProps.description && (
-                  <small>{event.extendedProps.description}</small>
-                )}
+                <MobileAgendaDescription description={event.extendedProps.description} />
                 {event.extendedProps.maintenance_kit_label && (
                   <em className="mobile-agenda-kit">
                     {event.extendedProps.maintenance_kit_label}

@@ -936,17 +936,30 @@ textarea {
   line-height: 1.2;
 }
 
-.mobile-agenda-body span,
-.mobile-agenda-body small {
+.mobile-agenda-body span {
   color: var(--muted);
   line-height: 1.3;
 }
 
-.mobile-agenda-body small {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.mobile-agenda-description {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.mobile-agenda-description--list {
+  display: grid;
+  gap: 3px;
+}
+
+.mobile-agenda-description-line {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 4px;
+}
+
+.mobile-agenda-description-line::before {
+  content: "•";
+  color: var(--warn);
 }
 
 .mobile-agenda-kit,
