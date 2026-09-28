@@ -2,17 +2,26 @@
 
 ## Etat et installation identifiee
 
-Preparation locale uniquement : aucun changement du VPS, aucun certificat
-demande et aucune application Android generee a ce stade.
+HTTPS deploye et verifie d'apres les retours VPS du 28 septembre 2026 :
+certificat installe pour `techplanner.fr`, renouvellement simule reussi,
+API accessible en HTTPS (`401` attendu sans session) et ports Docker limites
+a localhost. La base n'a pas de port publie. Connexion et utilisation mobile
+confirmees par l'utilisateur.
+
+Les etapes ci-dessous documentent l'installation initiale et le retour en arriere.
+**Ne pas recopier le modele HTTP Nginx sur le site maintenant configure par
+Certbot : cela supprimerait sa configuration HTTPS.** Pour les prochaines
+mises a jour de l'application, conserver le Nginx actif et utiliser les deux
+fichiers Compose. La preparation Android est decrite dans `Android/README.md`.
 
 - Projet : `/home/ubuntu/BoumaticAPP`, nom Compose `boumaticapp`, Compose 5.0.2.
-- Nginx sur le port 80, site `/etc/nginx/sites-enabled/boumatic`.
+- Nginx avec HTTPS et redirection HTTP, site `/etc/nginx/sites-enabled/boumatic`.
 - Nginx sert directement `/home/ubuntu/BoumaticAPP/Frontend/dist` et transmet
   `/api/` au backend local. Le conteneur frontend existe mais ce n'est pas lui
   qui sert les pages publiques : reconstruire son image ne suffit pas.
-- Backend actuellement public sur 4000 ; frontend Docker sur `127.0.0.1:8080`.
+- Backend sur `127.0.0.1:4000` ; frontend Docker sur `127.0.0.1:8080`.
 - Certbot deja present dans `/usr/bin/certbot` : ne pas installer une autre
-  version Snap en parallele. Verifier la disponibilite du plugin Nginx.
+  version Snap en parallele. Plugin Nginx et renouvellement deja verifies.
 - Modifications locales sur le VPS : `docker-compose.yml` et
   `Frontend/package-lock.json`. Ne pas les ecraser lors de la mise a jour.
 

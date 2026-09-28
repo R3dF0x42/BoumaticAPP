@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fr.techplanner.app",
+      "sha256_cert_fingerprints": [
+        "A9:97:CA:C2:3D:1E:2A:4B:F2:6B:9F:2F:04:9E:E6:91:59:85:FF:ED:64:F5:91:6B:78:77:51:53:EA:D3:2F:55"
+      ]
+    }
+  }
+]
