@@ -159,6 +159,17 @@ function isUrgentPriority(priority) {
   return normalizeText(priority).includes("urgent");
 }
 
+function matchesMobileFilter(event, filter) {
+  const { status, priority, invoiced_at: invoicedAt } = event.extendedProps;
+  const isDone = isDoneStatus(status);
+
+  if (filter === "open") return !isDone;
+  if (filter === "urgent") return isUrgentPriority(priority);
+  if (filter === "done") return isDone;
+  if (filter === "billing") return isDone && !invoicedAt;
+  return true;
+}
+
 function isDueByToday(intervention) {
   if (!intervention?.scheduled_at) return false;
 
@@ -336,6 +347,7 @@ export default function GoogleCalendarFull({
   const eventCountsByDay = useMemo(() => {
     const counts = new Map();
     for (const event of events) {
+      if (!matchesMobileFilter(event, mobileFilter)) continue;
       for (const day of weekDays) {
         if (!eventOverlapsDay(event, day)) continue;
         const dayKey = formatDateKey(day);
@@ -343,7 +355,7 @@ export default function GoogleCalendarFull({
       }
     }
     return counts;
-  }, [events, weekDays]);
+  }, [events, mobileFilter, weekDays]);
   const selectedDayEvents = useMemo(
     () =>
       events
@@ -353,15 +365,7 @@ export default function GoogleCalendarFull({
   );
   const visibleDayEvents = useMemo(() => {
     if (mobileFilter === "all") return selectedDayEvents;
-    return selectedDayEvents.filter((event) => {
-      const status = normalizeText(event.extendedProps.status);
-      const priority = String(event.extendedProps.priority || "").toLowerCase();
-      if (mobileFilter === "urgent") return priority.includes("urgent");
-      if (mobileFilter === "done") return status.includes("termine");
-      if (mobileFilter === "billing") return status.includes("termine") && !event.extendedProps.invoiced_at;
-      if (mobileFilter === "open") return !status.includes("termine");
-      return true;
-    });
+    return selectedDayEvents.filter((event) => matchesMobileFilter(event, mobileFilter));
   }, [mobileFilter, selectedDayEvents]);
 
   const globalSummary = useMemo(() => {
