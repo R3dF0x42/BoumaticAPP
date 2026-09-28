@@ -1,219 +1,234 @@
-# HTTPS sur le VPS OVH avec techplanner.fr
+# HTTPS pour techplanner.fr avec le Nginx existant
 
-## Etat et perimetre
+## Etat et installation identifiee
 
-Configuration preparee, pas encore activee sur le VPS. Aucun certificat public
-n'a ete demande pendant la preparation locale. L'application Android reste une
-etape suivante, apres verification de HTTPS sur un telephone.
+Preparation locale uniquement : aucun changement du VPS, aucun certificat
+demande et aucune application Android generee a ce stade.
 
-Adresse prevue : `https://techplanner.fr` (domaine achete chez OVH).
+- Projet : `/home/ubuntu/BoumaticAPP`, nom Compose `boumaticapp`, Compose 5.0.2.
+- Nginx sur le port 80, site `/etc/nginx/sites-enabled/boumatic`.
+- Nginx sert directement `/home/ubuntu/BoumaticAPP/Frontend/dist` et transmet
+  `/api/` au backend local. Le conteneur frontend existe mais ce n'est pas lui
+  qui sert les pages publiques : reconstruire son image ne suffit pas.
+- Backend actuellement public sur 4000 ; frontend Docker sur `127.0.0.1:8080`.
+- Certbot deja present dans `/usr/bin/certbot` : ne pas installer une autre
+  version Snap en parallele. Verifier la disponibilite du plugin Nginx.
+- Modifications locales sur le VPS : `docker-compose.yml` et
+  `Frontend/package-lock.json`. Ne pas les ecraser lors de la mise a jour.
 
-React, Express, PostgreSQL, les ecrans et les donnees sont conserves. Un service
-Caddy termine HTTPS devant les trois services Docker existants. Il renouvelle
-automatiquement le certificat public Let's Encrypt du domaine.
+**Cette procedure remplace celle avec Caddy.** On conserve Nginx, son dossier
+statique, React, Express et PostgreSQL. Ne pas installer Caddy ni arreter Nginx.
 
-`docker-compose.https.yml` est un fichier **complet**, a utiliser seul, depuis
-le meme dossier et avec le meme nom de projet Compose que l'installation actuelle.
-Ne pas le fusionner avec `docker-compose.yml` : cela risquerait de conserver les
-anciens ports HTTP publics. Le fichier historique n'est pas modifie.
+`docker-compose.https.yml` est maintenant une **surcharge**, jamais un fichier
+autonome. Toujours charger d'abord `docker-compose.yml`, puis cette surcharge.
+Elle ne change que les ports, l'URL de l'API et deux reglages de session : la base,
+les volumes, les identifiants et Google Calendar restent ceux du fichier actuel.
+`!override` remplace les ports au lieu de les cumuler (Compose >= 2.24.4,
+compatible avec la version 5.0.2 du VPS).
 
-Apres activation :
+## 1. Sauvegarder avant de recuperer le code
 
-- le site, `/api` et `/uploads` utilisent la meme adresse `https://DOMAINE` ;
-- seul Caddy publie les ports TCP 80 et 443 ; PostgreSQL et le port 4000 de l'API
-  restent internes a Docker ;
-- les cookies de session sont HttpOnly et Secure ; une reconnexion sera necessaire ;
-- les dossiers `data/postgres` et `backend/uploads` restent les memes ;
-- les certificats et cles restent dans `data/caddy` : ne pas supprimer ce dossier,
-  ne pas le publier dans Git et inclure ce dossier dans les sauvegardes privees.
-
-## 1. Verifications avant toute modification
-
-Depuis PowerShell, se connecter en SSH comme d'habitude. Les commandes suivantes
-s'executent ensuite **sur le VPS Linux**, et non dans le PowerShell local :
-
-```sh
-cat /etc/os-release
-docker compose version
-pwd
-docker compose ls
-```
-
-Se placer dans le dossier de l'application et verifier :
+Les commandes Linux de ce document s'executent dans la session SSH du VPS,
+une par une. Arreter la procedure si une commande echoue.
 
 ```sh
-docker compose ps
-```
-
-Confirmer l'IPv4 publique dans l'espace OVH. L'ancienne configuration du depot
-contient `135.125.199.51` ; cette adresse doit etre confirmee avant utilisation.
-
-Dans l'espace client OVH, ouvrir la **Zone DNS** de `techplanner.fr` et ajouter
-ou modifier l'enregistrement **A** du domaine principal : laisser le champ
-**Sous-domaine vide**, conserver le TTL par defaut et renseigner l'IPv4 du VPS
-comme **Cible**. S'il existe deja une ancienne adresse pour ce meme nom,
-la remplacer plutot qu'ajouter une deuxieme cible contradictoire.
-Ne pas modifier les enregistrements des mails (MX/TXT) ou ceux d'autres services.
-Si ce nom possede aussi un enregistrement AAAA, verifier qu'il pointe vers une
-IPv6 de ce VPS ou le corriger : une IPv6 erronee peut bloquer la validation HTTPS.
-
-Attendre que le nom resolve bien vers le VPS. Verification depuis le PowerShell
-local :
-
-```powershell
-Resolve-DnsName techplanner.fr -Type A
-Resolve-DnsName techplanner.fr -Type AAAA
-```
-
-L'absence d'AAAA est normale si seule l'IPv4 est configuree. Si le domaine vient
-d'etre achete et qu'aucun enregistrement n'est encore visible, verifier que la
-commande OVH est terminee et attendre la disponibilite de sa zone DNS. Ne pas
-lancer l'emission du certificat tant que le nom ne pointe pas vers le VPS.
-
-Seul `techplanner.fr` est configure ici, pas `www.techplanner.fr`.
-
-Verifier que l'installation actuelle utilise bien Docker Compose, les services
-`db`, `backend`, `frontend` et les deux dossiers de donnees ci-dessus. Si elle
-utilise un autre fichier, un autre nom de projet, un proxy, des volumes nommes ou
-des variables Google Calendar supplementaires, adapter cette procedure avant
-de continuer. Ne pas demarrer une seconde base sur le meme dossier.
-
-Autoriser les connexions entrantes TCP 80 et 443 dans les pare-feu du VPS et OVH,
-ainsi que les connexions sortantes HTTPS necessaires a Let's Encrypt.
-**Ne pas desactiver le pare-feu et ne pas fermer le port SSH actuel.** Les ports
-80 et 443 doivent rester joignables pour les renouvellements futurs.
-
-## 2. Sauvegarde et configuration privee
-
-Faire une sauvegarde verifiee de PostgreSQL et des photos avant de basculer,
-pendant un creneau sans modifications par les techniciens. Par exemple, depuis
-le dossier actuel de l'application, avec la configuration HTTP encore active :
-
-```sh
+cd /home/ubuntu/BoumaticAPP
 umask 077
-backup_dir="backups/avant-https-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$backup_dir"
+backup_dir="$HOME/boumatic-avant-https-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$backup_dir/Frontend"
+cp -p docker-compose.yml "$backup_dir/docker-compose.yml"
+cp -p Frontend/package-lock.json "$backup_dir/Frontend/package-lock.json"
+if [ -f .env ]; then cp -p .env "$backup_dir/.env"; fi
+git diff --binary > "$backup_dir/modifications-locales.patch"
+git rev-parse HEAD > "$backup_dir/revision.txt"
+sudo tar -czf "$backup_dir/nginx.tar.gz" -C /etc nginx
+tar -czf "$backup_dir/frontend-dist.tar.gz" Frontend/dist
+```
+
+Conserver le chemin de sauvegarde. Ces copies sont privees : ne pas publier le
+patch, Compose, `.env` ou les fichiers Nginx, qui peuvent contenir des secrets.
+Conserver aussi les images actuelles pour le retour en arriere, sans `prune`.
+
+Confirmer les montages des donnees avant leur sauvegarde :
+
+```sh
+docker inspect boumaticapp-db-1 boumaticapp-backend-1 --format '{{.Name}}{{range .Mounts}}{{println}}{{.Source}} -> {{.Destination}}{{end}}'
+```
+
+Avec les montages standards du depot (`data/postgres`, `backend/uploads`), dans
+un creneau sans ecritures par les utilisateurs :
+
+```sh
 docker compose exec -T db pg_dump -U boumatic -d boumatic -Fc > "$backup_dir/boumatic.dump"
 docker compose exec -T db pg_restore --list < "$backup_dir/boumatic.dump" > /dev/null
 tar -czf "$backup_dir/uploads.tar.gz" backend/uploads
 tar -tzf "$backup_dir/uploads.tar.gz" > /dev/null
 ```
 
-Arreter la procedure si une commande echoue. La liste `pg_restore` verifie la
-lisibilite de l'archive ; une restauration d'essai dans une base isolee reste
-necessaire pour valider completement la sauvegarde. Conserver aussi une copie
-privee hors du VPS, le fichier Compose actuel, le `.env` et les images actuelles
-pour pouvoir revenir en arriere. Ne pas effacer les donnees pour tester un retour.
+La liste de l'archive verifie sa lisibilite, pas une restauration complete.
+Prevoir une restauration d'essai dans une base isolee et une copie privee hors VPS.
 
-Reporter les trois variables de `.env.https.example` dans le `.env` a la racine
-du projet, **sans ecraser les variables deja presentes** :
+## 2. Recuperer les changements sans perdre ceux du VPS
 
-- `PUBLIC_DOMAIN` : `techplanner.fr`, sans `https://`, port, chemin ou espace.
-  Ne pas utiliser l'IP dans cette configuration.
-- `ADMIN_PASSWORD` : conserver le mot de passe administrateur configure.
-- `POSTGRES_PASSWORD` : reprendre exactement le mot de passe actuel de la base.
-  Changer cette variable ne change pas le mot de passe d'une base deja initialisee.
-  Une rotation de ce mot de passe doit etre faite separement, pas pendant la bascule.
+Les changements HTTPS/Nginx prepares sur le poste de travail doivent d'abord etre
+commites et pousses dans le depot partage avec l'accord du proprietaire. Ne pas
+deployer seulement l'ancien commit Caddy. Un pull ne recupere pas les fichiers
+qui n'existent que localement.
 
-Utiliser des valeurs entre apostrophes dans `.env` si les mots de passe contiennent
-des caracteres comme `$` ou `#`. Le backend utilise les variables `PG*` pour eviter
-les erreurs d'encodage des mots de passe dans une URL PostgreSQL.
+Ne pas utiliser `git reset --hard`, `git clean` ou `git checkout --` pour effacer
+les modifications du VPS. Apres sauvegarde, si le statut contient uniquement
+les deux modifications identifiees :
+
+```sh
+git stash push -m "VPS avant HTTPS : conserver adaptations locales" -- docker-compose.yml Frontend/package-lock.json
+git stash list -1
+git pull --ff-only
+git stash apply 'stash@{0}'
+git status --short
+```
+
+Executer les commandes une par une. Si `stash` ou `pull` echoue, ne pas continuer.
+Si `stash apply` produit un conflit, le resoudre avec les copies privees avant
+de construire ou de demarrer quoi que ce soit. Ne pas supprimer le stash avant
+validation et ne pas regenerer le lockfile au hasard pour contourner un conflit.
+
+Verifier dans `.env` que `ADMIN_PASSWORD` est defini. **Ne pas ecraser `.env` avec
+`.env.https.example`** : cet exemple contient une valeur vide. Le Compose de base
+doit transmettre `ADMIN_PASSWORD` au backend, comme celui du depot. Conserver les
+identifiants PostgreSQL et les variables Google Calendar actuels : aucun nouveau
+`POSTGRES_PASSWORD` ou `PUBLIC_DOMAIN` n'est requis par la surcharge Nginx.
 
 ```sh
 chmod 600 .env
-docker compose -f docker-compose.https.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.https.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.https.yml build backend frontend
 ```
 
-Ne pas partager `.env`, les cles privees, les sauvegardes ou la sortie de
-`docker compose config` sans `--quiet`, qui peut contenir les secrets.
-Les `.dockerignore` empechent aussi de copier `.env`, les dependances locales
-et les photos dans les images lors du build.
+Construire les images avant la bascule. Ne pas partager la sortie de `config`
+sans `--quiet`, qui peut contenir les secrets.
 
-## 3. Preparer puis activer pendant un creneau prevu
+## 3. Adapter le site Nginx et obtenir le certificat
 
-Transferer les changements du projet sur le VPS par le mecanisme habituel,
-sans remplacer `.env`, `data/` ou `backend/uploads/`. Conserver le meme nom de
-projet Compose ; si l'installation utilise `-p NOM`, le reprendre dans toutes
-les commandes ci-dessous. Conserver egalement les variables et montages Google
-Calendar personnalises de l'installation actuelle, le cas echeant.
+Verifier le DNS de `techplanner.fr` vers `135.125.199.51`, sans AAAA errone. Garder
+les ports TCP 80 et 443 accessibles dans les pare-feu du VPS et OVH. Ne pas fermer
+SSH ni desactiver le pare-feu. Seul `techplanner.fr`, sans `www`, est prevu ici.
 
-Avant la bascule, construire les images et valider Caddy :
+Apres sauvegarde, adapter le site `boumatic` en s'appuyant sur
+`deploy/nginx-techplanner.conf`. Identifier la cible de son lien symbolique avec
+`readlink -f /etc/nginx/sites-enabled/boumatic` avant d'editer le fichier actif.
+Ne pas ecraser `/etc/nginx/nginx.conf`, les autres sites ou leurs reglages.
+Ne pas creer deux blocs actifs pour le meme nom ou pour l'ancienne IP.
+
+Le modele est un **site HTTP initial**, pas un fichier HTTPS deja certifie :
+
+- `server_name techplanner.fr`, meme `root` et meme repli SPA `try_files` ;
+- API et photos vers `127.0.0.1:4000`, sans supprimer `/api` ou `/uploads` ;
+- Host et X-Forwarded-Proto transmis au backend pour les sessions ;
+- X-Forwarded-For remplace par l'adresse distante, sans accepter celui du client ;
+- limite de requete de 10 Mo pour les photos limitees a 8 Mo cote backend ;
+- ancien acces HTTP par IP redirige vers le domaine HTTPS.
+
+Ne pas ajouter de slash apres `proxy_pass http://127.0.0.1:4000`, ni servir les
+photos directement avec `alias` : leur controle d'acces doit passer par Express.
+Lors de l'adaptation d'un bloc existant, verifier qu'aucun `proxy_set_header`
+local ne neutralise l'heritage des quatre en-tetes definis au niveau `server`.
 
 ```sh
-docker compose -f docker-compose.https.yml pull proxy
-docker compose -f docker-compose.https.yml build backend frontend
-docker compose -f docker-compose.https.yml run --rm --no-deps proxy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot plugins
 ```
 
-La validation ne demarre pas le proxy et ne demande pas de certificat.
-Ne pas poursuivre si elle echoue. L'emission reelle ne peut etre verifiee que
-sur le VPS, une fois le domaine correctement configure et les ports accessibles.
-
-Pendant le creneau de maintenance, arreter seulement l'ancien frontend pour
-liberer le port 80, puis activer la configuration complete :
+Ne pas continuer si le test Nginx echoue ou si le plugin `nginx` manque. Verifier
+que le domaine atteint le site en HTTP, sans se connecter avec un compte.
+Prevoir ensuite un creneau de maintenance : l'ancien acces par IP sera redirige
+et l'ancien build peut encore appeler l'API en HTTP jusqu'a la fin de la bascule.
 
 ```sh
-docker compose stop frontend
-docker compose -f docker-compose.https.yml up -d
-docker compose -f docker-compose.https.yml ps
-docker compose -f docker-compose.https.yml logs --tail=100 proxy backend
+sudo certbot --nginx -d techplanner.fr --redirect
+sudo nginx -t
 ```
 
-Caddy demande un certificat public Let's Encrypt pour le domaine indique. Son
-demarrage implique l'utilisation de ce service et l'acceptation des conditions
-de l'autorite de certification. Une breve indisponibilite est possible pendant
-la recreation des conteneurs et l'emission initiale.
+Lire les conditions Let's Encrypt et renseigner les informations directement
+sur le VPS. Cette commande demande un vrai certificat et modifie le site Nginx.
+Verifier `https://techplanner.fr` sans ignorer les alertes TLS. En cas d'echec,
+ne pas activer les cookies Secure dans Docker ; utiliser le plan de retour.
 
-Ne pas ouvrir les ports 4000 ou 5432 pour contourner un probleme. Si le port 4000
-est encore publie par un ancien conteneur ou un autre processus, corriger ce
-point avant de considerer HTTPS comme termine.
+**Ne pas recopier ensuite le modele HTTP sur le fichier actif** : cela effacerait
+les directives HTTPS ajoutees par Certbot. Sauvegarder le fichier final et
+`/etc/letsencrypt` de facon privee.
 
-## 4. Verification sur telephone
+## 4. Basculer les deux conteneurs et les fichiers statiques
 
-Ouvrir `https://techplanner.fr`, sans `:4000`, dans le navigateur du telephone,
-d'abord en Wi-Fi puis en 4G/5G :
-
-- aucune alerte de certificat ; ne jamais accepter une exception de securite ;
-- `http://DOMAINE` redirige vers `https://DOMAINE` ;
-- connexion administrateur et technicien, actualisation de page, deconnexion ;
-- affichage du planning, consultation des interventions et des photos ;
-- envoi d'une photo de test sur une intervention de test autorisee ;
-- absence de requetes HTTP ou de requetes vers le port 4000 dans le navigateur.
-
-Sans session, `/api/auth/session` et les photos protegees doivent repondre 401,
-pas renvoyer la page React. Le service worker n'ajoute pas de mode hors connexion
-pour les donnees metier.
-
-L'ancien acces direct par IP n'est pas une adresse prise en charge par cette
-configuration : communiquer la nouvelle adresse aux techniciens. Les raccourcis
-installes depuis l'ancienne origine doivent etre recrees depuis HTTPS. Verifier
-la connexion et les photos avant de distribuer une version Android aux techniciens.
-
-## 5. Maintenance et retour en arriere
-
-Pour les prochains deploiements, toujours utiliser :
+Depuis `/home/ubuntu/BoumaticAPP`, avec le meme projet Compose `boumaticapp` :
 
 ```sh
-docker compose -f docker-compose.https.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --no-deps backend frontend
+docker compose -f docker-compose.yml -f docker-compose.https.yml ps
 ```
 
-Ne pas revenir par inadvertance a `docker compose up -d` sans `-f` : cela
-reactiverait le fichier HTTP historique. Garder Caddy en fonctionnement et
-surveiller ses erreurs de renouvellement. Une surveillance externe de la validite
-du certificat est recommandee ; ne pas compter sur un renouvellement manuel.
+`--no-deps` evite de recreer PostgreSQL, qui doit deja fonctionner. Nginx reste
+actif. Une breve interruption des requetes est possible pendant la bascule.
+Verifier que 4000 et 8080 sont publies uniquement sur `127.0.0.1`, pas sur
+`0.0.0.0` ou `[::]`.
 
-En cas d'echec de la bascule, arreter Caddy avant de relancer les services avec
-la configuration et les images sauvegardees : il occupe les ports 80 et 443.
-Le retour HTTP est une solution temporaire moins sure ; il ne doit pas devenir
-le fonctionnement normal ni servir a distribuer l'application Android.
-Ne pas utiliser `down -v`, `prune` ou supprimer `data/` pour resoudre un probleme.
+**Etape indispensable avec le Nginx actuel : publier le nouveau build dans son
+dossier statique.** Le build Docker fournit les fichiers sans installer Node ou
+modifier les dependances sur le VPS. Apres sauvegarde de `Frontend/dist` et
+verification du nom `boumaticapp-frontend-1` dans le resultat precedent :
 
-## References
+```sh
+docker cp boumaticapp-frontend-1:/app/dist/. /home/ubuntu/BoumaticAPP/Frontend/dist/
+```
 
-- [TLS et autorite ACME Caddy](https://caddyserver.com/docs/caddyfile/directives/tls)
-- [HTTPS automatique Caddy](https://caddyserver.com/docs/automatic-https)
-- [Enregistrement A dans la zone DNS OVH](https://docs.ovhcloud.com/fr/guides/web-cloud/domains/dns-zone-a-record-creation)
+Verifier le succes de la copie et la lisibilite des fichiers par Nginx. Elle
+ecrase les fichiers de meme nom mais ne supprime pas les anciens fichiers
+hashes, afin de ne pas casser les onglets deja ouverts. Ne pas effacer `dist`
+avant la copie. Sans cette etape, Nginx continuerait a servir l'ancienne API HTTP.
 
-L'autorite ACME est explicite dans le Caddyfile. Il ne faut pas remplacer cette
-configuration par `tls internal` : les telephones ne reconnaitraient pas
-automatiquement les certificats de l'autorite locale de Caddy.
+## 5. Verification mobile et renouvellement
+
+Ouvrir `https://techplanner.fr` en Wi-Fi puis en 4G/5G. Verifier certificat,
+connexion administrateur/technicien, planning, photos, envoi d'une photo de test
+autorisee, rechargement et deconnexion. Les requetes ne doivent plus utiliser
+HTTP ou le port 4000 public. Sans session, `/api/auth/session` et les photos
+protegees doivent renvoyer 401, pas la page React.
+
+Il faudra se reconnecter sur le nouveau domaine et recreer les anciens
+raccourcis. La preparation Android vient apres ces controles ; HTTPS ne fournit
+pas de mode hors connexion pour les donnees metier.
+
+```sh
+sudo certbot renew --dry-run
+systemctl list-timers --all | grep -Ei 'certbot|letsencrypt'
+```
+
+Verifier le mecanisme de renouvellement installe (timer ou cron), le resultat du
+test et le rechargement Nginx. Surveiller la validite du certificat.
+
+## 6. Prochains deploiements et retour en arriere
+
+Toujours utiliser les deux fichiers, puis republier le build statique :
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build --no-deps backend frontend
+docker cp boumaticapp-frontend-1:/app/dist/. /home/ubuntu/BoumaticAPP/Frontend/dist/
+```
+
+Ne pas utiliser le fichier HTTPS seul. Utiliser seulement le fichier de base
+remettrait notamment l'API sur un port public et le build frontend en HTTP.
+En cas d'echec, reprendre les images, fichiers Compose, fichiers statiques et
+configuration Nginx sauvegardes, sans reinitialiser la base. Tester Nginx avant
+de le recharger. Un retour HTTP est temporaire et moins sur. Ne pas utiliser
+`down -v`, `prune`, ni supprimer `data/`.
+
+## References et maintenance du VPS
+
+- [Fusion Compose et remplacement des ports](https://docs.docker.com/reference/compose-file/merge/)
+- [Configuration du proxy Nginx](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)
+- [Certbot/Nginx](https://certbot.eff.org/instructions?ws=nginx&os=snap)
+- [Fin de maintenance Ubuntu 25.04](https://lists.ubuntu.com/archives/ubuntu-announce/2026-January/000320.html)
+
+Ubuntu 25.04 n'est plus maintenu. Prevoir une migration dans une intervention
+separee, avec sauvegarde et retour en arriere. Ne pas improviser un changement
+des depots APT, une nouvelle installation Certbot ou une mise a niveau du systeme
+pour contourner un probleme pendant cette bascule.
